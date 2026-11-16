@@ -98,7 +98,29 @@ export interface Snapshot {
   pinging: boolean;
   toast: ToastMessage | null;
   version: { app: string; xray: string };
+  /** Журнал: сеансы VPN и события, новые сверху. Хранится только на устройстве. */
+  activity: ActivityEntry[];
 }
+
+/** Чем закончился сеанс: кнопкой, ошибкой или его выключила система. */
+export type SessionEnd = "manual" | "error" | "system";
+
+export type ActivityEntry =
+  | {
+      kind: "session";
+      id: string;
+      server: string;
+      subscription: string;
+      startedAt: number;
+      /** null — сеанс идёт сейчас. */
+      endedAt: number | null;
+      down: number;
+      up: number;
+      end: SessionEnd | null;
+      error?: string;
+    }
+  | { kind: "error"; id: string; at: number; server: string | null; text: string }
+  | { kind: "subscription"; id: string; at: number; text: string };
 
 /** Действие в уведомлении: вернуть удалённое или применить настройки сразу. */
 export type ToastActionId = "undo" | "reconnect";
@@ -128,6 +150,8 @@ export interface Backend {
   updateAppearance(patch: Partial<Appearance>): void;
   resetSettings(): Promise<void>;
   clearError(): void;
+  /** Очистить журнал активности (с возможностью вернуть). */
+  clearActivity(): void;
   /** Кнопка в уведомлении: «Вернуть», «Переподключить». */
   toastAction(): void;
   dismissToast(): void;

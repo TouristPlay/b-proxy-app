@@ -4,15 +4,18 @@ import { defaultAppearance, defaultSettings } from "./demo";
 import { checkUrl, parseSubscription, type FetchResult, type Outbound, type StoredSubscription } from "./subscription";
 import {
   nodeKey,
+  type ActivityEntry,
   type Appearance,
   type Backend,
   type CoreSettings,
+  type SessionEnd,
   type Settings,
   type Snapshot,
   type Subscription,
   type TunnelState,
 } from "./types";
 import { plural } from "@/lib/format";
+import { loadActivity, newId, saveActivity } from "./activity";
 import { Toaster } from "./toaster";
 import { buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
 
@@ -72,6 +75,9 @@ export class TauriBackend implements Backend {
   private busy = false;
   /** Пользователь отменил подключение, пока оно шло. */
   private cancelled = false;
+  /** Запись текущего сеанса в журнале активности. */
+  private sessionId: string | null = null;
+  private lastSave = 0;
 
   constructor() {
     const saved = readJson<Persisted>(STATE_KEY);
@@ -99,6 +105,7 @@ export class TauriBackend implements Backend {
       pinging: false,
       toast: null,
       version: { app: APP_VERSION, xray: "—" },
+      activity: loadActivity(),
     };
     this.recompute();
     void this.init();
@@ -119,6 +126,7 @@ export class TauriBackend implements Backend {
       this.base = stats;
       this.emit({ state: "connected", connectedAt: Date.now(), downSpeed: 0, upSpeed: 0 });
       this.startStats();
+      this.openSession();
     }
 
     try {
@@ -230,6 +238,65 @@ export class TauriBackend implements Backend {
     }
   }
 
+  // ---------- Журнал активности ----------
+
+  private setActivity(list: ActivityEntry[], persist = true) {
+    this.emit({ activity: list });
+    if (persist) {
+      saveActivity(list);
+      this.lastSave = Date.now();
+    }
+  }
+
+  private log(entry: ActivityEntry) {
+    this.setActivity([entry, ...this.s.activity]);
+  }
+
+  private logError(text: string) {
+    // Ссылка на подписку — это ключ доступа: в журнал (и в отчёт для поддержки) она не попадает.
+    const clean = text.replace(/https?:\/\/\S+/g, "‹ссылка›");
+    this.log({ kind: "error", id: newId(), at: Date.now(), server: this.s.current?.node.name ?? null, text: clean });
+  }
+
+  private openSession() {
+    const cur = this.s.current;
+    if (!cur || this.sessionId) return;
+    this.sessionId = newId();
+    this.log({
+      kind: "session",
+      id: this.sessionId,
+      server: cur.node.name,
+      subscription: cur.sub.title,
+      startedAt: Date.now(),
+      endedAt: null,
+      down: 0,
+      up: 0,
+      end: null,
+    });
+  }
+
+  private patchSession(patch: Partial<Extract<ActivityEntry, { kind: "session" }>>, persist: boolean) {
+    const id = this.sessionId;
+    if (!id) return;
+    this.setActivity(
+      this.s.activity.map((e) => (e.kind === "session" && e.id === id ? { ...e, ...patch } : e)),
+      persist,
+    );
+  }
+
+  private closeSession(end: SessionEnd, error?: string) {
+    if (!this.sessionId) return;
+    this.patchSession({ endedAt: Date.now(), end, error, down: this.s.downTotal, up: this.s.upTotal }, true);
+    this.sessionId = null;
+  }
+
+  clearActivity() {
+    const before = this.s.activity;
+    // Идущий сеанс оставляем: он ещё допишется.
+    this.setActivity(before.filter((e) => e.kind === "session" && e.id === this.sessionId));
+    this.toaster.show("Журнал очищен", { id: "undo", label: "Вернуть", run: () => this.setActivity(before) });
+  }
+
   // ---------- VPN ----------
 
   async toggle() {
@@ -306,6 +373,7 @@ export class TauriBackend implements Backend {
       if (this.cancelled) return;
       this.stopStats();
       this.emit({ state: "disconnected", connectedAt: null, error: message(e) });
+      this.logError(message(e));
     } finally {
       this.busy = false;
     }
@@ -319,6 +387,7 @@ export class TauriBackend implements Backend {
     } catch (e) {
       this.emit({ error: message(e) });
     } finally {
+      this.closeSession("manual");
       this.stopStats();
       this.emit({ state: "disconnected", connectedAt: null, downSpeed: null, upSpeed: null });
       this.busy = false;
@@ -339,6 +408,7 @@ export class TauriBackend implements Backend {
     this.base = null;
     this.last = null;
     this.startStats();
+    this.openSession();
   }
 
   private onTunnelState(state: string, error: string | null) {
@@ -346,6 +416,8 @@ export class TauriBackend implements Backend {
     if (state === "connected") this.onConnected();
     else if (state === "disconnected" && this.s.state !== "disconnected") {
       // Туннель выключила система или кнопка в уведомлении.
+      this.closeSession(error ? "error" : "system", error ?? undefined);
+      if (error) this.logError(error);
       this.stopStats();
       this.emit({ state: "disconnected", connectedAt: null, downSpeed: null, upSpeed: null, error });
     } else if (state === "connecting" || state === "disconnecting") {
@@ -388,6 +460,8 @@ export class TauriBackend implements Backend {
       upTotal: Math.max(0, now.tx - this.base.tx),
       speedHistory: [...this.s.speedHistory, Math.round(down)].slice(-40),
     });
+    // Трафик сеанса в журнале; на диск — не чаще раза в 15 секунд.
+    this.patchSession({ down: this.s.downTotal, up: this.s.upTotal }, Date.now() - this.lastSave > 15_000);
   }
 
   async select(target: { subUrl: string; nodeId: string } | null) {
@@ -425,6 +499,7 @@ export class TauriBackend implements Backend {
     });
     this.setSubs([sub, ...this.subs.filter((x) => x.url !== sub.url && x.url !== url)]);
     const count = sub.nodes.filter((n) => !n.divider).length;
+    this.log({ kind: "subscription", id: newId(), at: Date.now(), text: `Добавлена подписка «${sub.title}»` });
     this.toast(`Подписка «${sub.title}» добавлена: ${count} ${plural(count, "сервер", "сервера", "серверов")}`);
     // Сразу меряем пинг, чтобы автовыбор знал лучший сервер.
     if (this.s.state === "disconnected") void this.pingAll(true);
@@ -444,6 +519,10 @@ export class TauriBackend implements Backend {
       }),
     );
     this.setSubs(next);
+    for (const e of errors) this.logError(`Подписка не обновилась — ${e}`);
+    if (errors.length < this.subs.length) {
+      this.log({ kind: "subscription", id: newId(), at: Date.now(), text: silent ? "Подписки обновлены автоматически" : "Подписки обновлены" });
+    }
     if (errors.length && !silent) this.emit({ error: errors.join("\n") });
     else if (!silent) this.toast("Подписки обновлены");
   }

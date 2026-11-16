@@ -1,6 +1,8 @@
+import { newId } from "./activity";
 import { Toaster } from "./toaster";
 import {
   nodeKey,
+  type ActivityEntry,
   type Appearance,
   type Backend,
   type CoreSettings,
@@ -111,6 +113,7 @@ export class DemoBackend implements Backend {
   private listeners = new Set<(s: Snapshot) => void>();
   private ticker: number | undefined;
   private toaster = new Toaster((toast) => this.emit({ toast }));
+  private sessionId: string | null = null;
   private s: Snapshot;
 
   constructor(empty = false) {
@@ -131,6 +134,7 @@ export class DemoBackend implements Backend {
       pinging: false,
       toast: null,
       version: { app: "0.1.0", xray: "26.11.9" },
+      activity: empty ? [] : demoActivity(),
     };
     this.recompute();
   }
@@ -193,7 +197,19 @@ export class DemoBackend implements Backend {
       this.emit({ state: "disconnecting" });
       await wait(450);
       window.clearInterval(this.ticker);
-      this.emit({ state: "disconnected", connectedAt: null, downSpeed: null, upSpeed: null });
+      const id = this.sessionId;
+      this.sessionId = null;
+      this.emit({
+        state: "disconnected",
+        connectedAt: null,
+        downSpeed: null,
+        upSpeed: null,
+        activity: this.s.activity.map((e) =>
+          e.kind === "session" && e.id === id
+            ? { ...e, endedAt: Date.now(), end: "manual", down: this.s.downTotal, up: this.s.upTotal }
+            : e,
+        ),
+      });
       return;
     }
     if (!this.s.current) {
@@ -202,6 +218,24 @@ export class DemoBackend implements Backend {
     }
     this.emit({ state: "connecting", error: null });
     await wait(1400);
+    const cur = this.s.current;
+    this.sessionId = newId();
+    this.emit({
+      activity: [
+        {
+          kind: "session",
+          id: this.sessionId,
+          server: cur?.node.name ?? "",
+          subscription: cur?.sub.title ?? "",
+          startedAt: Date.now(),
+          endedAt: null,
+          down: 0,
+          up: 0,
+          end: null,
+        },
+        ...this.s.activity,
+      ],
+    });
     this.emit({
       state: "connected",
       connectedAt: Date.now(),
@@ -323,6 +357,12 @@ export class DemoBackend implements Backend {
     this.emit({ error: null });
   }
 
+  clearActivity() {
+    const before = this.s.activity;
+    this.emit({ activity: before.filter((e) => e.kind === "session" && e.id === this.sessionId) });
+    this.toaster.show("Журнал очищен", { id: "undo", label: "Вернуть", run: () => this.emit({ activity: before }) });
+  }
+
   toastAction() {
     this.toaster.act();
   }
@@ -333,3 +373,36 @@ export class DemoBackend implements Backend {
 }
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Пример истории за неделю для показа вкладки «Активность» в демо. */
+function demoActivity(): ActivityEntry[] {
+  const H = 3_600_000;
+  const now = Date.now();
+  const list: ActivityEntry[] = [];
+  const servers = ["🇪🇺 Auto | Все сервера", "🇵🇱 Польша", "🇫🇷 Франция", "🇷🇺 Россия | YouTube без рекламы"];
+  // Детерминированно, чтобы скриншоты демо не прыгали.
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let day = 0; day < 7; day++) {
+    const sessions = 1 + Math.floor(rnd() * 3);
+    for (let k = 0; k < sessions; k++) {
+      const startedAt = now - day * 24 * H - (2 + k * 5 + rnd() * 3) * H;
+      const length = (0.3 + rnd() * 3.5) * H;
+      const down = Math.round((0.2 + rnd() * 2.5) * 1e9);
+      list.push({
+        kind: "session",
+        id: newId(),
+        server: servers[Math.floor(rnd() * (day < 2 ? 2 : servers.length))],
+        subscription: "BaobabVPN",
+        startedAt,
+        endedAt: startedAt + length,
+        down,
+        up: Math.round(down * (0.04 + rnd() * 0.08)),
+        end: rnd() < 0.85 ? "manual" : "system",
+      });
+    }
+  }
+  list.push({ kind: "subscription", id: newId(), at: now - 26 * H, text: "Подписки обновлены автоматически" });
+  list.push({ kind: "error", id: newId(), at: now - 50 * H, server: "🇫🇷 Франция", text: "Сервер не ответил за 8 секунд. Попробуйте другой сервер" });
+  return list.sort((a, b) => (b.kind === "session" ? b.startedAt : b.at) - (a.kind === "session" ? a.startedAt : a.at));
+}

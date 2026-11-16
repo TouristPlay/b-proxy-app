@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button";
 import { formatBytes, formatDuration, formatSpeed, splitFlag } from "@/lib/format";
 import { useNow } from "@/lib/useMedia";
 import { cn } from "@/lib/utils";
+import { ActivityScreen } from "./ActivityScreen";
 import { SettingsScreen } from "./SettingsScreen";
 
-type Tab = "home" | "settings";
+type Tab = "home" | "activity" | "settings";
 
 /** Компьютер: слева панель серверов, справа главная или настройки. */
 export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
@@ -71,6 +72,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
             {(
               [
                 ["home", "Главная"],
+                ["activity", "Активность"],
                 ["settings", "Настройки"],
               ] as const
             ).map(([id, label]) => (
@@ -105,9 +107,11 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
         </header>
 
         <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
-          {tab === "home" ? <DesktopHome now={now} onAdd={onAdd} /> : (
+          {tab === "home" ? (
+            <DesktopHome now={now} onAdd={onAdd} />
+          ) : (
             <div className="mx-auto max-w-2xl pb-8">
-              <SettingsScreen embedded />
+              {tab === "activity" ? <ActivityScreen embedded /> : <SettingsScreen embedded />}
             </div>
           )}
         </div>
