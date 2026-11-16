@@ -1,6 +1,5 @@
 import Foundation
 import NetworkExtension
-import LibXray
 
 #if os(iOS)
 import Flutter
@@ -213,16 +212,36 @@ enum Shared {
 }
 
 /// Вызов libXray через его C-интерфейс CGoInvoke.
+///
+/// Ядро слинковано в само приложение (scripts/apple_extension.rb), а не в плагин,
+/// поэтому функции берём через dlsym. Флаги компоновщика -u _CGoInvoke -u _CGoFree
+/// не дают им выпасть при оптимизации.
 enum XrayInvoke {
+    private typealias InvokeFn = @convention(c) (UnsafeMutablePointer<CChar>) -> UnsafeMutablePointer<CChar>?
+    private typealias FreeFn = @convention(c) (UnsafeMutableRawPointer?) -> Void
+
+    private static let handle = dlopen(nil, RTLD_NOW)
+    private static let invoke: InvokeFn? = {
+        guard let sym = dlsym(handle, "CGoInvoke") else { return nil }
+        return unsafeBitCast(sym, to: InvokeFn.self)
+    }()
+    private static let release: FreeFn? = {
+        guard let sym = dlsym(handle, "CGoFree") else { return nil }
+        return unsafeBitCast(sym, to: FreeFn.self)
+    }()
+
     static func call(_ request: String) -> String {
+        guard let invoke = invoke else {
+            return #"{"success":false,"data":null,"error":"Ядро Xray не подключено к приложению"}"#
+        }
         guard let cRequest = strdup(request) else {
             return #"{"success":false,"data":null,"error":"out of memory"}"#
         }
         defer { free(cRequest) }
-        guard let cResponse = CGoInvoke(cRequest) else {
+        guard let cResponse = invoke(cRequest) else {
             return #"{"success":false,"data":null,"error":"empty response"}"#
         }
-        defer { CGoFree(cResponse) }
+        defer { release?(cResponse) }
         return String(cString: cResponse)
     }
 }

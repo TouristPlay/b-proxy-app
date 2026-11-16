@@ -14,8 +14,9 @@ Pod::Spec.new do |s|
   s.ios.dependency 'Flutter'
   s.osx.dependency 'FlutterMacOS'
 
-  # Ядро Xray (статическая библиотека, собирается scripts/build_libxray.sh apple).
-  s.vendored_frameworks = 'LibXray.xcframework'
+  # Само ядро (LibXray.xcframework) подключает к приложению и к расширению
+  # scripts/apple_extension.rb. Если подключить его ещё и здесь, Xcode видит
+  # модуль LibXray дважды и сборка падает. Плагин находит функции ядра через dlsym.
   s.frameworks = 'NetworkExtension'
   s.libraries = 'resolv'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }

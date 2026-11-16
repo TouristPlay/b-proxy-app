@@ -107,6 +107,16 @@ unless project.targets.any? { |t| t.name == 'PacketTunnel' }
   ext.frameworks_build_phase.add_file_reference(libxray)
   ext.add_system_framework('NetworkExtension')
 
+  # Приложению ядро тоже нужно (разбор подписок, пинг). Плагин находит его функции
+  # через dlsym, поэтому не даём компоновщику выбросить их как «неиспользуемые».
+  runner.frameworks_build_phase.add_file_reference(libxray)
+  runner.build_configurations.each do |c|
+    flags = Array(c.build_settings['OTHER_LDFLAGS'] || ['$(inherited)'])
+    flags = ['$(inherited)'] if flags.empty?
+    %w[-lresolv -Wl,-u,_CGoInvoke -Wl,-u,_CGoFree].each { |f| flags << f unless flags.include?(f) }
+    c.build_settings['OTHER_LDFLAGS'] = flags
+  end
+
   ext.build_configurations.each do |c|
     s = c.build_settings
     s['PRODUCT_BUNDLE_IDENTIFIER'] = "#{bundle_id}.PacketTunnel"
