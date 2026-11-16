@@ -25,15 +25,16 @@ export function ConnectScreen({ onOpenServers, onAdd }: { onOpenServers: () => v
   const sub = s.current?.sub ?? s.subscriptions[0] ?? null;
 
   return (
-    <div className="flex min-h-full flex-col lg:flex-row">
+    <div className="flex min-h-full flex-col">
       <SavannaScene
         state={s.state}
         onToggle={hasServers ? () => void backend.toggle() : onAdd}
-        className="h-[44dvh] min-h-[280px] shrink-0 lg:sticky lg:top-0 lg:h-dvh lg:w-1/2"
+        className="h-[44dvh] min-h-[280px] shrink-0 lg:h-[max(52dvh,38vw)]"
       />
 
-      <div className="flex min-w-0 flex-1 flex-col px-6 pt-7 pb-6 lg:justify-center lg:px-12">
-        <div className="w-full lg:max-w-md">
+      <div className="flex min-w-0 flex-1 flex-col px-6 pt-7 pb-6 lg:px-12 lg:pt-10">
+        <div className="w-full lg:mx-auto lg:grid lg:max-w-5xl lg:grid-cols-2 lg:gap-x-16">
+        <div className="min-w-0">
           <h1
             aria-live="polite"
             className={cn(
@@ -112,6 +113,7 @@ export function ConnectScreen({ onOpenServers, onAdd }: { onOpenServers: () => v
             </dl>
           )}
 
+        </div>
           {sub && <SubscriptionLine sub={sub} />}
         </div>
       </div>
@@ -126,7 +128,7 @@ function SubscriptionLine({ sub }: { sub: Subscription }) {
   const expiring = daysLeft != null && daysLeft < 3;
 
   return (
-    <div className="mt-8 border-t border-line pt-5">
+    <div className="mt-8 min-w-0 border-t border-line pt-5 lg:mt-2 lg:self-start lg:border-t-0 lg:pt-0">
       <div className="flex items-baseline justify-between gap-4 text-sm">
         <span className="font-medium text-ink">{sub.title}</span>
         <span className="text-ink-muted tabular-nums">
