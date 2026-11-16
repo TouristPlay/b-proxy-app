@@ -21,6 +21,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
+      - name: Освободить место на диске
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift \
+            /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/local/share/powershell \
+            /usr/local/lib/node_modules /opt/microsoft /opt/google/chrome
+          sudo docker image prune --all --force || true
+          df -h /
+
       - uses: actions/checkout@v7
 
       - uses: actions/setup-java@v6
@@ -49,7 +57,11 @@ jobs:
       - name: Собрать libXray
         env:
           ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
-        run: ./scripts/build_libxray.sh android
+        run: |
+          ./scripts/build_libxray.sh android
+          go clean -cache -modcache
+          rm -rf .build
+          df -h /
 
       - name: Проверить код
         working-directory: app
