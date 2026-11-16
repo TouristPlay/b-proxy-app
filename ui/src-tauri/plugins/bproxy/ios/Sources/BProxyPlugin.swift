@@ -19,7 +19,7 @@ class StartArgs: Decodable {
 /// Приложение сохраняет конфиг в профиль VPN и просит систему его запустить.
 /// Разбор ссылок и пинг идут через libXray в процессе приложения.
 class BProxyPlugin: Plugin {
-    private var manager: NETunnelProviderManager?
+    private var tunnelManager: NETunnelProviderManager?
     private var statusObserver: NSObjectProtocol?
     private var pendingStart: Invoke?
     private let xrayQueue = DispatchQueue(label: "bproxy.xray", qos: .userInitiated)
@@ -78,7 +78,7 @@ class BProxyPlugin: Plugin {
                         invoke.reject(Self.describe(error))
                         return
                     }
-                    self.manager = manager
+                    self.tunnelManager = manager
                     do {
                         self.pendingStart?.reject("Подключение начато заново")
                         self.pendingStart = invoke
@@ -119,7 +119,7 @@ class BProxyPlugin: Plugin {
             let mine = managers?.first {
                 ($0.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == Shared.extensionBundleId
             }
-            self.manager = mine
+            self.tunnelManager = mine
             DispatchQueue.main.async { completion(mine) }
         }
     }
