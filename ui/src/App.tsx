@@ -37,17 +37,29 @@ export default function App() {
       {desktop ? (
         <DesktopLayout onAdd={() => setAdding(true)} />
       ) : (
-        <div key={tab} className="h-dvh overflow-y-auto">
-          {tab === "home" && <HomeScreen onOpenServers={() => setTab("servers")} onAdd={() => setAdding(true)} />}
-          {tab === "servers" && <ServersScreen onPicked={() => setTab("home")} />}
-          {tab === "activity" && <ActivityScreen />}
-          {tab === "settings" && <SettingsScreen />}
+        <>
+          {/* Экран проявляется при смене раздела; меню вынесено наружу, чтобы не ездило вместе с ним. */}
+          <div key={tab} className="anim-screen h-dvh overflow-y-auto">
+            {tab === "home" && <HomeScreen onOpenServers={() => setTab("servers")} onAdd={() => setAdding(true)} />}
+            {tab === "servers" && <ServersScreen onPicked={() => setTab("home")} />}
+            {tab === "activity" && <ActivityScreen />}
+            {tab === "settings" && <SettingsScreen />}
+          </div>
 
           {/* Плавающее меню-«пилюля». */}
           <nav
             aria-label="Разделы"
-            className="glass fixed inset-x-4 bottom-[max(14px,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-md grid-cols-4 gap-1 rounded-[30px] bg-panel/75 p-1.5 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.8)]"
+            className="glass fixed inset-x-4 bottom-[max(14px,env(safe-area-inset-bottom))] z-30 mx-auto grid isolate max-w-md grid-cols-4 gap-1 rounded-[30px] bg-panel/75 p-1.5 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.8)]"
           >
+            {/* Подсветка активного раздела переезжает, а не перескакивает. */}
+            <span
+              aria-hidden
+              className="absolute top-1.5 bottom-1.5 left-1.5 rounded-[24px] bg-amber/14 transition-transform duration-[380ms] ease-[var(--ease-out)]"
+              style={{
+                width: "calc((100% - 24px) / 4)",
+                transform: `translateX(calc(${tabs.findIndex((t) => t.id === tab)} * (100% + 4px)))`,
+              }}
+            />
             {tabs.map(({ id, label, icon: Icon }) => {
               const active = tab === id;
               return (
@@ -57,10 +69,13 @@ export default function App() {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "relative flex h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-[24px] text-[11.5px] font-medium transition-colors",
-                    active ? "bg-amber/14 text-amber" : "text-ink-2 hover:text-ink",
+                    active ? "text-amber" : "text-ink-2 hover:text-ink",
                   )}
                 >
-                  <Icon className="size-[22px]" aria-hidden />
+                  <Icon
+                    className={cn("size-[22px] transition-transform duration-[var(--dur)] ease-[var(--ease-pop)]", active && "-translate-y-px scale-110")}
+                    aria-hidden
+                  />
                   {label}
                   {id === "home" && s.state === "connected" && !active && (
                     <span className="absolute top-2.5 right-[28%] size-2 rounded-full bg-good ring-2 ring-panel" aria-hidden />
@@ -69,7 +84,7 @@ export default function App() {
               );
             })}
           </nav>
-        </div>
+        </>
       )}
 
       <AddSubscriptionSheet open={adding} onOpenChange={setAdding} />

@@ -81,7 +81,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
                 onClick={() => setTab(id)}
                 aria-current={tab === id ? "page" : undefined}
                 className={cn(
-                  "h-10 rounded-full px-6 text-[15px] font-medium transition-colors",
+                  "h-10 rounded-full px-6 text-[15px] font-medium transition-colors duration-[var(--dur)]",
                   tab === id ? "bg-ink text-base" : "text-ink-2 hover:text-ink",
                 )}
               >
@@ -106,7 +106,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
           </span>
         </header>
 
-        <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+        <div key={tab} className="anim-screen mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
           {tab === "home" ? (
             <DesktopHome now={now} onAdd={onAdd} />
           ) : (

@@ -12,7 +12,7 @@ export function ErrorBanner({ onOpenServers, className }: { onOpenServers?: () =
   if (!s.error) return null;
   const canRetry = s.current != null && s.state === "disconnected";
   return (
-    <div role="alert" className={cn("rounded-[20px] border border-bad/35 bg-bad/10 p-4 text-[15px]", className)}>
+    <div role="alert" className={cn("anim-rise rounded-[20px] border border-bad/35 bg-bad/10 p-4 text-[15px]", className)}>
       <div className="flex items-start gap-3">
         <TriangleAlert className="mt-0.5 size-5 shrink-0 text-bad" aria-hidden />
         <p className="min-w-0 flex-1 leading-snug break-words whitespace-pre-line">{s.error}</p>

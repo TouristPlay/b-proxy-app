@@ -24,12 +24,15 @@ export function Sheet({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm data-[state=open]:animate-[fade_200ms_ease-out]" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm data-[state=closed]:animate-[fade-out_var(--dur-fast)_var(--ease-in)_both] data-[state=open]:animate-[fade_var(--dur)_var(--ease-out)]" />
         <Dialog.Content
           className={cn(
             "fixed inset-x-0 bottom-0 z-50 max-h-[92dvh] overflow-y-auto overscroll-contain rounded-t-[32px] border-t border-edge-2 bg-panel/95 px-5 pt-3 pb-[max(24px,env(safe-area-inset-bottom))] backdrop-blur-2xl",
             "md:inset-auto md:top-1/2 md:left-1/2 md:max-h-[86dvh] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[32px] md:border md:pt-6",
             wide ? "md:w-[560px]" : "md:w-[460px]",
+            // Телефон: шторка выезжает снизу; компьютер: окно проявляется. Закрытие быстрее открытия.
+            "data-[state=open]:animate-[sheet-up_380ms_var(--ease-out)] data-[state=closed]:animate-[sheet-down_220ms_var(--ease-in)_both]",
+            "md:data-[state=open]:animate-[dialog-in_var(--dur)_var(--ease-out)] md:data-[state=closed]:animate-[dialog-out_var(--dur-fast)_var(--ease-in)_both]",
           )}
         >
           <div className="mx-auto mb-5 h-1 w-11 rounded-full bg-amber/60 md:hidden" aria-hidden />

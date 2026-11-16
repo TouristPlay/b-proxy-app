@@ -99,10 +99,11 @@ export function PowerOrb({
         }}
       >
         {on ? (
-          <ShieldCheck className="text-amber-2" style={{ width: disc * 0.34, height: disc * 0.34 }} strokeWidth={1.6} />
+          <ShieldCheck key="on" className="anim-pop text-amber-2" style={{ width: disc * 0.34, height: disc * 0.34 }} strokeWidth={1.6} />
         ) : (
           <Power
-            className={cn("transition-colors", busy ? "text-amber" : "text-ink-2")}
+            key="off"
+            className={cn("anim-pop transition-colors", busy ? "text-amber" : "text-ink-2")}
             style={{ width: disc * 0.34, height: disc * 0.34 }}
             strokeWidth={1.6}
           />

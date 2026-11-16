@@ -150,7 +150,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         }}
                         aria-current={active ? "true" : undefined}
                         className={cn(
-                          "glass flex w-full items-center gap-3.5 rounded-[22px] text-left transition-colors hover:bg-glass-2",
+                          "glass flex w-full items-center gap-3.5 rounded-[22px] text-left transition-[background-color,border-color,transform] duration-[var(--dur)] hover:bg-glass-2 active:scale-[0.985]",
                           // Справа место под звёздочку «В избранное».
                           compact ? "py-3 pr-12 pl-3" : "py-3.5 pr-12 pl-4",
                           active && "border-amber/60 bg-amber/[0.07] hover:bg-amber/10",
@@ -163,7 +163,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         </span>
                         <SignalPing ms={node.pingMs} className="shrink-0" />
                         {active && !auto ? (
-                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber text-on-accent" aria-label="Выбран">
+                          <span className="anim-pop flex size-6 shrink-0 items-center justify-center rounded-full bg-amber text-on-accent" aria-label="Выбран">
                             <Check className="size-4" strokeWidth={3} />
                           </span>
                         ) : null}
@@ -177,7 +177,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                           fav ? "text-amber" : "text-ink-3/70 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100",
                         )}
                       >
-                        <Star className="size-4" fill={fav ? "currentColor" : "none"} />
+                        <Star key={String(fav)} className={cn("size-4", fav && "anim-pop")} fill={fav ? "currentColor" : "none"} />
                       </button>
                     </li>
                   );
