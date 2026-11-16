@@ -170,16 +170,12 @@ class XrayConfigBuilder {
   static Map<String, dynamic> _tunInbound(ConnectionSettings s) {
     final settings = <String, dynamic>{'mtu': 1500};
 
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
       // Сам туннель и маршруты создаёт система (VpnService / NetworkExtension),
       // а дескриптор нативный код кладёт в env "xray.tun.fd".
       settings['name'] = 'xray0';
     } else {
-      settings['name'] = Platform.isMacOS
-          ? 'utun77'
-          : Platform.isWindows
-              ? 'B-Proxy'
-              : 'bproxy0';
+      settings['name'] = Platform.isWindows ? 'B-Proxy' : 'bproxy0';
       settings['gateway'] = [tunGateway4, if (s.ipv6) tunGateway6];
       settings['dns'] = [tunDns];
       settings['autoSystemRoutingTable'] = [

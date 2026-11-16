@@ -25,9 +25,8 @@ abstract class XrayBridge {
   static XrayBridge get instance => _instance ??= _create();
 
   static XrayBridge _create() {
-    if (Platform.isAndroid || Platform.isIOS) return _ChannelXrayBridge();
     if (Platform.isWindows || Platform.isLinux) return FfiXrayBridge();
-    // macOS подключим вместе с Network Extension.
+    // Android, iOS и macOS: libXray вызывается из нативного кода.
     return _ChannelXrayBridge();
   }
 

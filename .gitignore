@@ -16,3 +16,4 @@ app/pubspec.lock
 .idea/
 .DS_Store
 dist/
+app/packages/b_proxy_apple/darwin/LibXray.xcframework/

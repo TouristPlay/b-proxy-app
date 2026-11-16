@@ -17,7 +17,9 @@ class TunnelStats {
 /// Запуск и остановка VPN на конкретной платформе.
 abstract class VpnTunnel {
   static VpnTunnel create() {
-    if (Platform.isAndroid || Platform.isIOS) return MobileVpnTunnel();
+    if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
+      return MobileVpnTunnel();
+    }
     if (Platform.isWindows) return WindowsVpnTunnel();
     if (Platform.isLinux) return LinuxVpnTunnel();
     return UnsupportedVpnTunnel();

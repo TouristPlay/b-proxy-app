@@ -1,0 +1,22 @@
+name: b_proxy_apple
+description: "Нативная часть B-Proxy для iOS и macOS: libXray и Network Extension."
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      ios:
+        pluginClass: BProxyApplePlugin
+        sharedDarwinSource: true
+      macos:
+        pluginClass: BProxyApplePlugin
+        sharedDarwinSource: true

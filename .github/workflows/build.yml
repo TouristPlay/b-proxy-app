@@ -173,6 +173,64 @@ jobs:
           path: dist/b-proxy-linux-x64.tar.gz
           if-no-files-found: error
 
+  apple:
+    name: iOS и macOS
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Подготовить проект
+        run: ./scripts/prepare.sh
+
+      - name: Собрать libXray (iOS, симулятор, macOS)
+        env:
+          CGO_ENABLED: "1"
+        run: ./scripts/build_libxray.sh apple
+
+      - name: Добавить расширение PacketTunnel
+        run: |
+          gem list -i xcodeproj >/dev/null || sudo gem install xcodeproj
+          ruby scripts/apple_extension.rb ios
+          ruby scripts/apple_extension.rb macos
+
+      # Пока нет аккаунта Apple Developer, собираем без подписи:
+      # это проверка, что код компилируется. Поставить такую сборку на устройство нельзя.
+      - name: Собрать iOS (без подписи)
+        working-directory: app
+        run: flutter build ios --release --no-codesign
+
+      - name: Собрать macOS (без подписи)
+        working-directory: app
+        run: |
+          set -o pipefail
+          flutter build macos --release --config-only
+          xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
+            -configuration Release -derivedDataPath build/macos-dd \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tail -40
+
+      - name: Упаковать
+        run: |
+          mkdir -p dist
+          (cd app/build/ios/iphoneos && ditto -c -k --keepParent Runner.app "$GITHUB_WORKSPACE/dist/b-proxy-ios-unsigned.zip")
+          APP=$(find app/build/macos-dd/Build/Products/Release -maxdepth 1 -name "*.app" | head -1)
+          ditto -c -k --keepParent "$APP" dist/b-proxy-macos-unsigned.zip
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: b-proxy-apple-unsigned
+          path: dist/*.zip
+          if-no-files-found: error
+
   release:
     name: Релиз
     if: startsWith(github.ref, 'refs/tags/v')
