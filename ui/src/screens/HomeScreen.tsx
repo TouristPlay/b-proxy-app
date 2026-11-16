@@ -70,6 +70,7 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
       <div className="mt-6 flex justify-center">
         <PowerOrb
           state={s.state}
+          speed={s.downSpeed}
           onToggle={hasServers ? () => void backend.toggle() : onAdd}
           label={hasServers ? undefined : "Добавить подписку"}
           size={Math.min(300, window.innerWidth * 0.78)}

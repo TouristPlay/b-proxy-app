@@ -171,6 +171,7 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
         </div>
         <PowerOrb
           state={s.state}
+          speed={s.downSpeed}
           onToggle={node ? () => void backend.toggle() : onAdd}
           label={node ? undefined : "Добавить подписку"}
           size={240}

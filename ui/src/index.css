@@ -159,6 +159,10 @@
   from { transform: scale(0.82); opacity: 0.55; }
   to { transform: scale(1.18); opacity: 0; }
 }
+/* Волна света внутри главной кнопки: сдвиг ровно на период — шов не виден. */
+@keyframes liquid-wave {
+  to { transform: translateX(-50px); }
+}
 @keyframes spin-slow {
   to { transform: rotate(360deg); }
 }
