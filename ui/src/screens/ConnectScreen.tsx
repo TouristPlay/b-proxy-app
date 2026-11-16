@@ -29,11 +29,11 @@ export function ConnectScreen({ onOpenServers, onAdd }: { onOpenServers: () => v
       <SavannaScene
         state={s.state}
         onToggle={hasServers ? () => void backend.toggle() : onAdd}
-        className="h-[46dvh] min-h-[300px] shrink-0 lg:sticky lg:top-0 lg:h-dvh lg:w-[58%]"
+        className="h-[44dvh] min-h-[280px] shrink-0 lg:sticky lg:top-0 lg:h-dvh lg:w-1/2"
       />
 
-      <div className="flex flex-1 flex-col px-6 pt-7 pb-6 lg:justify-center lg:px-14">
-        <div className="lg:max-w-md">
+      <div className="flex min-w-0 flex-1 flex-col px-6 pt-7 pb-6 lg:justify-center lg:px-12">
+        <div className="w-full lg:max-w-md">
           <h1
             aria-live="polite"
             className={cn(
@@ -82,12 +82,13 @@ export function ConnectScreen({ onOpenServers, onAdd }: { onOpenServers: () => v
             >
               <CountryCode name={s.current.node.name} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-base font-medium">
-                  {splitFlag(s.current.node.name).name}
+                <span className="flex items-center gap-2">
+                  <span className="truncate text-base font-medium">{splitFlag(s.current.node.name).name}</span>
+                  {!s.selected && (
+                    <span className="shrink-0 rounded-full bg-dusk-2 px-2 py-0.5 text-xs text-ink-muted">авто</span>
+                  )}
                 </span>
-                <span className="block truncate text-sm text-ink-muted">
-                  {s.selected ? s.current.node.transport : `Выбран автоматически, ${s.current.node.transport}`}
-                </span>
+                <span className="block truncate text-sm text-ink-muted">{s.current.node.transport}</span>
               </span>
               <Ping ms={s.current.node.pingMs} />
               <ChevronRight className="size-5 shrink-0 text-ink-faint" aria-hidden />

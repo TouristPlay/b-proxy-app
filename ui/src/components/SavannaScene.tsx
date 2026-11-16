@@ -44,7 +44,7 @@ export function SavannaScene({
       )}
     >
       <svg
-        viewBox="0 0 400 300"
+        viewBox="0 0 400 258"
         preserveAspectRatio="xMidYMax slice"
         className="block h-full w-full"
         aria-hidden
@@ -72,10 +72,10 @@ export function SavannaScene({
         </defs>
 
         {/* Небо: ночное всегда снизу, закатное проявляется поверх. */}
-        <rect width="400" height="300" fill="url(#sky-night)" />
+        <rect width="400" height="258" fill="url(#sky-night)" />
         <rect
           width="400"
-          height="300"
+          height="258"
           fill="url(#sky-dusk)"
           style={{ opacity: lit ? 1 : up ? 0.45 : 0, transition: "opacity 1400ms var(--ease-out-soft)" }}
         />
@@ -128,8 +128,7 @@ export function SavannaScene({
             strokeWidth="4"
             strokeLinecap="round"
             fill="none"
-            opacity={up ? 0.55 : 0.4}
-            className="transition-opacity group-hover:opacity-80"
+            style={{ opacity: up ? 0.55 : 0, transition: "opacity 600ms ease-out" }}
           >
             <path d="M200 214 v18" />
             <path d="M188 219 a20 20 0 1 0 24 0" />
@@ -138,7 +137,7 @@ export function SavannaScene({
 
         {/* Земля и силуэты. Рисуются поверх солнца — оно «садится» за горизонт. */}
         <path
-          d="M0 222 C 60 214, 120 218, 180 220 S 320 214, 400 219 L400 300 L0 300 Z"
+          d="M0 222 C 60 214, 120 218, 180 220 S 320 214, 400 219 L400 258 L0 258 Z"
           fill="#091215"
         />
         <Baobab x={92} y={221} scale={1} />
@@ -165,26 +164,32 @@ export function SavannaScene({
   );
 }
 
-/** Силуэт баобаба: толстый ствол бутылкой и плоская крона из коротких ветвей. */
+/** Силуэт баобаба: толстый ствол бутылкой, короткие толстые ветви и плоские кудрявые шапки листвы. */
 function Baobab({ x, y, scale }: { x: number; y: number; scale: number }) {
   return (
     <g transform={`translate(${x} ${y}) scale(${scale})`} fill="#091215">
-      <path d="M-13 0 C -15 -22, -17 -46, -9 -66 L 9 -66 C 17 -46, 15 -22, 13 0 Z" />
+      <path d="M-17 0 C -19 -20, -17 -42, -10 -60 C -6 -64, 6 -64, 10 -60 C 17 -42, 19 -20, 17 0 Z" />
       <g stroke="#091215" strokeLinecap="round" fill="none">
-        <path d="M-6 -64 C -14 -78, -26 -84, -40 -86" strokeWidth="6" />
-        <path d="M-3 -66 C -6 -82, -14 -92, -18 -100" strokeWidth="5" />
-        <path d="M3 -66 C 6 -84, 12 -94, 16 -102" strokeWidth="5" />
-        <path d="M6 -64 C 16 -76, 28 -82, 44 -84" strokeWidth="6" />
-        <path d="M-36 -86 C -44 -92, -52 -92, -58 -90" strokeWidth="3" />
-        <path d="M40 -84 C 48 -90, 56 -90, 62 -88" strokeWidth="3" />
+        <path d="M-7 -60 C -16 -72, -28 -78, -44 -82" strokeWidth="7" />
+        <path d="M-3 -62 C -7 -76, -13 -88, -18 -96" strokeWidth="6" />
+        <path d="M3 -62 C 7 -78, 12 -90, 16 -98" strokeWidth="6" />
+        <path d="M7 -60 C 17 -70, 30 -76, 46 -80" strokeWidth="7" />
       </g>
-      <ellipse cx="-46" cy="-92" rx="18" ry="6" />
-      <ellipse cx="-16" cy="-104" rx="16" ry="6" />
-      <ellipse cx="16" cy="-106" rx="17" ry="6" />
-      <ellipse cx="50" cy="-90" rx="19" ry="6" />
+      {crown.map(([cx, cy, k]) =>
+        leaf.map(([dx, dy, r], i) => <circle key={`${cx}-${i}`} cx={cx + dx * k} cy={cy + dy * k} r={r * k} />),
+      )}
     </g>
   );
 }
+
+/** Центры шапок листвы на концах ветвей и их размер. */
+const crown: [number, number, number][] = [
+  [-46, -86, 1.05], [-19, -100, 0.95], [17, -102, 1], [48, -84, 1.1], [0, -92, 0.7],
+];
+/** Одна шапка: несколько кругов, плоская снизу и кудрявая сверху. */
+const leaf: [number, number, number][] = [
+  [-13, 1, 5], [-7, -2, 6], [0, -4, 6.5], [7, -2, 6], [13, 1, 5], [-4, 2, 5], [5, 2, 5], [0, 1, 5],
+];
 
 const stars: [number, number, number, number][] = [
   [34, 40, 1.1, 3.1], [78, 22, 0.8, 4.2], [126, 58, 1.2, 3.6], [168, 30, 0.7, 5.0],
