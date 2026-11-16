@@ -9,30 +9,54 @@ import {
   type Subscription,
 } from "./types";
 
-const GB = 1024 ** 3;
+
+/**
+ * Серверы из настоящей подписки BaobabVpn владельца: только названия и транспорт,
+ * без адресов и ключей. Пинги не известны, пока не нажать «Проверить пинг».
+ */
+const v = (id: string, name: string, net: string, sec = "REALITY"): ServerNode => ({
+  id,
+  name,
+  tags: ["VLESS", sec, net],
+  pingMs: null,
+});
 
 const demoNodes: ServerNode[] = [
-  { id: "de", name: "🇩🇪 Германия · Франкфурт", tags: ["VLESS", "REALITY", "XHTTP"], pingMs: 42 },
-  { id: "fi", name: "🇫🇮 Финляндия · Хельсинки", tags: ["VLESS", "TLS", "XHTTP"], pingMs: 31 },
-  { id: "nl", name: "🇳🇱 Нидерланды · Амстердам", tags: ["VLESS", "REALITY", "TCP"], pingMs: 76 },
-  { id: "ru", name: "🇷🇺 Белые списки · LTE", tags: ["VLESS", "REALITY", "GRPC"], pingMs: 18 },
-  { id: "se", name: "🇸🇪 Швеция · Cloudflare", tags: ["VLESS", "TLS", "WS"], pingMs: 185 },
-  { id: "lv", name: "🇱🇻 Латвия · Hysteria2", tags: ["HYSTERIA2", "TLS"], pingMs: 96 },
-  { id: "us", name: "🇺🇸 США · 10 Гбит", tags: ["TROJAN", "TLS", "GRPC"], pingMs: -1 },
+  v("auto-all", "🇪🇺 Auto | Все сервера", "GRPC"),
+  v("auto-eu", "🇪🇺 Auto | Европа | Азия", "GRPC"),
+  v("ru-yt", "🇷🇺 Россия | YouTube без рекламы", "TCP"),
+  v("pl", "🇵🇱 Польша", "GRPC"),
+  v("fr", "🇫🇷 Франция", "GRPC"),
+  v("ee", "🇪🇪 Эстония", "GRPC"),
+  v("nl", "🇳🇱 Нидерланды", "TCP"),
+  v("de", "🇩🇪 Германия", "TCP"),
+  v("us", "🇺🇸 США", "TCP"),
+  v("fi", "🇫🇮 Финляндия", "TCP"),
+  { id: "div-lte", name: "⬇️ Обходы глушилок | LTE ⬇️", tags: [], pingMs: null, divider: true },
+  v("ws-auto", "🇷🇺 Auto | Белые списки | LTE", "GRPC"),
+  v("ws-fi1", "🇫🇮 1. Финка | Белые списки | LTE", "TCP"),
+  v("ws-fi2", "🇫🇮 2. Финка | Белые списки | LTE", "TCP"),
+  v("ws-de1", "🇩🇪 1. Немцы | Белые списки | LTE", "TCP"),
+  v("ws-de2", "🇩🇪 2. Немцы | Белые списки | LTE", "TCP"),
+  v("ws-ee1", "🇪🇪 1. Эстония | Белые списки | LTE", "XHTTP", "TLS"),
+  v("ws-ee2", "🇪🇪 2. Эстония | Белые списки | LTE", "XHTTP", "TLS"),
+  v("ws-ee3", "🇪🇪 3. Эстония | Белые списки | LTE", "XHTTP", "TLS"),
+  v("ws-ee4", "🇪🇪 4. Эстония | Белые списки | LTE", "XHTTP", "TLS"),
+  v("ws-ee5", "🇪🇪 5. Эстония | Белые списки | LTE", "XHTTP", "TLS"),
 ];
 
-// Сроки и трафик — как в настоящей подписке BaobabVpn владельца (без ссылки и ключей);
-// серверы пока тестовые: Remnawave не отдаёт их список браузеру.
+// Заголовки как в настоящей подписке владельца (без ссылки и ключей).
 const demoSub: Subscription = {
   url: "https://sub.baobabproxy.com/demo",
-  title: "BaobabVpn",
+  title: "BoababVpn",
   plan: "Безлимит",
   nodes: demoNodes,
-  usedBytes: 326.41 * GB,
+  usedBytes: 350_686_443_037,
   totalBytes: 0,
-  expireAt: Date.parse("2028-10-13T11:40:20Z"),
-  announce: null,
-  supportUrl: "https://t.me/baobabvpn_bot",
+  expireAt: 1_855_050_020_000,
+  announce:
+    "BaobabVPN - корни свободы в интернете ❤️\nДней до окончания подписки - 696 📅\n\n❗️Если не работает, обновите подписку или попробуйте другие варианты ❗️",
+  supportUrl: "https://t.me/baobabvpnsupport",
   webPageUrl: "https://baobabproxy.com",
   updatedAt: Date.now() - 3 * 3600_000,
 };
@@ -134,7 +158,9 @@ export class DemoBackend implements Backend {
   }
 
   private recompute() {
-    const all = this.s.subscriptions.flatMap((sub) => sub.nodes.map((node) => ({ sub, node })));
+    const all = this.s.subscriptions.flatMap((sub) =>
+      sub.nodes.filter((node) => !node.divider).map((node) => ({ sub, node })),
+    );
     const sel = this.s.selected;
     let current: Snapshot["current"] = sel
       ? (all.find((p) => p.sub.url === sel.subUrl && p.node.id === sel.nodeId) ?? null)
@@ -221,10 +247,9 @@ export class DemoBackend implements Backend {
     await wait(1200);
     const subscriptions = this.s.subscriptions.map((sub) => ({
       ...sub,
-      nodes: sub.nodes.map((n) => ({
-        ...n,
-        pingMs: n.id === "us" ? -1 : Math.round(15 + Math.random() * 180),
-      })),
+      nodes: sub.nodes.map((n) =>
+        n.divider ? n : { ...n, pingMs: n.id === "us" ? -1 : Math.round(15 + Math.random() * 180) },
+      ),
     }));
     this.emit({ subscriptions, pinging: false });
     this.toast("Пинг обновлён");

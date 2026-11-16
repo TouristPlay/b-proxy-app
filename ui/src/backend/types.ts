@@ -9,6 +9,11 @@ export interface ServerNode {
   tags: string[];
   /** null — не мерили, -1 — нет связи. */
   pingMs: number | null;
+  /**
+   * Разделитель из подписки, а не сервер: панели вставляют строки вроде
+   * «⬇️ Обходы глушилок | LTE ⬇️», чтобы разбить список на разделы.
+   */
+  divider?: boolean;
 }
 
 export interface Subscription {

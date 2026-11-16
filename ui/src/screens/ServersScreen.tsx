@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export function ServersScreen({ onPicked }: { onPicked: () => void }) {
   const s = useSnapshot();
   const [refreshing, setRefreshing] = useState(false);
-  const total = s.subscriptions.reduce((n, x) => n + x.nodes.length, 0);
+  const total = s.subscriptions.reduce((n, x) => n + x.nodes.filter((v) => !v.divider).length, 0);
   const canPing = s.state === "disconnected";
 
   return (

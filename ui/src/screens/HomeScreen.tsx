@@ -133,7 +133,7 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
       )}
 
       {sub?.announce && (
-        <div className="glass mt-4 flex gap-3 rounded-[20px] px-4 py-3.5 text-[15px] leading-snug">
+        <div className="glass mt-4 flex gap-3 rounded-[20px] px-4 py-3.5 text-[15px] leading-snug whitespace-pre-line">
           <Megaphone className="mt-0.5 size-[18px] shrink-0 text-amber" aria-hidden />
           {sub.announce}
         </div>

@@ -16,16 +16,18 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
   const [onlyFav, setOnlyFav] = useState(false);
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const auto = s.selected == null;
-  const total = s.subscriptions.reduce((n, x) => n + x.nodes.length, 0);
+  const total = s.subscriptions.reduce((n, x) => n + x.nodes.filter((v) => !v.divider).length, 0);
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
     return s.subscriptions.map((sub) => ({
       sub,
-      nodes: sub.nodes.filter(
-        (n) =>
-          (!q || n.name.toLowerCase().includes(q) || n.tags.some((t) => t.toLowerCase().includes(q))) &&
-          (!onlyFav || s.favorites.includes(nodeKey(sub.url, n.id))),
+      nodes: sub.nodes.filter((n) =>
+        // Разделители показываем, только когда список не отфильтрован.
+        n.divider
+          ? !q && !onlyFav
+          : (!q || n.name.toLowerCase().includes(q) || n.tags.some((t) => t.toLowerCase().includes(q))) &&
+            (!onlyFav || s.favorites.includes(nodeKey(sub.url, n.id))),
       ),
     }));
   }, [s.subscriptions, s.favorites, query, onlyFav]);
@@ -92,7 +94,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
             >
               <ChevronDown className={cn("size-4 transition-transform", closed && "-rotate-90")} aria-hidden />
               <span className="flex-1 font-medium text-ink">{sub.title}</span>
-              <span className="text-sm text-ink-3 tabular-nums">{sub.nodes.length}</span>
+              <span className="text-sm text-ink-3 tabular-nums">{sub.nodes.filter((n) => !n.divider).length}</span>
             </button>
             {!closed && (
               <ul className="flex flex-col gap-2" aria-label={`Серверы ${sub.title}`}>
@@ -102,6 +104,13 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                   </li>
                 )}
                 {nodes.map((node) => {
+                  if (node.divider) {
+                    return (
+                      <li key={node.id} className="px-2 pt-3 pb-0.5 text-[13px] font-medium text-ink-2" role="presentation">
+                        {dividerTitle(node.name)}
+                      </li>
+                    );
+                  }
                   const key = nodeKey(sub.url, node.id);
                   const active = s.current?.node.id === node.id && s.current.sub.url === sub.url;
                   const fav = s.favorites.includes(key);
@@ -152,4 +161,9 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
       })}
     </div>
   );
+}
+
+/** «⬇️ Обходы глушилок | LTE ⬇️» → «Обходы глушилок | LTE»: убираем стрелки и тире по краям. */
+function dividerTitle(name: string) {
+  return name.replace(/^[\s\p{Extended_Pictographic}\uFE0F\u2B07\u2B06\-–—=_*•.]+|[\s\p{Extended_Pictographic}\uFE0F\u2B07\u2B06\-–—=_*•.]+$/gu, "").trim();
 }
