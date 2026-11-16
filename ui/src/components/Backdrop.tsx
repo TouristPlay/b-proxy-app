@@ -12,22 +12,22 @@ export function Backdrop({ state }: { state: TunnelState }) {
       <div
         className="absolute -top-[18%] -left-[22%] h-[70vmax] w-[70vmax] rounded-full blur-[90px] transition-[background-color,opacity] duration-[1600ms]"
         style={{
-          backgroundColor: warm ? "#c9702e" : half ? "#5b5a52" : "#2b3a4c",
-          opacity: warm ? 0.42 : 0.35,
+          backgroundColor: warm ? "#b8662c" : half ? "#4a4d4f" : "#2b3a4c",
+          opacity: warm ? 0.26 : 0.35,
           animation: "drift-a 22s ease-in-out infinite",
         }}
       />
       <div
         className="absolute -right-[25%] -bottom-[20%] h-[65vmax] w-[65vmax] rounded-full blur-[110px] transition-[background-color,opacity] duration-[1600ms]"
         style={{
-          backgroundColor: warm ? "#7a3d24" : "#1c2a3d",
-          opacity: warm ? 0.5 : 0.45,
+          backgroundColor: warm ? "#5e3424" : "#1c2a3d",
+          opacity: warm ? 0.3 : 0.45,
           animation: "drift-b 28s ease-in-out infinite",
         }}
       />
       <div
         className="absolute top-[30%] left-[45%] h-[38vmax] w-[38vmax] rounded-full blur-[100px] transition-[background-color,opacity] duration-[1600ms]"
-        style={{ backgroundColor: warm ? "#f2b04b" : "#24313f", opacity: warm ? 0.16 : 0.2 }}
+        style={{ backgroundColor: warm ? "#f2b04b" : "#24313f", opacity: warm ? 0.07 : 0.2 }}
       />
       {/* Горизонт с баобабами — фирменный знак, очень тихо. */}
       <svg

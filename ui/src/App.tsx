@@ -33,7 +33,7 @@ export default function App() {
       {desktop ? (
         <DesktopLayout onAdd={() => setAdding(true)} />
       ) : (
-        <div className="h-dvh overflow-y-auto">
+        <div key={tab} className="h-dvh overflow-y-auto">
           {tab === "home" && <HomeScreen onOpenServers={() => setTab("servers")} onAdd={() => setAdding(true)} />}
           {tab === "servers" && <ServersScreen onPicked={() => setTab("home")} />}
           {tab === "settings" && <SettingsScreen />}

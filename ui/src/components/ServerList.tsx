@@ -121,7 +121,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                       >
                         <Flag name={node.name} size={compact ? "sm" : "md"} />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate pr-6 font-medium">{splitFlag(node.name).name}</span>
+                          <span className="line-clamp-2 block pr-6 leading-snug font-medium">{splitFlag(node.name).name}</span>
                           <Tags tags={node.tags} className="mt-1.5" />
                         </span>
                         <SignalPing ms={node.pingMs} className="shrink-0" />

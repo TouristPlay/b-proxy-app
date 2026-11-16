@@ -19,8 +19,8 @@ export function CoreSettingsSheet({ open, onOpenChange }: { open: boolean; onOpe
       open={open}
       onOpenChange={onOpenChange}
       wide
-      title="Производительность"
-      description="Настройки ядра Xray"
+      title="Ядро Xray"
+      description="Память, соединения и сеть"
       icon={<IconTile icon={Gauge} tone="amber" />}
     >
       <div className="flex flex-col gap-6">
