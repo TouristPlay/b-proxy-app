@@ -155,7 +155,12 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npx tauri icon src-tauri/app-icon.png
-          npx tauri build --target universal-apple-darwin --bundles dmg
+          # hdiutil на раннерах GitHub иногда отвечает «Resource busy» — повторяем.
+          for attempt in 1 2 3; do
+            npx tauri build --target universal-apple-darwin --bundles dmg && break
+            [ "$attempt" = 3 ] && exit 1
+            echo "Повтор сборки образа ($attempt)"; sleep 15
+          done
       - uses: actions/upload-artifact@v7
         with:
           name: b-proxy-macos
