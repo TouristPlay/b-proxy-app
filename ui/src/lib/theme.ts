@@ -66,11 +66,24 @@ export const themeById = (id: ThemeId) => themes.find((t) => t.id === id) ?? the
 /** Текущий акцент: свой цвет пользователя или цвет темы. */
 export const accentOf = (a: Appearance) => a.accent ?? themeById(a.theme).accent;
 
-/** Тёмный ли цвет — чтобы текст на кнопке был читаемым (белым или тёмным). */
-function isDark(hex: string) {
+/** Яркость цвета 0–255 — чтобы акцент и текст на нём оставались читаемыми. */
+function luminance(hex: string) {
   const n = parseInt(hex.replace("#", ""), 16);
   const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 140;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+const isDark = (hex: string) => luminance(hex) < 140;
+
+/**
+ * Акцент, который виден на фоне выбранного режима. Слишком светлый цвет
+ * на белом фоне (например «Графит») затемняем, слишком тёмный на тёмном — осветляем.
+ */
+function readableAccent(accent: string, mode: "dark" | "light") {
+  const l = luminance(accent);
+  if (mode === "light" && l > 150) return `color-mix(in oklab, ${accent} ${l > 210 ? 30 : 55}%, black)`;
+  if (mode === "dark" && l < 70) return `color-mix(in oklab, ${accent} 55%, white)`;
+  return accent;
 }
 
 /** Применяет оформление к <html>: режим, акцент, размытие, анимации. */
@@ -81,7 +94,11 @@ export function useApplyAppearance(a: Appearance) {
   useEffect(() => {
     const root = document.documentElement;
     const theme = themeById(a.theme);
-    const accent = accentOf(a);
+    const raw = accentOf(a);
+    const accent = readableAccent(raw, mode);
+    // Цвет текста на кнопке считаем по фактическому акценту после поправки.
+    const adjusted = accent !== raw;
+    const textOnAccent = adjusted ? (mode === "light" ? "#ffffff" : "#1b1408") : isDark(raw) ? "#ffffff" : "#1b1408";
     root.dataset.mode = mode;
     root.dataset.motion = a.motion ? "on" : "off";
     const vars: Record<string, string> = {
@@ -89,7 +106,7 @@ export function useApplyAppearance(a: Appearance) {
       // В светлом режиме «светлый» оттенок акцента темнее: иначе текст и значки сливаются с фоном.
       "--color-amber-2": mode === "dark" ? `color-mix(in oklab, ${accent} 58%, white)` : `color-mix(in oklab, ${accent} 80%, black)`,
       "--color-amber-deep": `color-mix(in oklab, ${accent} ${mode === "dark" ? 68 : 60}%, black)`,
-      "--color-on-accent": isDark(accent) ? "#ffffff" : "#1b1408",
+      "--color-on-accent": textOnAccent,
       "--glass-blur": `${a.glassBlur}px`,
     };
     if (mode === "dark") vars["--color-base"] = theme.base;

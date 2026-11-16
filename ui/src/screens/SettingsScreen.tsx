@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Ban, ChevronRight, Gauge, Globe, Info, Link2, Network, RotateCcw, Scissors, Server, Trash2 } from "lucide-react";
+import { Ban, ChevronRight, Gauge, Globe, Info, Link2, Network, Palette, RotateCcw, Scissors, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot, type Settings } from "@/backend";
 import { Group, IconTile, Row, type Tone } from "@/components/bits";
@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import { AppearanceGroup } from "./AppearanceGroup";
+import { AppearanceSheet } from "./AppearanceGroup";
 import { CoreSettingsSheet } from "./CoreSettingsSheet";
+import { themeById } from "@/lib/theme";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
 
@@ -41,13 +42,24 @@ export function SettingsScreen({ embedded }: { embedded?: boolean }) {
   const s = useSnapshot();
   const [core, setCore] = useState(false);
   const [about, setAbout] = useState(false);
+  const [look, setLook] = useState(false);
+  const ap = s.settings.appearance;
+  const modeName = { dark: "тёмная", light: "светлая", system: "авто" }[ap.mode];
 
   return (
     <div className={embedded ? "w-full" : "mx-auto w-full max-w-md px-5 pt-[max(18px,env(safe-area-inset-top))] pb-32"}>
       {!embedded && <h1 className="mb-6 font-display text-[28px] font-semibold tracking-[-0.02em]">Настройки</h1>}
 
       <div className="flex flex-col gap-6">
-        <AppearanceGroup />
+        <Group>
+          <Row
+            onClick={() => setLook(true)}
+            icon={<IconTile icon={Palette} tone="amber" />}
+            title="Оформление"
+            hint={`${ap.accent ? "Свой цвет" : themeById(ap.theme).name}, ${modeName}`}
+            aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
+          />
+        </Group>
 
         <Group title="Маршруты">
           {routes.map((r) => (
@@ -148,6 +160,7 @@ export function SettingsScreen({ embedded }: { embedded?: boolean }) {
       </div>
 
       <CoreSettingsSheet open={core} onOpenChange={setCore} />
+      <AppearanceSheet open={look} onOpenChange={setLook} />
       <Sheet open={about} onOpenChange={setAbout} title="О приложении" icon={<IconTile icon={Info} tone="gray" />}>
         <Group>
           <Row title="Версия приложения" aside={<span className="text-ink-2 tabular-nums">{s.version.app}</span>} />

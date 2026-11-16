@@ -2,6 +2,7 @@ import { Check, ImagePlus, Moon, Palette, Sparkles, Sun, SunMoon } from "lucide-
 import { useId, useRef } from "react";
 import { backend, useSnapshot, type Appearance, type BackgroundKind } from "@/backend";
 import { Group, IconTile, Row } from "@/components/bits";
+import { Sheet } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { accentOf, themes } from "@/lib/theme";
@@ -21,7 +22,7 @@ const modes: { id: Appearance["mode"]; name: string; icon: typeof Sun }[] = [
   { id: "system", name: "Авто", icon: SunMoon },
 ];
 
-/** Раздел настроек «Оформление»: тема, свой цвет, фон, режим, стекло, анимации. */
+/** Содержимое экрана «Оформление»: тема, свой цвет, фон, режим, стекло, анимации. */
 export function AppearanceGroup() {
   const { settings } = useSnapshot();
   const a = settings.appearance;
@@ -38,7 +39,7 @@ export function AppearanceGroup() {
   }
 
   return (
-    <Group title="Оформление">
+    <Group>
       {/* Темы */}
       <div className="px-4 pt-4 pb-4">
         <div className="mb-3 flex items-center gap-3.5">
@@ -192,5 +193,21 @@ export function AppearanceGroup() {
         aside={<Switch id="appearance-motion" checked={a.motion} onCheckedChange={(v) => set({ motion: v })} />}
       />
     </Group>
+  );
+}
+
+/** Отдельный экран «Оформление», открывается из настроек. */
+export function AppearanceSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      wide
+      title="Оформление"
+      description="Тема, цвет, фон и анимации"
+      icon={<IconTile icon={Palette} tone="amber" />}
+    >
+      <AppearanceGroup />
+    </Sheet>
   );
 }
