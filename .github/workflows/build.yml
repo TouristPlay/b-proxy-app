@@ -16,6 +16,27 @@ env:
   NDK_VERSION: r30
 
 jobs:
+  ui:
+    name: Интерфейс (React)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Установить зависимости
+        working-directory: ui
+        run: npm install --no-audit --no-fund
+      - name: Проверить типы и собрать демо
+        working-directory: ui
+        run: npm run build:preview
+      - uses: actions/upload-artifact@v7
+        with:
+          name: b-proxy-ui-preview
+          path: ui/dist-preview/index.html
+          if-no-files-found: error
+
   android:
     name: Android (APK)
     runs-on: ubuntu-24.04

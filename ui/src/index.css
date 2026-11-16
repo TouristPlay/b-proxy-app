@@ -1,0 +1,83 @@
+@import "@fontsource/unbounded/500.css";
+@import "@fontsource/unbounded/600.css";
+@import "@fontsource/golos-text/400.css";
+@import "@fontsource/golos-text/500.css";
+@import "@fontsource/golos-text/600.css";
+@import "tailwindcss";
+
+/*
+ * B-Proxy — «закат над саванной».
+ * Ночь — холодный сине-зелёный, закат — янтарь и тлеющий оранжевый,
+ * текст — тёплый пергамент. Зелёного «хакерского» акцента нет:
+ * «защищено» означает взошедшее солнце.
+ */
+@theme {
+  --color-night: #0f1c22;
+  --color-dusk: #182a31;
+  --color-dusk-2: #213840;
+  --color-ground: #091215;
+  --color-line: #2a3f47;
+  --color-ember: #e8733a;
+  --color-sun: #f4a63c;
+  --color-sun-core: #ffd98a;
+  --color-ink: #efe8d8;
+  --color-ink-muted: #9db0b2;
+  --color-ink-faint: #6c8286;
+  --color-danger: #f06a5f;
+  --color-ok: #f4a63c;
+
+  --font-display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --font-sans: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --radius-row: 16px;
+  --ease-out-soft: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-night text-ink font-sans antialiased;
+    font-feature-settings: "tnum" 1;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-sun);
+    outline-offset: 3px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-sun) 35%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Медленное «марево» над солнцем, когда VPN включён. */
+@keyframes shimmer {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.06); opacity: 0.8; }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.9; }
+}
+@keyframes rise-hint {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
