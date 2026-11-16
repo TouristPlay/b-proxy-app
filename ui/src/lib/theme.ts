@@ -86,8 +86,9 @@ export function useApplyAppearance(a: Appearance) {
     root.dataset.motion = a.motion ? "on" : "off";
     const vars: Record<string, string> = {
       "--color-amber": accent,
-      "--color-amber-2": `color-mix(in oklab, ${accent} 58%, white)`,
-      "--color-amber-deep": `color-mix(in oklab, ${accent} 68%, black)`,
+      // В светлом режиме «светлый» оттенок акцента темнее: иначе текст и значки сливаются с фоном.
+      "--color-amber-2": mode === "dark" ? `color-mix(in oklab, ${accent} 58%, white)` : `color-mix(in oklab, ${accent} 80%, black)`,
+      "--color-amber-deep": `color-mix(in oklab, ${accent} ${mode === "dark" ? 68 : 60}%, black)`,
       "--color-on-accent": isDark(accent) ? "#ffffff" : "#1b1408",
       "--glass-blur": `${a.glassBlur}px`,
     };

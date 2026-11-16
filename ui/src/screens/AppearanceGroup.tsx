@@ -18,7 +18,7 @@ const backgrounds: { id: BackgroundKind; name: string }[] = [
 const modes: { id: Appearance["mode"]; name: string; icon: typeof Sun }[] = [
   { id: "dark", name: "Тёмная", icon: Moon },
   { id: "light", name: "Светлая", icon: Sun },
-  { id: "system", name: "Как в системе", icon: SunMoon },
+  { id: "system", name: "Авто", icon: SunMoon },
 ];
 
 /** Раздел настроек «Оформление»: тема, свой цвет, фон, режим, стекло, анимации. */
