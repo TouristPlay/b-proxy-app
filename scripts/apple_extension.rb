@@ -18,7 +18,7 @@ platform = ARGV[0]
 abort 'Укажите платформу: ios или macos' unless %w[ios macos].include?(platform)
 
 ios = platform == 'ios'
-min_version = ios ? '15.0' : '12.0'
+min_version = ios ? '15.0' : '13.0'
 deploy_key = ios ? 'IPHONEOS_DEPLOYMENT_TARGET' : 'MACOSX_DEPLOYMENT_TARGET'
 
 root = File.expand_path('..', __dir__)
@@ -35,6 +35,12 @@ version, build_number = File.read(File.join(app, 'pubspec.yaml'))[/^version:\s*(
 project = Xcodeproj::Project.open(project_path)
 runner = project.targets.find { |t| t.name == 'Runner' } or abort 'В проекте нет цели Runner'
 bundle_id = runner.build_configurations.first.build_settings['PRODUCT_BUNDLE_IDENTIFIER']
+# В macOS-проекте Flutter идентификатор лежит не в цели, а в Configs/AppInfo.xcconfig.
+if bundle_id.nil? || bundle_id.include?('$(')
+  app_info = File.join(platform_dir, 'Runner/Configs/AppInfo.xcconfig')
+  bundle_id = File.read(app_info)[/^PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(\S+)/, 1] if File.exist?(app_info)
+end
+abort 'Не удалось узнать идентификатор приложения (PRODUCT_BUNDLE_IDENTIFIER)' if bundle_id.nil? || bundle_id.empty?
 app_group = "group.#{bundle_id}"
 
 # --- Файлы расширения ---
@@ -47,7 +53,7 @@ ext_entitlements = File.read(File.join(src_dir, "PacketTunnel-#{ios ? 'iOS' : 'm
 File.write(File.join(ext_dir, 'PacketTunnel.entitlements'),
            ext_entitlements.gsub('group.com.baobabproxy.bProxy', app_group))
 
-# --- Минимальные версии систем (libXray собран под iOS 15 и macOS 12) ---
+# --- Минимальные версии систем (libXray собран под iOS 15 и macOS 13) ---
 project.build_configurations.each { |c| c.build_settings[deploy_key] = min_version }
 runner.build_configurations.each { |c| c.build_settings[deploy_key] = min_version }
 
