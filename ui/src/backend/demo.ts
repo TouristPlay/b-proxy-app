@@ -10,7 +10,6 @@ import {
 } from "./types";
 
 const GB = 1024 ** 3;
-const DAY = 86_400_000;
 
 const demoNodes: ServerNode[] = [
   { id: "de", name: "🇩🇪 Германия · Франкфурт", tags: ["VLESS", "REALITY", "XHTTP"], pingMs: 42 },
@@ -22,14 +21,16 @@ const demoNodes: ServerNode[] = [
   { id: "us", name: "🇺🇸 США · 10 Гбит", tags: ["TROJAN", "TLS", "GRPC"], pingMs: -1 },
 ];
 
+// Сроки и трафик — как в настоящей подписке BaobabVpn владельца (без ссылки и ключей);
+// серверы пока тестовые: Remnawave не отдаёт их список браузеру.
 const demoSub: Subscription = {
   url: "https://sub.baobabproxy.com/demo",
-  title: "BaobabVPN",
-  plan: "Премиум",
+  title: "BaobabVpn",
+  plan: "Безлимит",
   nodes: demoNodes,
-  usedBytes: 38.4 * GB,
-  totalBytes: 100 * GB,
-  expireAt: Date.now() + 29 * DAY,
+  usedBytes: 326.41 * GB,
+  totalBytes: 0,
+  expireAt: Date.parse("2028-10-13T11:40:20Z"),
   announce: null,
   supportUrl: "https://t.me/baobabvpn_bot",
   webPageUrl: "https://baobabproxy.com",
