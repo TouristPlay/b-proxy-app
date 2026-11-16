@@ -12,16 +12,22 @@ export function PowerOrb({
   state,
   onToggle,
   size = 280,
+  label: customLabel,
   className,
 }: {
   state: TunnelState;
   onToggle: () => void;
   size?: number;
+  /** Своя подпись для экранного диктора, например «Добавить подписку». */
+  label?: string;
   className?: string;
 }) {
   const on = state === "connected";
   const busy = state === "connecting" || state === "disconnecting";
-  const label = on ? "Отключить VPN" : busy ? (state === "connecting" ? "Идёт подключение" : "Идёт отключение") : "Подключить VPN";
+  // Во время подключения кнопка не блокируется: повторное нажатие отменяет его.
+  const label =
+    customLabel ??
+    (on ? "Отключить VPN" : state === "connecting" ? "Отменить подключение" : state === "disconnecting" ? "Идёт отключение" : "Подключить VPN");
   const disc = size * 0.56;
   const ring = size * 0.7;
 
@@ -79,7 +85,7 @@ export function PowerOrb({
       <button
         type="button"
         onClick={onToggle}
-        disabled={busy}
+        disabled={state === "disconnecting"}
         aria-label={label}
         aria-pressed={on}
         className="glass relative flex items-center justify-center rounded-full transition-transform duration-200 hover:scale-[1.02] active:scale-[0.97] disabled:cursor-progress"

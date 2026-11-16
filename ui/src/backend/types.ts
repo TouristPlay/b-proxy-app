@@ -96,8 +96,16 @@ export interface Snapshot {
   speedHistory: number[];
   error: string | null;
   pinging: boolean;
-  toast: string | null;
+  toast: ToastMessage | null;
   version: { app: string; xray: string };
+}
+
+/** Действие в уведомлении: вернуть удалённое или применить настройки сразу. */
+export type ToastActionId = "undo" | "reconnect";
+
+export interface ToastMessage {
+  text: string;
+  action?: { id: ToastActionId; label: string };
 }
 
 /**
@@ -107,6 +115,7 @@ export interface Snapshot {
 export interface Backend {
   subscribe(listener: (s: Snapshot) => void): () => void;
   snapshot(): Snapshot;
+  /** Подключить, отключить или отменить подключение, которое ещё идёт. */
   toggle(): Promise<void>;
   select(target: { subUrl: string; nodeId: string } | null): Promise<void>;
   toggleFavorite(nodeKey: string): void;
@@ -119,6 +128,9 @@ export interface Backend {
   updateAppearance(patch: Partial<Appearance>): void;
   resetSettings(): Promise<void>;
   clearError(): void;
+  /** Кнопка в уведомлении: «Вернуть», «Переподключить». */
+  toastAction(): void;
+  dismissToast(): void;
 }
 
 export const nodeKey = (subUrl: string, nodeId: string) => `${subUrl}|${nodeId}`;

@@ -1,10 +1,11 @@
-import { ArrowDown, ArrowUp, Gauge, Globe2, Lock, Plus, Power, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowDown, ArrowUp, Gauge, Globe2, LoaderCircle, Lock, Plus, Power, RefreshCw, ShieldCheck } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import logo from "@/assets/logo.png";
 import { Flag, SignalPing, Tags } from "@/components/bits";
 import { PowerOrb } from "@/components/PowerOrb";
 import { ServerList } from "@/components/ServerList";
+import { ErrorBanner } from "@/components/ErrorBanner";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
 import { Button } from "@/components/ui/button";
 import { formatBytes, formatDuration, formatSpeed, splitFlag } from "@/lib/format";
@@ -26,7 +27,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
     <div className="grid h-dvh grid-cols-[minmax(320px,360px)_1fr] gap-5 p-5">
       <aside className="glass flex min-h-0 flex-col rounded-[28px]" aria-label="Серверы">
         <div className="flex items-center gap-1 px-5 pt-5 pb-3">
-          <img src={logo} alt="" className="mr-2 size-8 rounded-full" />
+          <img src={logo} alt="" width={32} height={32} className="mr-2 size-8 rounded-full" />
           <h2 className="flex-1 font-display text-[17px] font-semibold tracking-tight">Серверы</h2>
           <Button
             variant="ghost"
@@ -132,7 +133,7 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
             {status}
           </p>
           <h1 className="mt-2 truncate font-display text-[clamp(36px,4.6vw,60px)] leading-[1.05] font-semibold tracking-[-0.03em]">
-            {node ? splitFlag(node.name).name.split(" · ")[0] : "Нет серверов"}
+            {node ? splitFlag(node.name).name.split(" · ")[0] : "Добавьте подписку"}
           </h1>
           {node && (
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px] text-ink-2">
@@ -143,9 +144,14 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
           )}
           <div className="mt-6 flex gap-3">
             {node ? (
-              <Button variant={on ? "glass" : "amber"} className="px-7" disabled={busy} onClick={() => void backend.toggle()}>
-                <Power />
-                {on ? "Отключиться" : busy ? "Подождите…" : "Подключиться"}
+              <Button
+                variant={on || busy ? "glass" : "amber"}
+                className="px-7"
+                disabled={s.state === "disconnecting"}
+                onClick={() => void backend.toggle()}
+              >
+                {busy ? <LoaderCircle className="animate-spin" /> : <Power />}
+                {on ? "Отключиться" : s.state === "connecting" ? "Отменить" : busy ? "Отключаемся…" : "Подключиться"}
               </Button>
             ) : (
               <Button variant="amber" onClick={onAdd}>
@@ -154,9 +160,18 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
               </Button>
             )}
           </div>
-          {s.error && <p role="alert" className="mt-4 text-[15px] text-bad">{s.error}</p>}
+          {s.state === "connecting" && (
+            <p className="mt-3 text-[14px] text-ink-2">Если система спросит пароль или разрешение — подтвердите</p>
+          )}
+          <ErrorBanner className="mt-4 max-w-xl" />
         </div>
-        <PowerOrb state={s.state} onToggle={node ? () => void backend.toggle() : onAdd} size={240} className="shrink-0" />
+        <PowerOrb
+          state={s.state}
+          onToggle={node ? () => void backend.toggle() : onAdd}
+          label={node ? undefined : "Добавить подписку"}
+          size={240}
+          className="shrink-0"
+        />
       </section>
 
       <Tile title="Время">

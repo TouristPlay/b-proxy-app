@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Ban, ChevronRight, Gauge, Globe, Info, Link2, Network, Palette, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
+import { Ban, ChevronRight, Gauge, Globe, Info, Network, Palette, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot, type Settings } from "@/backend";
 import { Group, IconTile, Row, type Tone } from "@/components/bits";
@@ -89,7 +89,9 @@ export function SettingsScreen({ embedded }: { embedded?: boolean }) {
         </Group>
 
         <Group title="Подписки">
-          {s.subscriptions.length === 0 && <p className="px-4 py-4 text-[15px] text-ink-2">Подписок пока нет.</p>}
+          {s.subscriptions.length === 0 && (
+            <p className="px-4 py-4 text-[15px] text-ink-2">Добавьте подписку на главном экране — серверы появятся здесь</p>
+          )}
           {s.subscriptions.map((sub) => (
             <Row
               key={sub.url}
@@ -121,12 +123,6 @@ export function SettingsScreen({ embedded }: { embedded?: boolean }) {
                 B-Proxy <ChevronRight className="size-5 text-ink-3" aria-hidden />
               </span>
             }
-          />
-          <Row
-            icon={<IconTile icon={Link2} tone="green" />}
-            title="Ссылки для импорта"
-            hint="Сайт и бот могут открыть приложение и сразу добавить подписку"
-            aside={<span className="text-[15px] text-ink-2">bproxy://</span>}
           />
         </Group>
 

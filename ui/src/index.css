@@ -26,7 +26,7 @@
 
   --color-ink: #eef1f5;
   --color-ink-2: #a3acb8;
-  --color-ink-3: #6c7682;
+  --color-ink-3: #7d8794;
 
   --color-amber: #f2b04b;
   --color-amber-2: #ffd387;
@@ -66,6 +66,8 @@
     font-feature-settings: "tnum" 1;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
+    /* Без задержки двойного касания на телефонах. */
+    touch-action: manipulation;
   }
   :focus-visible {
     outline: 2px solid var(--color-amber);
@@ -96,7 +98,7 @@
   --color-disc: rgb(255 255 255 / 0.9);
   --color-ink: #121820;
   --color-ink-2: #4b5562;
-  --color-ink-3: #7b8592;
+  --color-ink-3: #5f6976;
   --color-good: #17945a;
   --color-warn: #b98a0f;
   --color-bad: #d6453a;
@@ -152,8 +154,8 @@
   to { transform: rotate(360deg); }
 }
 @keyframes toast-in {
-  from { transform: translate(-50%, -12px); opacity: 0; }
-  to { transform: translate(-50%, 0); opacity: 1; }
+  from { transform: translateY(-12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 @keyframes fade {
   from { opacity: 0; }

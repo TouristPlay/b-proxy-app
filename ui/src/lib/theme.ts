@@ -112,6 +112,14 @@ export function useApplyAppearance(a: Appearance) {
     if (mode === "dark") vars["--color-base"] = theme.base;
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
     if (mode !== "dark") root.style.removeProperty("--color-base");
+    // Цвет системных панелей (адресная строка, строка состояния) — как фон приложения.
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.append(meta);
+    }
+    meta.content = mode === "dark" ? theme.base : "#eef1f4";
   }, [a, mode]);
 
   return mode;

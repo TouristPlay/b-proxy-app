@@ -1,3 +1,4 @@
+import { Toaster } from "./toaster";
 import {
   nodeKey,
   type Appearance,
@@ -109,7 +110,7 @@ function loadAppearance(): Appearance {
 export class DemoBackend implements Backend {
   private listeners = new Set<(s: Snapshot) => void>();
   private ticker: number | undefined;
-  private toastTimer: number | undefined;
+  private toaster = new Toaster((toast) => this.emit({ toast }));
   private s: Snapshot;
 
   constructor(empty = false) {
@@ -152,9 +153,22 @@ export class DemoBackend implements Backend {
   }
 
   private toast(text: string) {
-    window.clearTimeout(this.toastTimer);
-    this.emit({ toast: text });
-    this.toastTimer = window.setTimeout(() => this.emit({ toast: null }), 2200);
+    this.toaster.show(text);
+  }
+
+  /** Настройки меняются при включённом VPN — предлагаем применить сразу. */
+  private offerReconnect() {
+    if (this.s.state !== "connected") return;
+    this.toaster.show("Изменения вступят в силу после переподключения", {
+      id: "reconnect",
+      label: "Переподключить",
+      run: () => void this.reconnect(),
+    });
+  }
+
+  private async reconnect() {
+    await this.toggle();
+    await this.toggle();
   }
 
   private recompute() {
@@ -213,6 +227,10 @@ export class DemoBackend implements Backend {
 
   async select(target: { subUrl: string; nodeId: string } | null) {
     this.emit({ selected: target });
+    if (this.s.state === "connected" && this.s.current) {
+      this.toast(`Переключаемся: ${this.s.current.node.name}`);
+      await this.reconnect();
+    }
   }
 
   toggleFavorite(key: string) {
@@ -228,6 +246,8 @@ export class DemoBackend implements Backend {
     const sub = { ...structuredClone(demoSub), url: url.trim(), updatedAt: Date.now() };
     this.emit({ subscriptions: [sub, ...this.s.subscriptions.filter((x) => x.url !== sub.url)] });
     this.toast("Подписка добавлена");
+    // Сразу меряем пинг, чтобы автовыбор знал лучший сервер.
+    void this.pingAll(true);
   }
 
   async refreshSubscriptions() {
@@ -237,12 +257,21 @@ export class DemoBackend implements Backend {
   }
 
   async removeSubscription(url: string) {
-    this.emit({ subscriptions: this.s.subscriptions.filter((x) => x.url !== url), selected: null });
-    this.toast("Подписка удалена");
+    const before = { subscriptions: this.s.subscriptions, selected: this.s.selected };
+    const sub = before.subscriptions.find((x) => x.url === url);
+    this.emit({
+      subscriptions: before.subscriptions.filter((x) => x.url !== url),
+      selected: before.selected?.subUrl === url ? null : before.selected,
+    });
+    this.toaster.show(`Подписка «${sub?.title ?? "без названия"}» удалена`, {
+      id: "undo",
+      label: "Вернуть",
+      run: () => this.emit(before),
+    });
   }
 
-  async pingAll() {
-    if (this.s.state !== "disconnected") return;
+  async pingAll(quiet = false) {
+    if (this.s.state !== "disconnected" || this.s.pinging) return;
     this.emit({ pinging: true });
     await wait(1200);
     const subscriptions = this.s.subscriptions.map((sub) => ({
@@ -252,15 +281,17 @@ export class DemoBackend implements Backend {
       ),
     }));
     this.emit({ subscriptions, pinging: false });
-    this.toast("Пинг обновлён");
+    if (!quiet) this.toast("Пинг обновлён");
   }
 
   async updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>) {
     this.emit({ settings: { ...this.s.settings, ...patch } });
+    this.offerReconnect();
   }
 
   async updateCore(patch: Partial<CoreSettings>) {
     this.emit({ settings: { ...this.s.settings, core: { ...this.s.settings.core, ...patch } } });
+    this.offerReconnect();
   }
 
   updateAppearance(patch: Partial<Appearance>) {
@@ -275,17 +306,29 @@ export class DemoBackend implements Backend {
   }
 
   async resetSettings() {
-    try {
-      localStorage.removeItem(APPEARANCE_KEY);
-    } catch {
-      // Хранилище недоступно.
-    }
+    const before = this.s.settings;
     this.emit({ settings: structuredClone(defaultSettings) });
-    this.toast("Настройки сброшены");
+    this.updateAppearance({});
+    this.toaster.show("Настройки сброшены", {
+      id: "undo",
+      label: "Вернуть",
+      run: () => {
+        this.emit({ settings: before });
+        this.updateAppearance({});
+      },
+    });
   }
 
   clearError() {
     this.emit({ error: null });
+  }
+
+  toastAction() {
+    this.toaster.act();
+  }
+
+  dismissToast() {
+    this.toaster.dismiss();
   }
 }
 

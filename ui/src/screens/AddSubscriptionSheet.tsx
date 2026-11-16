@@ -65,7 +65,7 @@ export function AddSubscriptionSheet({ open, onOpenChange }: { open: boolean; on
         </label>
         <div
           className={cn(
-            "glass flex items-center rounded-[20px] transition-colors focus-within:border-amber/70",
+            "glass flex items-center rounded-[20px] transition-colors focus-within:border-amber/70 focus-within:ring-2 focus-within:ring-amber/40",
             error && "border-bad/60",
           )}
         >

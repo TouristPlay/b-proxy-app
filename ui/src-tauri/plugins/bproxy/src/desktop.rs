@@ -218,6 +218,10 @@ impl<R: Runtime> Vpn<R> {
         // Ждём, пока ядро запустится: пользователь может долго вводить пароль.
         let started = Instant::now();
         loop {
+            // Пользователь отменил подключение — ядро увидит этот же файл и не запустится.
+            if stop.exists() {
+                return Err("Подключение отменено".into());
+            }
             match read_state(&state).as_deref() {
                 Some("running") => return Ok(()),
                 Some(s) if s.starts_with("error:") => {
@@ -241,10 +245,11 @@ impl<R: Runtime> Vpn<R> {
         use std::time::{Duration, Instant};
         let dir = self.data_dir()?;
         let state = dir.join("core.state");
+        // Флаг пишем всегда: если ядро ещё ждёт пароль, оно увидит его и не запустится.
+        std::fs::write(dir.join("core.stop"), b"").map_err(|e| e.to_string())?;
         if read_state(&state).as_deref() != Some("running") {
             return Ok(());
         }
-        std::fs::write(dir.join("core.stop"), b"").map_err(|e| e.to_string())?;
         let started = Instant::now();
         while started.elapsed() < Duration::from_secs(10) {
             if read_state(&state).as_deref() != Some("running") {

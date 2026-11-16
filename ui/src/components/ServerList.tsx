@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Search, Star, Zap } from "lucide-react";
+import { Check, ChevronDown, Search, Star, X, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { backend, nodeKey, useSnapshot } from "@/backend";
 import { Flag, SignalPing, Tags } from "@/components/bits";
@@ -34,15 +34,31 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
 
   return (
     <div className="flex flex-col gap-3">
-      <label className="glass flex h-12 items-center gap-3 rounded-2xl px-4 focus-within:border-amber/60">
+      <label className="glass flex h-12 items-center gap-3 rounded-2xl pr-1 pl-4 focus-within:border-amber/60 focus-within:ring-2 focus-within:ring-amber/40">
         <Search className="size-[18px] shrink-0 text-ink-3" aria-hidden />
         <input
+          type="search"
+          name="server-search"
+          autoComplete="off"
+          spellCheck={false}
+          enterKeyHint="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Поиск сервера"
+          onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+          placeholder="Страна, город или протокол…"
           aria-label="Поиск сервера"
-          className="min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-ink-3 focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-ink-3 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
         />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            aria-label="Очистить поиск"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl text-ink-3 hover:bg-glass-2 hover:text-ink"
+          >
+            <X className="size-4" />
+          </button>
+        )}
       </label>
 
       <div className="glass grid grid-cols-2 gap-1 rounded-2xl p-1" role="tablist" aria-label="Какие серверы показать">
@@ -99,8 +115,19 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
             {!closed && (
               <ul className="flex flex-col gap-2" aria-label={`Серверы ${sub.title}`}>
                 {nodes.length === 0 && (
-                  <li className="px-3 py-4 text-sm text-ink-3">
-                    {onlyFav ? "Отметьте серверы звёздочкой, и они появятся здесь." : "Ничего не нашлось."}
+                  <li className="px-3 py-4 text-[14px] text-ink-2">
+                    {query.trim() ? (
+                      <>
+                        Нет серверов по запросу «{query.trim()}».{" "}
+                        <button type="button" onClick={() => setQuery("")} className="font-medium text-amber underline-offset-4 hover:underline">
+                          Показать все
+                        </button>
+                      </>
+                    ) : onlyFav ? (
+                      "Нажмите на звёздочку у сервера, и он появится здесь"
+                    ) : (
+                      "В подписке нет серверов. Обновите её или напишите в поддержку"
+                    )}
                   </li>
                 )}
                 {nodes.map((node) => {
@@ -124,13 +151,14 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         aria-current={active ? "true" : undefined}
                         className={cn(
                           "glass flex w-full items-center gap-3.5 rounded-[22px] text-left transition-colors hover:bg-glass-2",
-                          compact ? "px-3 py-3" : "px-4 py-3.5",
+                          // Справа место под звёздочку «В избранное».
+                          compact ? "py-3 pr-12 pl-3" : "py-3.5 pr-12 pl-4",
                           active && "border-amber/60 bg-amber/[0.07] hover:bg-amber/10",
                         )}
                       >
                         <Flag name={node.name} size={compact ? "sm" : "md"} />
                         <span className="min-w-0 flex-1">
-                          <span className="line-clamp-2 block pr-6 leading-snug font-medium">{splitFlag(node.name).name}</span>
+                          <span className="line-clamp-2 block leading-snug font-medium">{splitFlag(node.name).name}</span>
                           <Tags tags={node.tags} className="mt-1.5" />
                         </span>
                         <SignalPing ms={node.pingMs} className="shrink-0" />
@@ -145,11 +173,11 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         aria-label={fav ? "Убрать из избранного" : "В избранное"}
                         aria-pressed={fav}
                         className={cn(
-                          "absolute top-1.5 right-1.5 flex size-8 items-center justify-center rounded-full transition-opacity",
+                          "absolute top-1/2 right-0.5 flex size-11 -translate-y-1/2 items-center justify-center rounded-full transition-opacity",
                           fav ? "text-amber" : "text-ink-3/70 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100",
                         )}
                       >
-                        <Star className="size-3.5" fill={fav ? "currentColor" : "none"} />
+                        <Star className="size-4" fill={fav ? "currentColor" : "none"} />
                       </button>
                     </li>
                   );

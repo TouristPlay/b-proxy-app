@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+import { Gauge, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import { ServerList } from "@/components/ServerList";
@@ -14,18 +14,20 @@ export function ServersScreen({ onPicked }: { onPicked: () => void }) {
   return (
     <div className="mx-auto w-full max-w-md px-5 pt-[max(18px,env(safe-area-inset-top))] pb-32">
       <header className="mb-1 flex items-center gap-2">
-        <h1 className="min-w-0 flex-1 font-display text-[26px] font-semibold tracking-[-0.02em] whitespace-nowrap">
+        <h1 className="min-w-0 flex-1 truncate font-display text-[26px] font-semibold tracking-[-0.02em]">
           Серверы <span className="text-ink-3">{total}</span>
         </h1>
         <Button
           variant="ghost"
           size="sm"
-          className="px-3 whitespace-nowrap text-amber hover:text-amber-2"
+          className="shrink-0 px-3 whitespace-nowrap text-amber hover:text-amber-2"
           onClick={() => void backend.pingAll()}
           disabled={!canPing || s.pinging}
-          title={canPing ? undefined : "Пинг проверяется при выключенном VPN"}
+          aria-label="Проверить пинг"
+          title={canPing ? "Проверить пинг" : "Пинг проверяется при выключенном VPN"}
         >
-          {s.pinging ? "Проверяем…" : "Проверить пинг"}
+          <Gauge className={cn(s.pinging && "animate-pulse")} aria-hidden />
+          {s.pinging ? "Меряем…" : "Пинг"}
         </Button>
         <Button
           variant="ghost"

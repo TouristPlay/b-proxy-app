@@ -1,12 +1,13 @@
-import { ArrowDown, ArrowUp, ChevronRight, ClipboardPaste, Megaphone, Plus, ShieldCheck, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArrowDown, ArrowUp, ChevronRight, ClipboardPaste, ExternalLink, LoaderCircle, Megaphone, Plus, TriangleAlert } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import logo from "@/assets/logo.png";
-import { Flag, IconTile, SignalPing } from "@/components/bits";
+import { ErrorBanner } from "@/components/ErrorBanner";
+import { Flag, SignalPing } from "@/components/bits";
 import { PowerOrb } from "@/components/PowerOrb";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
-import { Button } from "@/components/ui/button";
-import { daysLeft, formatDate, formatDuration, formatSpeed, splitBytes, splitFlag } from "@/lib/format";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { daysLeft, formatDuration, formatSpeed, splitBytes, splitFlag } from "@/lib/format";
 import { useNow } from "@/lib/useMedia";
 import { cn } from "@/lib/utils";
 
@@ -17,28 +18,45 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
   const hasServers = s.current != null;
   const on = s.state === "connected";
   const days = sub ? daysLeft(sub.expireAt) : null;
+  const expired = days === 0;
+  const [pasting, setPasting] = useState(false);
 
-  /** «Вставить»: берём ссылку из буфера; если не вышло — открываем форму. */
+  /** «Вставить»: берём ссылку из буфера и сразу добавляем; если не вышло — открываем форму. */
   async function paste() {
+    let text = "";
     try {
-      const text = (await navigator.clipboard.readText()).trim();
-      if (/^https?:\/\//.test(text)) {
-        await backend.addSubscription(text);
-        return;
-      }
+      text = (await navigator.clipboard.readText()).trim();
     } catch {
       // Нет доступа к буферу — пусть человек вставит вручную.
     }
-    onAdd();
+    if (!/^https?:\/\//.test(text)) {
+      onAdd();
+      return;
+    }
+    setPasting(true);
+    try {
+      await backend.addSubscription(text);
+    } catch {
+      // Ошибку и ссылку покажет форма: там её можно поправить.
+      onAdd();
+    } finally {
+      setPasting(false);
+    }
   }
 
   const title = on ? "Защищено" : s.state === "connecting" ? "Подключаемся" : s.state === "disconnecting" ? "Отключаемся" : "Не защищено";
+  const hint =
+    s.state === "connecting"
+      ? "Если система спросит разрешение — подтвердите. Нажмите ещё раз, чтобы отменить"
+      : hasServers
+        ? "Нажмите, чтобы подключиться"
+        : "Вставьте ссылку на подписку из личного кабинета или Telegram-бота";
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col px-5 pt-[max(18px,env(safe-area-inset-top))] pb-32">
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <img src={logo} alt="" className="size-8 rounded-full" />
+          <img src={logo} alt="" width={32} height={32} className="size-8 rounded-full" />
           <span className="font-display text-[17px] font-semibold tracking-tight">B-Proxy</span>
         </div>
         {sub && (
@@ -50,7 +68,12 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
       </header>
 
       <div className="mt-6 flex justify-center">
-        <PowerOrb state={s.state} onToggle={hasServers ? () => void backend.toggle() : onAdd} size={Math.min(300, window.innerWidth * 0.78)} />
+        <PowerOrb
+          state={s.state}
+          onToggle={hasServers ? () => void backend.toggle() : onAdd}
+          label={hasServers ? undefined : "Добавить подписку"}
+          size={Math.min(300, window.innerWidth * 0.78)}
+        />
       </div>
 
       <h1
@@ -60,7 +83,7 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
           on && "bg-gradient-to-b from-amber-2 to-amber bg-clip-text text-transparent",
         )}
       >
-        {hasServers ? title : "Нет серверов"}
+        {hasServers ? title : "Добавьте подписку"}
       </h1>
 
       <div className="mt-3 flex justify-center">
@@ -70,30 +93,37 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
             {splitFlag(s.current.node.name).name} · {formatDuration(now - s.connectedAt)}
           </span>
         ) : (
-          <p className="text-center text-[15px] text-ink-2">
-            {hasServers ? "Нажмите, чтобы подключиться" : "Добавьте ссылку на подписку или конфигурацию сервера"}
-          </p>
+          <p className="max-w-[30ch] text-center text-[15px] text-balance text-ink-2">{hint}</p>
         )}
       </div>
 
-      {s.error && (
-        <div role="alert" className="mt-5 flex items-start gap-3 rounded-[20px] border border-bad/30 bg-bad/10 py-3 pr-2 pl-4 text-[15px]">
-          <span className="flex-1 pt-1">{s.error}</span>
-          <button className="flex size-9 items-center justify-center rounded-full text-ink-2 hover:text-ink" onClick={() => backend.clearError()} aria-label="Скрыть ошибку">
-            <X className="size-4" />
-          </button>
+      <ErrorBanner onOpenServers={onOpenServers} className="mt-5" />
+
+      {/* Подписка закончилась — подключение не заработает, сразу ведём продлевать. */}
+      {expired && sub && !s.error && (
+        <div role="alert" className="mt-5 rounded-[20px] border border-warn/40 bg-warn/10 p-4 text-[15px]">
+          <p className="flex items-start gap-3 leading-snug">
+            <TriangleAlert className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
+            Подписка закончилась. Продлите её, чтобы серверы снова работали
+          </p>
+          {sub.webPageUrl && (
+            <a href={sub.webPageUrl} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "amber", size: "sm", className: "mt-3 ml-8" })}>
+              <ExternalLink />
+              Продлить
+            </a>
+          )}
         </div>
       )}
 
       {!hasServers && (
-        <div className="mt-8 grid grid-cols-2 gap-2">
-          <Button variant="amber" onClick={onAdd}>
-            <Plus />
-            Добавить
+        <div className="mt-8 flex flex-col gap-2">
+          <Button variant="amber" onClick={() => void paste()} disabled={pasting}>
+            {pasting ? <LoaderCircle className="animate-spin" /> : <ClipboardPaste />}
+            {pasting ? "Загружаем…" : "Вставить ссылку"}
           </Button>
-          <Button variant="glass" onClick={() => void paste()}>
-            <ClipboardPaste />
-            Вставить
+          <Button variant="ghost" onClick={onAdd} disabled={pasting}>
+            <Plus />
+            Ввести вручную
           </Button>
         </div>
       )}
@@ -112,23 +142,12 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium">{splitFlag(s.current.node.name).name}</span>
               <span className="block text-[13px] text-ink-2">
-                {s.selected ? "Выбран вручную" : "Автовыбор по пингу"}
+                {s.selected ? "Выбран вручную · сменить" : s.pinging ? "Ищем быстрый сервер…" : "Автовыбор по пингу · сменить"}
               </span>
             </span>
             <SignalPing ms={s.current.node.pingMs} />
             <ChevronRight className="size-5 text-ink-3" aria-hidden />
           </button>
-          {!on && (
-            <>
-              {sub?.expireAt && (
-                <div className="flex items-center gap-3.5 px-4 py-3.5">
-                  <IconTile icon={ShieldCheck} tone="green" />
-                  <span className="flex-1 font-medium">Подписка</span>
-                  <span className="text-[15px] text-ink-2">до {formatDate(sub.expireAt)}</span>
-                </div>
-              )}
-            </>
-          )}
         </div>
       )}
 

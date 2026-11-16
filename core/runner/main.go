@@ -25,10 +25,17 @@ func main() {
 		os.Exit(2)
 	}
 	configPath, statePath, stopPath := os.Args[1], os.Args[2], os.Args[3]
-	_ = os.Remove(stopPath)
 
 	setState := func(s string) {
 		_ = os.WriteFile(statePath, []byte(s), 0o644)
+	}
+
+	// Приложение удаляет stop-файл перед запуском. Если он есть — подключение
+	// отменили, пока система спрашивала пароль: не запускаемся.
+	if _, err := os.Stat(stopPath); err == nil {
+		_ = os.Remove(stopPath)
+		setState("stopped")
+		return
 	}
 
 	config, err := os.ReadFile(configPath)

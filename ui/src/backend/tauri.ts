@@ -12,6 +12,8 @@ import {
   type Subscription,
   type TunnelState,
 } from "./types";
+import { plural } from "@/lib/format";
+import { Toaster } from "./toaster";
 import { buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
 
 const APP_VERSION = "0.1.0";
@@ -59,7 +61,7 @@ function message(e: unknown): string {
  */
 export class TauriBackend implements Backend {
   private listeners = new Set<(s: Snapshot) => void>();
-  private toastTimer: number | undefined;
+  private toaster = new Toaster((toast) => this.emit({ toast }));
   private statsTimer: number | undefined;
   private platform = detectPlatform();
   private subs: StoredSubscription[];
@@ -68,6 +70,8 @@ export class TauriBackend implements Backend {
   private base: { rx: number; tx: number } | null = null;
   private last: { rx: number; tx: number; at: number } | null = null;
   private busy = false;
+  /** Пользователь отменил подключение, пока оно шло. */
+  private cancelled = false;
 
   constructor() {
     const saved = readJson<Persisted>(STATE_KEY);
@@ -128,7 +132,9 @@ export class TauriBackend implements Backend {
     const stale = this.subs.some(
       (sub) => Date.now() - sub.updatedAt > (sub.updateIntervalHours ?? 12) * 3600_000,
     );
-    if (stale) void this.refreshSubscriptions(true);
+    if (stale) await this.refreshSubscriptions(true);
+    // Свежий пинг при запуске: автовыбор берёт лучший сервер, а не первый в списке.
+    if (this.s.state === "disconnected" && this.subs.length) void this.pingAll(true);
     window.setInterval(() => void this.refreshSubscriptions(true), 6 * 3600_000);
   }
 
@@ -173,9 +179,15 @@ export class TauriBackend implements Backend {
   }
 
   private toast(text: string) {
-    window.clearTimeout(this.toastTimer);
-    this.emit({ toast: text });
-    this.toastTimer = window.setTimeout(() => this.emit({ toast: null }), 2200);
+    this.toaster.show(text);
+  }
+
+  toastAction() {
+    this.toaster.act();
+  }
+
+  dismissToast() {
+    this.toaster.dismiss();
   }
 
   private recompute() {
@@ -221,13 +233,43 @@ export class TauriBackend implements Backend {
   // ---------- VPN ----------
 
   async toggle() {
-    if (this.busy) return;
     const state = this.s.state;
-    if (state === "connected" || state === "connecting") {
+    // Подключение идёт (например, система ждёт пароль) — повторное нажатие его отменяет.
+    if (state === "connecting") {
+      await this.cancelConnect();
+      return;
+    }
+    if (this.busy) return;
+    if (state === "connected") {
       await this.disconnect();
       return;
     }
     await this.connect();
+  }
+
+  private async cancelConnect() {
+    this.cancelled = true;
+    this.emit({ state: "disconnecting" });
+    await invoke("plugin:bproxy|stop").catch(() => undefined);
+    this.stopStats();
+    this.emit({ state: "disconnected", connectedAt: null, downSpeed: null, upSpeed: null, error: null });
+  }
+
+  /** Переподключение с новыми настройками или на другой сервер. */
+  private async reconnect() {
+    if (this.busy) return;
+    if (this.s.state === "connected") await this.disconnect();
+    await this.connect();
+  }
+
+  /** Настройки меняются при включённом VPN — предлагаем применить сразу. */
+  private offerReconnect() {
+    if (this.s.state !== "connected") return;
+    this.toaster.show("Изменения вступят в силу после переподключения", {
+      id: "reconnect",
+      label: "Переподключить",
+      run: () => void this.reconnect(),
+    });
   }
 
   private async connect() {
@@ -236,6 +278,7 @@ export class TauriBackend implements Backend {
       return;
     }
     this.busy = true;
+    this.cancelled = false;
     this.emit({ state: "connecting", error: null });
     try {
       // Автовыбор без замеров: сначала находим самый быстрый сервер.
@@ -251,9 +294,16 @@ export class TauriBackend implements Backend {
       if (!permission.granted) throw new Error("Разрешите B-Proxy создать VPN, чтобы подключиться");
 
       const config = buildConfig(node, this.s.settings, this.platform, stored.fragment);
+      if (this.cancelled) return;
       await invoke("plugin:bproxy|start", { config });
+      if (this.cancelled) {
+        // Отменили, пока ядро запускалось: гасим то, что успело подняться.
+        await invoke("plugin:bproxy|stop").catch(() => undefined);
+        return;
+      }
       this.onConnected();
     } catch (e) {
+      if (this.cancelled) return;
       this.stopStats();
       this.emit({ state: "disconnected", connectedAt: null, error: message(e) });
     } finally {
@@ -341,12 +391,14 @@ export class TauriBackend implements Backend {
   }
 
   async select(target: { subUrl: string; nodeId: string } | null) {
+    const before = this.s.current;
     this.emit({ selected: target });
     this.persist();
     // Подключены — сразу переключаемся на новый сервер.
-    if (this.s.state === "connected" && !this.busy) {
-      await this.disconnect();
-      await this.connect();
+    const after = this.s.current;
+    if (this.s.state === "connected" && after && (after.node.id !== before?.node.id || after.sub.url !== before?.sub.url)) {
+      this.toast(`Переключаемся: ${after.node.name}`);
+      await this.reconnect();
     }
   }
 
@@ -372,7 +424,10 @@ export class TauriBackend implements Backend {
       throw new Error(message(e));
     });
     this.setSubs([sub, ...this.subs.filter((x) => x.url !== sub.url && x.url !== url)]);
-    this.toast("Подписка добавлена");
+    const count = sub.nodes.filter((n) => !n.divider).length;
+    this.toast(`Подписка «${sub.title}» добавлена: ${count} ${plural(count, "сервер", "сервера", "серверов")}`);
+    // Сразу меряем пинг, чтобы автовыбор знал лучший сервер.
+    if (this.s.state === "disconnected") void this.pingAll(true);
   }
 
   async refreshSubscriptions(silent = false) {
@@ -394,10 +449,22 @@ export class TauriBackend implements Backend {
   }
 
   async removeSubscription(url: string) {
-    const selected = this.s.selected?.subUrl === url ? null : this.s.selected;
-    this.emit({ selected });
+    const index = this.subs.findIndex((x) => x.url === url);
+    if (index < 0) return;
+    const removed = this.subs[index];
+    const selectedBefore = this.s.selected;
+    this.emit({ selected: selectedBefore?.subUrl === url ? null : selectedBefore });
     this.setSubs(this.subs.filter((x) => x.url !== url));
-    this.toast("Подписка удалена");
+    this.toaster.show(`Подписка «${removed.title}» удалена`, {
+      id: "undo",
+      label: "Вернуть",
+      run: () => {
+        const subs = [...this.subs];
+        subs.splice(Math.min(index, subs.length), 0, removed);
+        this.emit({ selected: selectedBefore });
+        this.setSubs(subs);
+      },
+    });
   }
 
   // ---------- Пинг ----------
@@ -458,7 +525,7 @@ export class TauriBackend implements Backend {
 
   private settingsChanged() {
     this.persist();
-    if (this.s.state === "connected") this.toast("Изменения применятся при следующем подключении");
+    this.offerReconnect();
   }
 
   async updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>) {
@@ -487,14 +554,19 @@ export class TauriBackend implements Backend {
   }
 
   async resetSettings() {
-    try {
-      localStorage.removeItem(APPEARANCE_KEY);
-    } catch {
-      // Хранилище недоступно.
-    }
+    const before = this.s.settings;
     this.emit({ settings: structuredClone(defaultSettings) });
+    this.updateAppearance({});
     this.persist();
-    this.toast("Настройки сброшены");
+    this.toaster.show("Настройки сброшены", {
+      id: "undo",
+      label: "Вернуть",
+      run: () => {
+        this.emit({ settings: before });
+        this.updateAppearance({});
+        this.persist();
+      },
+    });
   }
 
   clearError() {
