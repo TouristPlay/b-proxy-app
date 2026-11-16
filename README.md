@@ -7,9 +7,11 @@ VPN-клиент BaobabVPN на ядре [Xray-core](https://github.com/XTLS/Xra
 
 ## Что умеет
 
-- Добавление подписки Remnawave по ссылке. Приложение показывает остаток трафика, срок,
-  объявление панели и кнопку поддержки из заголовков `subscription-userinfo`,
-  `profile-title`, `announce` и `support-url`.
+- Добавление подписки Remnawave по ссылке. Приложение понимает те же заголовки подписки,
+  что INCY, Happ и другие клиенты: `profile-title`, `subscription-userinfo` (трафик и срок),
+  `announce`, `support-url`, `profile-web-page-url`, `hide-url`, `sort-order`, `new-url`
+  и `fragmentation-*`. Метаданные можно передать и строками в теле: `#profile-title: …`.
+  Поэтому одна подписка из панели одинаково работает в B-Proxy и в этих клиентах.
 - Протоколы, которые понимает Xray: VLESS (Reality, XHTTP, WS, gRPC), VMess, Trojan,
   Shadowsocks, Hysteria2.
 - Весь трафик устройства через VPN (режим TUN).

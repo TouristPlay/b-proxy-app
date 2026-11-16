@@ -92,7 +92,16 @@ class XrayConfigBuilder {
     });
   }
 
-  static String build(ServerNode node, ConnectionSettings s) {
+  /// [providerFragment] — фрагментация из заголовков подписки; включает её,
+  /// даже если пользователь не включал её в настройках.
+  static String build(ServerNode node, ConnectionSettings s,
+      {Map<String, String>? providerFragment}) {
+    final useFragment = s.tlsFragment || providerFragment != null;
+    final fragment = {
+      'packets': providerFragment?['packets'] ?? 'tlshello',
+      'length': providerFragment?['length'] ?? '100-200',
+      'interval': providerFragment?['interval'] ?? '10-20',
+    };
     final config = {
       'log': {'loglevel': 'warning'},
       'dns': {
@@ -101,19 +110,13 @@ class XrayConfigBuilder {
       },
       'inbounds': [_tunInbound(s)],
       'outbounds': [
-        _proxyOutbound(node, fragment: s.tlsFragment),
+        _proxyOutbound(node, fragment: useFragment),
         {'tag': 'direct', 'protocol': 'freedom'},
-        if (s.tlsFragment)
+        if (useFragment)
           {
             'tag': 'fragment',
             'protocol': 'freedom',
-            'settings': {
-              'fragment': {
-                'packets': 'tlshello',
-                'length': '100-200',
-                'interval': '10-20',
-              },
-            },
+            'settings': {'fragment': fragment},
           },
         {'tag': 'block', 'protocol': 'blackhole'},
         {'tag': 'dns-out', 'protocol': 'dns'},

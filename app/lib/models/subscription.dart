@@ -59,6 +59,7 @@ class ServerNode {
 class Subscription {
   Subscription({
     required this.url,
+    this.sourceUrl,
     required this.title,
     required this.nodes,
     required this.updatedAt,
@@ -69,9 +70,17 @@ class Subscription {
     this.supportUrl,
     this.announce,
     this.updateIntervalHours,
+    this.webPageUrl,
+    this.hideUrl = false,
+    this.sortOrder,
+    this.fragment,
   });
 
+  /// Адрес, по которому подписка обновляется (может смениться заголовком new-url).
   final String url;
+
+  /// Адрес, который ввёл пользователь, если провайдер перенёс подписку.
+  final String? sourceUrl;
   String title;
   List<ServerNode> nodes;
   DateTime updatedAt;
@@ -86,6 +95,19 @@ class Subscription {
   String? announce;
   int? updateIntervalHours;
 
+  /// profile-web-page-url / homepage — сайт провайдера.
+  String? webPageUrl;
+
+  /// hide-url: не показывать ссылку подписки (копирование, QR).
+  bool hideUrl;
+
+  /// sort-order: ping | name | none.
+  String? sortOrder;
+
+  /// Фрагментация TLS, которую включил провайдер заголовками fragmentation-*:
+  /// {packets, length, interval}. null — провайдер ничего не задал.
+  Map<String, String>? fragment;
+
   int get usedBytes => uploadBytes + downloadBytes;
   bool get isUnlimited => totalBytes <= 0;
   double get usedFraction =>
@@ -93,6 +115,7 @@ class Subscription {
 
   Map<String, dynamic> toJson() => {
         'url': url,
+        'sourceUrl': sourceUrl,
         'title': title,
         'nodes': nodes.map((n) => n.toJson()).toList(),
         'updatedAt': updatedAt.toIso8601String(),
@@ -103,10 +126,15 @@ class Subscription {
         'supportUrl': supportUrl,
         'announce': announce,
         'updateIntervalHours': updateIntervalHours,
+        'webPageUrl': webPageUrl,
+        'hideUrl': hideUrl,
+        'sortOrder': sortOrder,
+        'fragment': fragment,
       };
 
   factory Subscription.fromJson(Map<String, dynamic> json) => Subscription(
         url: json['url'] as String,
+        sourceUrl: json['sourceUrl'] as String?,
         title: json['title'] as String,
         nodes: (json['nodes'] as List)
             .map((e) => ServerNode.fromJson(Map<String, dynamic>.from(e as Map)))
@@ -121,6 +149,12 @@ class Subscription {
         supportUrl: json['supportUrl'] as String?,
         announce: json['announce'] as String?,
         updateIntervalHours: json['updateIntervalHours'] as int?,
+        webPageUrl: json['webPageUrl'] as String?,
+        hideUrl: json['hideUrl'] as bool? ?? false,
+        sortOrder: json['sortOrder'] as String?,
+        fragment: json['fragment'] == null
+            ? null
+            : Map<String, String>.from(json['fragment'] as Map),
       );
 
   String encode() => jsonEncode(toJson());

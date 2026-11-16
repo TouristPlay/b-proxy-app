@@ -132,7 +132,8 @@ class AppController extends ChangeNotifier {
       if (!await _tunnel.prepare()) {
         throw Exception('Разрешите B-Proxy создавать VPN-подключение');
       }
-      final config = XrayConfigBuilder.build(pair.$2, settings);
+      final config = XrayConfigBuilder.build(pair.$2, settings,
+          providerFragment: pair.$1.fragment);
       await _tunnel.start(config);
       state = TunnelState.connected;
       connectedAt = DateTime.now();

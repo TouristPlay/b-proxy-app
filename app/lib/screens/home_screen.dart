@@ -206,6 +206,12 @@ class _Connected extends StatelessWidget {
                         fontSize: 13),
                   ),
                 ),
+                if (sub.webPageUrl != null)
+                  TextButton(
+                    onPressed: () => launchUrl(Uri.parse(sub.webPageUrl!),
+                        mode: LaunchMode.externalApplication),
+                    child: Text('Сайт', style: TextStyle(color: c.accentFg)),
+                  ),
                 if (sub.supportUrl != null)
                   TextButton(
                     onPressed: () => launchUrl(Uri.parse(sub.supportUrl!),
