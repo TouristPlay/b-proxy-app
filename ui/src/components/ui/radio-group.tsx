@@ -17,13 +17,13 @@ export const RadioGroupItem = React.forwardRef<
   <RadioGroupPrimitive.Item
     ref={ref}
     className={cn(
-      "flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-ink-faint transition-colors",
-      "data-[state=checked]:border-sun",
+      "flex size-[22px] shrink-0 items-center justify-center rounded-full border-2 border-ink-3 transition-colors",
+      "data-[state=checked]:border-amber",
       className,
     )}
     {...props}
   >
-    <RadioGroupPrimitive.Indicator className="block size-2.5 rounded-full bg-sun" />
+    <RadioGroupPrimitive.Indicator className="block size-2.5 rounded-full bg-amber" />
   </RadioGroupPrimitive.Item>
 ));
 RadioGroupItem.displayName = "RadioGroupItem";

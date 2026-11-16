@@ -1,6 +1,7 @@
-import { ClipboardPaste, LoaderCircle } from "lucide-react";
+import { ClipboardPaste, Link2, LoaderCircle } from "lucide-react";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { backend } from "@/backend";
+import { IconTile } from "@/components/bits";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -55,16 +56,17 @@ export function AddSubscriptionSheet({ open, onOpenChange }: { open: boolean; on
       open={open}
       onOpenChange={onOpenChange}
       title="Новая подписка"
-      description="Ссылка есть в личном кабинете BaobabVPN и в Telegram-боте."
+      description="Ссылка есть в личном кабинете и в Telegram-боте BaobabVPN"
+      icon={<IconTile icon={Link2} tone="amber" />}
     >
       <form onSubmit={submit} noValidate>
-        <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-ink">
+        <label htmlFor={inputId} className="mb-2 block px-1 text-sm font-medium text-ink-2">
           Ссылка на подписку
         </label>
         <div
           className={cn(
-            "flex items-center rounded-row border bg-night transition-colors focus-within:border-sun",
-            error ? "border-danger" : "border-line",
+            "glass flex items-center rounded-[20px] transition-colors focus-within:border-amber/70",
+            error && "border-bad/60",
           )}
         >
           <input
@@ -82,24 +84,24 @@ export function AddSubscriptionSheet({ open, onOpenChange }: { open: boolean; on
             placeholder="https://sub.baobabproxy.com/…"
             aria-invalid={Boolean(error)}
             aria-describedby={hintId}
-            className="min-h-13 min-w-0 flex-1 bg-transparent px-4 text-[15px] text-ink placeholder:text-ink-faint focus:outline-none"
+            className="h-14 min-w-0 flex-1 bg-transparent px-4 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none"
           />
           <button
             type="button"
             onClick={paste}
-            className="mr-1 flex size-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-dusk hover:text-ink"
+            className="mr-1.5 flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-glass-2 hover:text-ink"
             aria-label="Вставить из буфера обмена"
             title="Вставить из буфера обмена"
           >
             <ClipboardPaste className="size-5" />
           </button>
         </div>
-        <p id={hintId} role={error ? "alert" : undefined} className={cn("mt-2 text-sm", error ? "text-danger" : "text-ink-faint")}>
-          {error ?? "Начинается с https://. Серверы и остаток трафика подтянутся автоматически."}
+        <p id={hintId} role={error ? "alert" : undefined} className={cn("mt-2 px-1 text-[13.5px]", error ? "text-bad" : "text-ink-3")}>
+          {error ?? "Подойдёт ссылка Remnawave, Marzban и любые vless://, trojan://, hysteria2://"}
         </p>
 
-        <Button type="submit" variant="sun" className="mt-6 w-full" disabled={loading}>
-          {loading ? <LoaderCircle className="animate-spin" /> : null}
+        <Button type="submit" variant="amber" className="mt-6 w-full" disabled={loading}>
+          {loading && <LoaderCircle className="animate-spin" />}
           {loading ? "Загружаем серверы" : "Добавить подписку"}
         </Button>
       </form>

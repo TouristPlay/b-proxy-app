@@ -1,36 +1,54 @@
 @import "@fontsource/unbounded/500.css";
 @import "@fontsource/unbounded/600.css";
+@import "@fontsource/unbounded/700.css";
 @import "@fontsource/golos-text/400.css";
 @import "@fontsource/golos-text/500.css";
 @import "@fontsource/golos-text/600.css";
 @import "tailwindcss";
 
 /*
- * B-Proxy — «закат над саванной».
- * Ночь — холодный сине-зелёный, закат — янтарь и тлеющий оранжевый,
- * текст — тёплый пергамент. Зелёного «хакерского» акцента нет:
- * «защищено» означает взошедшее солнце.
+ * B-Proxy — тёмное матовое стекло на ночном фоне с живыми пятнами света.
+ * Выключено: пятна холодные, сине-серые. Включено: тёплые, янтарно-закатные,
+ * как солнце BaobabVPN. Янтарь — единственный акцент: кнопка, выбор, «Продлить».
  */
 @theme {
-  --color-night: #0f1c22;
-  --color-dusk: #182a31;
-  --color-dusk-2: #213840;
-  --color-ground: #091215;
-  --color-line: #2a3f47;
+  --color-base: #0a0e13;
+  --color-base-2: #0f141b;
+  --color-glass: rgb(255 255 255 / 0.045);
+  --color-glass-2: rgb(255 255 255 / 0.075);
+  --color-glass-3: rgb(255 255 255 / 0.11);
+  --color-edge: rgb(255 255 255 / 0.08);
+  --color-edge-2: rgb(255 255 255 / 0.14);
+
+  --color-ink: #eef1f5;
+  --color-ink-2: #a3acb8;
+  --color-ink-3: #6c7682;
+
+  --color-amber: #f2b04b;
+  --color-amber-2: #ffd387;
+  --color-amber-deep: #c9822c;
   --color-ember: #e8733a;
-  --color-sun: #f4a63c;
-  --color-sun-core: #ffd98a;
-  --color-ink: #efe8d8;
-  --color-ink-muted: #9db0b2;
-  --color-ink-faint: #6c8286;
-  --color-danger: #f06a5f;
-  --color-ok: #f4a63c;
+  --color-good: #4fd18b;
+  --color-warn: #e9c046;
+  --color-bad: #f1695e;
+
+  /* Метки протоколов, как в привычных клиентах. */
+  --color-tag-vless: #e2b35c;
+  --color-tag-reality: #a58bf4;
+  --color-tag-grpc: #ef7f86;
+  --color-tag-tls: #6fa8f5;
+  --color-tag-xhttp: #4fc9c0;
+  --color-tag-ws: #6ccf8f;
+  --color-tag-tcp: #9aa3ae;
+  --color-tag-hy: #5fd0d8;
+  --color-tag-trojan: #f39a5b;
 
   --font-display: "Unbounded", "Golos Text", system-ui, sans-serif;
   --font-sans: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
-  --radius-row: 16px;
-  --ease-out-soft: cubic-bezier(0.2, 0, 0, 1);
+  --radius-glass: 24px;
+  --radius-tile: 14px;
+  --ease-soft: cubic-bezier(0.2, 0, 0, 1);
 }
 
 @layer base {
@@ -40,17 +58,32 @@
     height: 100%;
   }
   body {
-    @apply bg-night text-ink font-sans antialiased;
+    @apply bg-base text-ink font-sans antialiased;
     font-feature-settings: "tnum" 1;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
   }
   :focus-visible {
-    outline: 2px solid var(--color-sun);
+    outline: 2px solid var(--color-amber);
     outline-offset: 3px;
   }
   ::selection {
-    background: color-mix(in srgb, var(--color-sun) 35%, transparent);
+    background: color-mix(in srgb, var(--color-amber) 35%, transparent);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.12) transparent;
+  }
+}
+
+@layer components {
+  /* Матовое стекло: полупрозрачная заливка, размытие фона, тонкая светлая кромка. */
+  .glass {
+    background: var(--color-glass);
+    border: 1px solid var(--color-edge);
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
   }
 }
 
@@ -64,18 +97,24 @@
   }
 }
 
-/* Медленное «марево» над солнцем, когда VPN включён. */
-@keyframes shimmer {
-  0%, 100% { transform: scale(1); opacity: 0.55; }
-  50% { transform: scale(1.06); opacity: 0.8; }
+@keyframes drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(6%, 4%) scale(1.08); }
 }
-@keyframes twinkle {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 0.9; }
+@keyframes drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-5%, -6%) scale(1.1); }
 }
-@keyframes rise-hint {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+@keyframes ring-wave {
+  from { transform: scale(0.82); opacity: 0.55; }
+  to { transform: scale(1.18); opacity: 0; }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+@keyframes toast-in {
+  from { transform: translate(-50%, -12px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
 }
 @keyframes fade {
   from { opacity: 0; }

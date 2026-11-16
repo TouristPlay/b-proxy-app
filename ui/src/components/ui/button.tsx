@@ -2,23 +2,24 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-const buttonVariants = cva(
-  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-medium transition-colors duration-150 ease-out-soft disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-[18px] [&_svg]:shrink-0",
+export const buttonVariants = cva(
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-[18px] [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        sun: "bg-sun text-ground hover:bg-sun-core active:bg-sun",
-        quiet: "bg-dusk text-ink hover:bg-dusk-2",
-        ghost: "text-ink-muted hover:bg-dusk hover:text-ink",
-        danger: "text-danger hover:bg-danger/10",
+        amber:
+          "bg-gradient-to-b from-amber-2 to-amber text-[#2a1806] shadow-[0_8px_24px_-10px_rgb(242_176_75/0.7)] hover:brightness-105",
+        glass: "glass text-ink hover:bg-glass-2",
+        ghost: "text-ink-2 hover:bg-glass-2 hover:text-ink",
+        danger: "border border-bad/30 bg-bad/10 text-bad hover:bg-bad/15",
       },
       size: {
         md: "",
-        icon: "size-12 px-0",
+        icon: "size-11 min-h-11 px-0",
         sm: "min-h-10 px-4 text-sm",
       },
     },
-    defaultVariants: { variant: "quiet", size: "md" },
+    defaultVariants: { variant: "glass", size: "md" },
   },
 );
 

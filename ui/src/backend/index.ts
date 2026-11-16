@@ -21,4 +21,4 @@ export function useSnapshot(): Snapshot {
   );
 }
 
-export type * from "./types";
+export * from "./types";

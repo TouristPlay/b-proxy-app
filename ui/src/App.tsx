@@ -1,79 +1,73 @@
-import { Globe, Power, SlidersHorizontal } from "lucide-react";
+import { House, Server, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { useSnapshot } from "@/backend";
-import logo from "@/assets/logo.png";
+import { Backdrop } from "@/components/Backdrop";
+import { Toast } from "@/components/Toast";
+import { useIsDesktop } from "@/lib/useMedia";
 import { cn } from "@/lib/utils";
 import { AddSubscriptionSheet } from "@/screens/AddSubscriptionSheet";
-import { ConnectScreen } from "@/screens/ConnectScreen";
+import { DesktopLayout } from "@/screens/DesktopLayout";
+import { HomeScreen } from "@/screens/HomeScreen";
 import { ServersScreen } from "@/screens/ServersScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 
-type Tab = "connect" | "servers" | "settings";
+type Tab = "home" | "servers" | "settings";
 
-const tabs: { id: Tab; label: string; icon: typeof Power }[] = [
-  { id: "connect", label: "Подключение", icon: Power },
-  { id: "servers", label: "Серверы", icon: Globe },
-  { id: "settings", label: "Настройки", icon: SlidersHorizontal },
-];
+const tabs = [
+  { id: "home", label: "Главная", icon: House },
+  { id: "servers", label: "Серверы", icon: Server },
+  { id: "settings", label: "Настройки", icon: Settings2 },
+] as const;
 
 export default function App() {
   const s = useSnapshot();
-  const [tab, setTab] = useState<Tab>("connect");
+  const desktop = useIsDesktop();
+  const [tab, setTab] = useState<Tab>("home");
   const [adding, setAdding] = useState(false);
-  const connected = s.state === "connected";
 
   return (
-    <div className="flex h-dvh flex-col lg:flex-row-reverse">
-      <main className="relative min-h-0 flex-1 overflow-y-auto">
-        {tab === "connect" && (
-          <>
-            {/* Шапка поверх сцены: знак BaobabVPN и название. */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center gap-2.5 px-6 pt-[max(20px,env(safe-area-inset-top))] lg:hidden">
-              <img src={logo} alt="" className="size-7 rounded-full" />
-              <span className="font-display text-[15px] font-medium tracking-tight">B-Proxy</span>
-            </div>
-            <ConnectScreen onOpenServers={() => setTab("servers")} onAdd={() => setAdding(true)} />
-          </>
-        )}
-        {tab === "servers" && <ServersScreen onAdd={() => setAdding(true)} onPicked={() => setTab("connect")} />}
-        {tab === "settings" && <SettingsScreen />}
-      </main>
+    <>
+      <Backdrop state={s.state} />
+      <Toast />
 
-      <nav
-        aria-label="Разделы"
-        className={cn(
-          "flex shrink-0 border-t border-line bg-night/95 pb-[env(safe-area-inset-bottom)] backdrop-blur",
-          "lg:w-24 lg:flex-col lg:items-stretch lg:gap-1 lg:border-t-0 lg:border-r lg:pt-6 lg:pb-6",
-        )}
-      >
-        <div className="hidden justify-center pb-6 lg:flex">
-          <img src={logo} alt="BaobabVPN" className="size-9 rounded-full" />
+      {desktop ? (
+        <DesktopLayout onAdd={() => setAdding(true)} />
+      ) : (
+        <div className="h-dvh overflow-y-auto">
+          {tab === "home" && <HomeScreen onOpenServers={() => setTab("servers")} onAdd={() => setAdding(true)} />}
+          {tab === "servers" && <ServersScreen onPicked={() => setTab("home")} />}
+          {tab === "settings" && <SettingsScreen />}
+
+          {/* Плавающее меню-«пилюля». */}
+          <nav
+            aria-label="Разделы"
+            className="glass fixed inset-x-4 bottom-[max(14px,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-md grid-cols-3 gap-1 rounded-[30px] bg-[#121821]/75 p-1.5 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.8)]"
+          >
+            {tabs.map(({ id, label, icon: Icon }) => {
+              const active = tab === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "relative flex h-[58px] flex-col items-center justify-center gap-1 rounded-[24px] text-[12px] font-medium transition-colors",
+                    active ? "bg-amber/14 text-amber" : "text-ink-2 hover:text-ink",
+                  )}
+                >
+                  <Icon className="size-[22px]" aria-hidden />
+                  {label}
+                  {id === "home" && s.state === "connected" && !active && (
+                    <span className="absolute top-2.5 right-[34%] size-2 rounded-full bg-good ring-2 ring-[#121821]" aria-hidden />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
-        {tabs.map(({ id, label, icon: Icon }) => {
-          const active = tab === id;
-          return (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex min-h-16 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium transition-colors lg:flex-none lg:py-3",
-                active ? "text-ink" : "text-ink-faint hover:text-ink-muted",
-              )}
-            >
-              <span className="relative">
-                <Icon className="size-[22px]" aria-hidden />
-                {id === "connect" && connected && (
-                  <span className="absolute -top-0.5 -right-1 size-2 rounded-full bg-sun ring-2 ring-night" aria-hidden />
-                )}
-              </span>
-              {label}
-            </button>
-          );
-        })}
-      </nav>
+      )}
 
       <AddSubscriptionSheet open={adding} onOpenChange={setAdding} />
-    </div>
+    </>
   );
 }

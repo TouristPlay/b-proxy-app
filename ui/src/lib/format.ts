@@ -54,3 +54,13 @@ export function plural(n: number, one: string, few: string, many: string): strin
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
   return many;
 }
+
+/** «2,4 ГБ» → { value: "2,4", unit: "ГБ" } — для крупных цифр с мелкой единицей. */
+export function splitBytes(bytes: number): { value: string; unit: string } {
+  const [value, unit] = formatBytes(bytes).split(" ");
+  return { value, unit };
+}
+
+export function daysLeft(ts: number | null): number | null {
+  return ts == null ? null : Math.max(0, Math.ceil((ts - Date.now()) / 86_400_000));
+}
