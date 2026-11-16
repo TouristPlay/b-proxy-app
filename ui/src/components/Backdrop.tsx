@@ -1,45 +1,83 @@
-import type { TunnelState } from "@/backend";
+import type { Appearance, TunnelState } from "@/backend";
+import { themeById } from "@/lib/theme";
 
 /**
- * Живой фон: два размытых пятна света и еле заметный силуэт баобаба у нижнего края.
- * Без VPN пятна холодные, при подключении — тёплые закатные.
+ * Фон приложения. Вид выбирается в «Оформлении»:
+ * пятна, пятна с горизонтом и баобабами, звёзды, однотонный или своё фото.
+ * Пятна живые: цвета темы «в покое» без VPN и «активные» при подключении.
  */
-export function Backdrop({ state }: { state: TunnelState }) {
+export function Backdrop({ state, appearance, mode }: { state: TunnelState; appearance: Appearance; mode: "dark" | "light" }) {
+  const theme = themeById(appearance.theme);
   const warm = state === "connected";
   const half = state === "connecting";
+  const colors = warm ? theme.active : theme.idle;
+  const light = mode === "light";
+  // Яркость фона: 60 — как задумано, 0 — почти не видно, 100 — ярче.
+  const k = (appearance.backgroundDim / 60) * (light ? 0.55 : 1);
+  const kind = appearance.background;
+  const showBlobs = kind !== "solid" && kind !== "image";
+
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-base" aria-hidden>
-      <div
-        className="absolute -top-[18%] -left-[22%] h-[70vmax] w-[70vmax] rounded-full blur-[90px] transition-[background-color,opacity] duration-[1600ms]"
-        style={{
-          backgroundColor: warm ? "#b8662c" : half ? "#4a4d4f" : "#2b3a4c",
-          opacity: warm ? 0.26 : 0.35,
-          animation: "drift-a 22s ease-in-out infinite",
-        }}
-      />
-      <div
-        className="absolute -right-[25%] -bottom-[20%] h-[65vmax] w-[65vmax] rounded-full blur-[110px] transition-[background-color,opacity] duration-[1600ms]"
-        style={{
-          backgroundColor: warm ? "#5e3424" : "#1c2a3d",
-          opacity: warm ? 0.3 : 0.45,
-          animation: "drift-b 28s ease-in-out infinite",
-        }}
-      />
-      <div
-        className="absolute top-[30%] left-[45%] h-[38vmax] w-[38vmax] rounded-full blur-[100px] transition-[background-color,opacity] duration-[1600ms]"
-        style={{ backgroundColor: warm ? "#f2b04b" : "#24313f", opacity: warm ? 0.07 : 0.2 }}
-      />
-      {/* Горизонт с баобабами — фирменный знак, очень тихо. */}
-      <svg
-        viewBox="0 0 400 90"
-        preserveAspectRatio="xMidYMax slice"
-        className="absolute inset-x-0 bottom-0 h-[22vh] w-full opacity-[0.22]"
-      >
-        <path d="M0 70 C 80 62, 160 66, 220 68 S 340 62, 400 66 L400 90 L0 90 Z" fill="#05080b" />
-        <BaobabShape x={70} y={69} s={0.55} />
-        <BaobabShape x={330} y={66} s={0.32} />
-      </svg>
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-base transition-colors duration-700" aria-hidden>
+      {kind === "image" && appearance.backgroundImage && (
+        <>
+          <img src={appearance.backgroundImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-base" style={{ opacity: Math.max(0.15, 1 - appearance.backgroundDim / 100) }} />
+        </>
+      )}
+
+      {showBlobs && (
+        <>
+          <Blob
+            className="-top-[18%] -left-[22%] h-[70vmax] w-[70vmax] blur-[90px]"
+            color={half ? theme.idle[0] : colors[0]}
+            opacity={(warm ? 0.26 : 0.35) * k * (light ? 1.4 : 1)}
+            anim="drift-a 22s ease-in-out infinite"
+          />
+          <Blob
+            className="-right-[25%] -bottom-[20%] h-[65vmax] w-[65vmax] blur-[110px]"
+            color={colors[1]}
+            opacity={(warm ? 0.3 : 0.45) * k}
+            anim="drift-b 28s ease-in-out infinite"
+          />
+          <Blob
+            className="top-[30%] left-[45%] h-[38vmax] w-[38vmax] blur-[100px]"
+            color={colors[2]}
+            opacity={(warm ? 0.08 : 0.2) * k}
+          />
+        </>
+      )}
+
+      {kind === "stars" && (
+        <svg className="absolute inset-0 h-full w-full" style={{ opacity: Math.min(1, 0.7 * k) }}>
+          {stars.map(([x, y, r], i) => (
+            <circle key={i} cx={`${x}%`} cy={`${y}%`} r={r} fill={light ? "#5b6676" : "#dfe6ee"} opacity={0.35 + (i % 4) * 0.15} />
+          ))}
+        </svg>
+      )}
+
+      {kind === "horizon" && (
+        <svg
+          viewBox="0 0 400 90"
+          preserveAspectRatio="xMidYMax slice"
+          className="absolute inset-x-0 bottom-0 h-[22vh] w-full"
+          style={{ opacity: (light ? 0.1 : 0.22) * Math.min(1.6, k) }}
+        >
+          <path d="M0 70 C 80 62, 160 66, 220 68 S 340 62, 400 66 L400 90 L0 90 Z" fill="#05080b" />
+          <BaobabShape x={70} y={69} s={0.55} />
+          <BaobabShape x={330} y={66} s={0.32} />
+        </svg>
+      )}
     </div>
+  );
+}
+
+function Blob({ className, color, opacity, anim }: { className: string; color: string; opacity: number; anim?: string }) {
+  return (
+    <div
+      className={`absolute rounded-full transition-[background-color,opacity] duration-[1600ms] ${className}`}
+      style={{ backgroundColor: color, opacity, animation: anim }}
+    />
   );
 }
 
@@ -64,3 +102,10 @@ function BaobabShape({ x, y, s }: { x: number; y: number; s: number }) {
     </g>
   );
 }
+
+/** Звёзды: [x %, y %, радиус px], разбросаны заранее, чтобы фон не прыгал. */
+const stars: [number, number, number][] = Array.from({ length: 70 }, (_, i) => {
+  const a = Math.sin(i * 12.9898) * 43758.5453;
+  const b = Math.sin(i * 78.233) * 12345.6789;
+  return [Math.abs(a % 100), Math.abs(b % 100) * 0.85, i % 7 === 0 ? 1.4 : i % 3 === 0 ? 1 : 0.7];
+});

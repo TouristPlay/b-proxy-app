@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { AppearanceGroup } from "./AppearanceGroup";
 import { CoreSettingsSheet } from "./CoreSettingsSheet";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
@@ -46,6 +47,8 @@ export function SettingsScreen({ embedded }: { embedded?: boolean }) {
       {!embedded && <h1 className="mb-6 font-display text-[28px] font-semibold tracking-[-0.02em]">Настройки</h1>}
 
       <div className="flex flex-col gap-6">
+        <AppearanceGroup />
+
         <Group title="Маршруты">
           {routes.map((r) => (
             <Row

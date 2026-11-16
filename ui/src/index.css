@@ -20,6 +20,10 @@
   --color-edge: rgb(255 255 255 / 0.08);
   --color-edge-2: rgb(255 255 255 / 0.14);
 
+  --color-panel: #121821;
+  --color-disc: rgb(12 16 22 / 0.72);
+  --color-on-accent: #241606;
+
   --color-ink: #eef1f5;
   --color-ink-2: #a3acb8;
   --color-ink-3: #6c7682;
@@ -76,13 +80,48 @@
   }
 }
 
+/*
+ * Светлый режим: меняются только основа, стекло и текст.
+ * Акцент и пятна задаёт выбранная тема (lib/theme.ts) через style на <html>.
+ */
+:root[data-mode="light"] {
+  --color-base: #eef1f4;
+  --color-base-2: #e6eaee;
+  --color-glass: rgb(255 255 255 / 0.62);
+  --color-glass-2: rgb(255 255 255 / 0.85);
+  --color-glass-3: rgb(16 24 36 / 0.09);
+  --color-edge: rgb(16 24 36 / 0.08);
+  --color-edge-2: rgb(16 24 36 / 0.14);
+  --color-panel: #f7f9fb;
+  --color-disc: rgb(255 255 255 / 0.9);
+  --color-ink: #121820;
+  --color-ink-2: #4b5562;
+  --color-ink-3: #7b8592;
+  --color-good: #17945a;
+  --color-warn: #b98a0f;
+  --color-bad: #d6453a;
+  color-scheme: light;
+}
+:root[data-mode="dark"] {
+  color-scheme: dark;
+}
+
+/* Пользователь выключил анимации в настройках «Оформления». */
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
 @layer components {
   /* Матовое стекло: полупрозрачная заливка, размытие фона, тонкая светлая кромка. */
   .glass {
     background: var(--color-glass);
     border: 1px solid var(--color-edge);
-    backdrop-filter: blur(22px) saturate(140%);
-    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    backdrop-filter: blur(var(--glass-blur, 22px)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--glass-blur, 22px)) saturate(140%);
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
   }
 }

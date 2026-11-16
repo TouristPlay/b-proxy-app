@@ -232,12 +232,12 @@ function Sparkline({ values }: { values: number[] }) {
     <svg viewBox={`0 0 ${w} ${h}`} className="mt-4 h-16 w-full" preserveAspectRatio="none" aria-hidden>
       <defs>
         <linearGradient id="spark" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#f2b04b" stopOpacity="0.35" />
-          <stop offset="1" stopColor="#f2b04b" stopOpacity="0" />
+          <stop offset="0" stopColor="var(--color-amber)" stopOpacity="0.35" />
+          <stop offset="1" stopColor="var(--color-amber)" stopOpacity="0" />
         </linearGradient>
       </defs>
       <polygon points={`0,${h} ${line} ${w},${h}`} fill="url(#spark)" />
-      <polyline points={line} fill="none" stroke="#f2b04b" strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
+      <polyline points={line} fill="none" stroke="var(--color-amber)" strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }

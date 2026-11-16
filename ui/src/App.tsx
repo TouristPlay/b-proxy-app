@@ -4,6 +4,7 @@ import { useSnapshot } from "@/backend";
 import { Backdrop } from "@/components/Backdrop";
 import { Toast } from "@/components/Toast";
 import { useIsDesktop } from "@/lib/useMedia";
+import { useApplyAppearance } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { AddSubscriptionSheet } from "@/screens/AddSubscriptionSheet";
 import { DesktopLayout } from "@/screens/DesktopLayout";
@@ -24,10 +25,11 @@ export default function App() {
   const desktop = useIsDesktop();
   const [tab, setTab] = useState<Tab>("home");
   const [adding, setAdding] = useState(false);
+  const mode = useApplyAppearance(s.settings.appearance);
 
   return (
     <>
-      <Backdrop state={s.state} />
+      <Backdrop state={s.state} appearance={s.settings.appearance} mode={mode} />
       <Toast />
 
       {desktop ? (
@@ -41,7 +43,7 @@ export default function App() {
           {/* Плавающее меню-«пилюля». */}
           <nav
             aria-label="Разделы"
-            className="glass fixed inset-x-4 bottom-[max(14px,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-md grid-cols-3 gap-1 rounded-[30px] bg-[#121821]/75 p-1.5 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.8)]"
+            className="glass fixed inset-x-4 bottom-[max(14px,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-md grid-cols-3 gap-1 rounded-[30px] bg-panel/75 p-1.5 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.8)]"
           >
             {tabs.map(({ id, label, icon: Icon }) => {
               const active = tab === id;
@@ -58,7 +60,7 @@ export default function App() {
                   <Icon className="size-[22px]" aria-hidden />
                   {label}
                   {id === "home" && s.state === "connected" && !active && (
-                    <span className="absolute top-2.5 right-[34%] size-2 rounded-full bg-good ring-2 ring-[#121821]" aria-hidden />
+                    <span className="absolute top-2.5 right-[34%] size-2 rounded-full bg-good ring-2 ring-panel" aria-hidden />
                   )}
                 </button>
               );

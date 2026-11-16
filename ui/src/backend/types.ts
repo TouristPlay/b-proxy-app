@@ -44,6 +44,25 @@ export interface CoreSettings {
   logLevel: "none" | "error" | "warning" | "info" | "debug";
 }
 
+export type ThemeId = "amber" | "aqua" | "gold" | "emerald" | "mono";
+export type BackgroundKind = "blobs" | "horizon" | "stars" | "solid" | "image";
+
+/** «Оформление»: тема, свой цвет, фон, режим, стекло, анимации. */
+export interface Appearance {
+  theme: ThemeId;
+  /** Свой акцентный цвет (#RRGGBB) поверх темы; null — цвет темы. */
+  accent: string | null;
+  background: BackgroundKind;
+  /** Своя картинка фона (data: URL). */
+  backgroundImage: string | null;
+  /** Яркость фона, 0–100. */
+  backgroundDim: number;
+  mode: "dark" | "light" | "system";
+  /** Размытие стекла, px. */
+  glassBlur: number;
+  motion: boolean;
+}
+
 export interface Settings {
   russianSitesDirect: boolean;
   tlsFragment: boolean;
@@ -51,6 +70,7 @@ export interface Settings {
   ipv6: boolean;
   dnsServer: string;
   core: CoreSettings;
+  appearance: Appearance;
 }
 
 export interface Snapshot {
@@ -89,8 +109,9 @@ export interface Backend {
   refreshSubscriptions(): Promise<void>;
   removeSubscription(url: string): Promise<void>;
   pingAll(): Promise<void>;
-  updateSettings(patch: Partial<Omit<Settings, "core">>): Promise<void>;
+  updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>): Promise<void>;
   updateCore(patch: Partial<CoreSettings>): Promise<void>;
+  updateAppearance(patch: Partial<Appearance>): void;
   resetSettings(): Promise<void>;
   clearError(): void;
 }

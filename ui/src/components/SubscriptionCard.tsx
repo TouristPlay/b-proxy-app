@@ -17,7 +17,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
     <section
       className={cn(
         "glass relative overflow-hidden rounded-[28px] border-amber/20 p-5",
-        "bg-[radial-gradient(120%_90%_at_100%_0%,rgb(242_176_75/0.13),transparent_60%)]",
+        "bg-[radial-gradient(120%_90%_at_100%_0%,color-mix(in_srgb,var(--color-amber)_13%,transparent),transparent_60%)]",
         className,
       )}
       aria-label="Подписка"

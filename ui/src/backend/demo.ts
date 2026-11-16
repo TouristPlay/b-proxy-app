@@ -1,5 +1,6 @@
 import {
   nodeKey,
+  type Appearance,
   type Backend,
   type CoreSettings,
   type ServerNode,
@@ -45,6 +46,17 @@ export const defaultCore: CoreSettings = {
   logLevel: "warning",
 };
 
+export const defaultAppearance: Appearance = {
+  theme: "amber",
+  accent: null,
+  background: "horizon",
+  backgroundImage: null,
+  backgroundDim: 60,
+  mode: "dark",
+  glassBlur: 22,
+  motion: true,
+};
+
 export const defaultSettings: Settings = {
   russianSitesDirect: true,
   tlsFragment: false,
@@ -52,7 +64,21 @@ export const defaultSettings: Settings = {
   ipv6: false,
   dnsServer: "1.1.1.1",
   core: defaultCore,
+  appearance: defaultAppearance,
 };
+
+const APPEARANCE_KEY = "b-proxy.appearance";
+
+/** Оформление переживает перезагрузку страницы, если браузер даёт localStorage. */
+function loadAppearance(): Appearance {
+  try {
+    const raw = localStorage.getItem(APPEARANCE_KEY);
+    if (raw) return { ...defaultAppearance, ...(JSON.parse(raw) as Partial<Appearance>) };
+  } catch {
+    // Хранилище недоступно — берём оформление по умолчанию.
+  }
+  return defaultAppearance;
+}
 
 /** Бэкенд для показа дизайна в браузере: ведёт себя как настоящий, но ничего не подключает. */
 export class DemoBackend implements Backend {
@@ -69,7 +95,7 @@ export class DemoBackend implements Backend {
       selected: null,
       current: null,
       favorites: [nodeKey(demoSub.url, "de")],
-      settings: structuredClone(defaultSettings),
+      settings: { ...structuredClone(defaultSettings), appearance: loadAppearance() },
       downSpeed: null,
       upSpeed: null,
       downTotal: 0,
@@ -203,7 +229,7 @@ export class DemoBackend implements Backend {
     this.toast("Пинг обновлён");
   }
 
-  async updateSettings(patch: Partial<Omit<Settings, "core">>) {
+  async updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>) {
     this.emit({ settings: { ...this.s.settings, ...patch } });
   }
 
@@ -211,7 +237,23 @@ export class DemoBackend implements Backend {
     this.emit({ settings: { ...this.s.settings, core: { ...this.s.settings.core, ...patch } } });
   }
 
+  updateAppearance(patch: Partial<Appearance>) {
+    const appearance = { ...this.s.settings.appearance, ...patch };
+    this.emit({ settings: { ...this.s.settings, appearance } });
+    try {
+      // Картинку не сохраняем: она может быть больше лимита хранилища.
+      localStorage.setItem(APPEARANCE_KEY, JSON.stringify({ ...appearance, backgroundImage: null }));
+    } catch {
+      // Не сохранилось — ничего страшного, действует до перезагрузки.
+    }
+  }
+
   async resetSettings() {
+    try {
+      localStorage.removeItem(APPEARANCE_KEY);
+    } catch {
+      // Хранилище недоступно.
+    }
     this.emit({ settings: structuredClone(defaultSettings) });
     this.toast("Настройки сброшены");
   }

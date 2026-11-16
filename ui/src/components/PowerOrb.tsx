@@ -54,9 +54,9 @@ export function PowerOrb({
           width: ring,
           height: ring,
           background: on
-            ? "conic-gradient(from 210deg, #ffe3a6, #f2b04b 30%, #b9772a 55%, #f6c470 80%, #ffe3a6)"
-            : "rgb(255 255 255 / 0.06)",
-          boxShadow: on ? "0 0 60px -6px rgb(242 176 75 / 0.55)" : "none",
+            ? "conic-gradient(from 210deg, var(--color-amber-2), var(--color-amber) 30%, var(--color-amber-deep) 55%, var(--color-amber) 80%, var(--color-amber-2))"
+            : "var(--color-glass-2)",
+          boxShadow: on ? "0 0 60px -6px color-mix(in srgb, var(--color-amber) 55%, transparent)" : "none",
           WebkitMask: ringMask(size * 0.04),
           mask: ringMask(size * 0.04),
         }}
@@ -72,7 +72,7 @@ export function PowerOrb({
           viewBox="0 0 100 100"
           style={{ animation: "spin-slow 1.1s linear infinite" }}
         >
-          <circle cx="50" cy="50" r="47" fill="none" stroke="#f2b04b" strokeWidth="4" strokeLinecap="round" strokeDasharray="70 300" />
+          <circle cx="50" cy="50" r="47" fill="none" stroke="var(--color-amber)" strokeWidth="4" strokeLinecap="round" strokeDasharray="70 300" />
         </svg>
       )}
 
@@ -87,8 +87,8 @@ export function PowerOrb({
           width: disc,
           height: disc,
           background: on
-            ? "radial-gradient(circle at 50% 35%, rgb(255 215 150 / 0.16), rgb(20 18 16 / 0.65) 70%)"
-            : "radial-gradient(circle at 50% 30%, rgb(255 255 255 / 0.09), rgb(12 16 22 / 0.7) 70%)",
+            ? "radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--color-amber-2) 18%, transparent), var(--color-disc) 70%)"
+            : "radial-gradient(circle at 50% 30%, var(--color-glass-3), var(--color-disc) 70%)",
           boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.12), 0 20px 50px -20px rgb(0 0 0 / 0.8)",
         }}
       >

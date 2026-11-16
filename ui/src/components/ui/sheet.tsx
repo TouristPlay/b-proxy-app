@@ -27,7 +27,7 @@ export function Sheet({
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm data-[state=open]:animate-[fade_200ms_ease-out]" />
         <Dialog.Content
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50 max-h-[92dvh] overflow-y-auto rounded-t-[32px] border-t border-edge-2 bg-[#121821]/95 px-5 pt-3 pb-[max(24px,env(safe-area-inset-bottom))] backdrop-blur-2xl",
+            "fixed inset-x-0 bottom-0 z-50 max-h-[92dvh] overflow-y-auto rounded-t-[32px] border-t border-edge-2 bg-panel/95 px-5 pt-3 pb-[max(24px,env(safe-area-inset-bottom))] backdrop-blur-2xl",
             "md:inset-auto md:top-1/2 md:left-1/2 md:max-h-[86dvh] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[32px] md:border md:pt-6",
             wide ? "md:w-[560px]" : "md:w-[460px]",
           )}

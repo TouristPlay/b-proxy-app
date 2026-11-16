@@ -126,7 +126,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         </span>
                         <SignalPing ms={node.pingMs} className="shrink-0" />
                         {active && !auto ? (
-                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber text-[#2a1806]" aria-label="Выбран">
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber text-on-accent" aria-label="Выбран">
                             <Check className="size-4" strokeWidth={3} />
                           </span>
                         ) : null}

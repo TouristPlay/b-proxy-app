@@ -8,7 +8,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         amber:
-          "bg-gradient-to-b from-amber-2 to-amber text-[#2a1806] shadow-[0_8px_24px_-10px_rgb(242_176_75/0.7)] hover:brightness-105",
+          "bg-gradient-to-b from-amber-2 to-amber text-on-accent shadow-[0_8px_24px_-10px_color-mix(in_srgb,var(--color-amber)_70%,transparent)] hover:brightness-105",
         glass: "glass text-ink hover:bg-glass-2",
         ghost: "text-ink-2 hover:bg-glass-2 hover:text-ink",
         danger: "border border-bad/30 bg-bad/10 text-bad hover:bg-bad/15",
