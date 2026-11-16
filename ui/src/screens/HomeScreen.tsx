@@ -1,8 +1,8 @@
-import { ArrowDown, ArrowUp, ChevronRight, ClipboardPaste, Megaphone, Plus, ShieldCheck, X, Zap } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, ClipboardPaste, Megaphone, Plus, ShieldCheck, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { backend, useSnapshot } from "@/backend";
 import logo from "@/assets/logo.png";
-import { Flag, IconTile, SignalPing, Tags } from "@/components/bits";
+import { Flag, IconTile, SignalPing } from "@/components/bits";
 import { PowerOrb } from "@/components/PowerOrb";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
 import { Button } from "@/components/ui/button";
@@ -120,11 +120,6 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
           </button>
           {!on && (
             <>
-              <div className="flex items-center gap-3.5 px-4 py-3.5">
-                <IconTile icon={Zap} tone="violet" />
-                <span className="flex-1 font-medium">Протокол</span>
-                <Tags tags={s.current.node.tags} className="justify-end" />
-              </div>
               {sub?.expireAt && (
                 <div className="flex items-center gap-3.5 px-4 py-3.5">
                   <IconTile icon={ShieldCheck} tone="green" />
