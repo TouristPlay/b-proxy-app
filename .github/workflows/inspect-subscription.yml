@@ -1,0 +1,114 @@
+name: Проверить подписку
+
+# Загружает подписку так же, как это делает VPN-клиент, и печатает только
+# безопасную сводку: названия серверов, протоколы, транспорт и заголовки панели.
+# Ключи, UUID, пароли и адреса серверов в лог не попадают.
+#
+# Ссылку можно передать при ручном запуске (поле url) или положить в секрет
+# репозитория TEST_SUBSCRIPTION_URL.
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Ссылка на подписку (если пусто — берётся секрет TEST_SUBSCRIPTION_URL)"
+        required: false
+        type: string
+
+jobs:
+  inspect:
+    name: Сводка подписки
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Загрузить и разобрать
+        env:
+          INPUT_URL: ${{ inputs.url }}
+          SECRET_URL: ${{ secrets.TEST_SUBSCRIPTION_URL }}
+        run: |
+          URL="${INPUT_URL:-$SECRET_URL}"
+          if [ -z "$URL" ]; then echo "Ссылка не передана"; exit 1; fi
+          echo "::add-mask::$URL"
+          python3 - "$URL" <<'PY'
+          import base64, json, sys, urllib.parse, urllib.request
+
+          url = sys.argv[1]
+          agents = ["v2rayNG/1.9.30", "Happ/3.10.0", "INCY/2.7.2"]
+
+          def b64(s):
+              s = s.strip().replace("-", "+").replace("_", "/")
+              return base64.b64decode(s + "=" * (-len(s) % 4))
+
+          def fetch(ua):
+              req = urllib.request.Request(url, headers={"User-Agent": ua, "Accept": "*/*"})
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  return r.status, dict(r.headers), r.read().decode("utf-8", "replace")
+
+          for ua in agents:
+              try:
+                  status, headers, body = fetch(ua)
+              except Exception as e:
+                  print(f"[{ua}] ошибка: {e}")
+                  continue
+              text = body.strip()
+              if not text.startswith("<") and "://" not in text:
+                  try:
+                      text = b64(text).decode("utf-8", "replace")
+                  except Exception:
+                      pass
+              if "://" in text or text.startswith("["):
+                  break
+              print(f"[{ua}] {status}: ответ не похож на подписку ({len(body)} байт)")
+          else:
+              sys.exit("Не удалось получить список серверов")
+
+          safe_headers = {}
+          for k in ["profile-title", "subscription-userinfo", "profile-update-interval", "support-url",
+                    "profile-web-page-url", "announce", "hide-url", "sort-order", "content-disposition"]:
+              for hk, hv in headers.items():
+                  if hk.lower() == k:
+                      v = hv
+                      if v.startswith("base64:"):
+                          try:
+                              v = b64(v[7:]).decode()
+                          except Exception:
+                              pass
+                      safe_headers[k] = v
+
+          nodes = []
+          if text.startswith("["):
+              for cfg in json.loads(text):
+                  outs = cfg.get("outbounds", [])
+                  proxy = next((o for o in outs if o.get("tag") == "proxy"), outs[0] if outs else {})
+                  st = proxy.get("streamSettings", {})
+                  nodes.append({"name": cfg.get("remarks", ""), "protocol": proxy.get("protocol", ""),
+                                "security": st.get("security", "none"), "network": st.get("network", "tcp")})
+          else:
+              for line in text.splitlines():
+                  line = line.strip()
+                  if not line or line.startswith("#") or "://" not in line:
+                      continue
+                  scheme = line.split("://", 1)[0].lower()
+                  if scheme == "vmess":
+                      try:
+                          j = json.loads(b64(line[8:]))
+                          nodes.append({"name": j.get("ps", ""), "protocol": "vmess",
+                                        "security": j.get("tls") or "none", "network": j.get("net", "tcp")})
+                      except Exception:
+                          nodes.append({"name": "?", "protocol": "vmess"})
+                      continue
+                  u = urllib.parse.urlsplit(line)
+                  q = urllib.parse.parse_qs(u.query)
+                  nodes.append({
+                      "name": urllib.parse.unquote(u.fragment),
+                      "protocol": scheme,
+                      "security": (q.get("security") or ["tls" if scheme in ("trojan", "hysteria2", "hy2", "tuic") else "none"])[0],
+                      "network": (q.get("type") or ["udp" if scheme in ("hysteria2", "hy2", "tuic") else "tcp"])[0],
+                  })
+
+          print("=== ЗАГОЛОВКИ ===")
+          print(json.dumps(safe_headers, ensure_ascii=False, indent=2))
+          print(f"=== СЕРВЕРЫ ({len(nodes)}) ===")
+          print(json.dumps(nodes, ensure_ascii=False, indent=2))
+          print("=== КОНЕЦ ===")
+          PY
