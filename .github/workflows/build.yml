@@ -250,9 +250,15 @@ jobs:
         run: |
           set -o pipefail
           flutter build macos --release --config-only
+          # Полный лог — в файл; при ошибке показываем все строки с ошибками и конец лога.
           xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
             -configuration Release -derivedDataPath build/macos-dd \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tail -40
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build > xcodebuild-macos.log 2>&1 || {
+              grep -nE "error:|: error|fatal|Undefined symbol|ld: " xcodebuild-macos.log | head -80
+              tail -80 xcodebuild-macos.log
+              exit 1
+            }
+          tail -5 xcodebuild-macos.log
 
       - name: Упаковать
         run: |
