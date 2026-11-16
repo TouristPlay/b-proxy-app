@@ -20,6 +20,8 @@ jobs:
     name: Интерфейс (React)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
@@ -36,6 +38,19 @@ jobs:
           name: b-proxy-ui-preview
           path: ui/dist-preview/index.html
           if-no-files-found: error
+
+      # Готовое демо — в ветку ui-preview, чтобы его можно было открыть без скачивания архива.
+      - name: Выложить демо в ветку ui-preview
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/preview && cp ui/dist-preview/index.html /tmp/preview/
+          cd /tmp/preview
+          git init -q -b ui-preview
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add index.html
+          git commit -qm "Демо интерфейса ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ui-preview
 
   android:
     name: Android (APK)
