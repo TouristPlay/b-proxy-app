@@ -24,9 +24,11 @@ const months = [
   "июля", "августа", "сентября", "октября", "ноября", "декабря",
 ];
 
+/** «13 октября», а если год не текущий — «13 октября 2028». */
 export function formatDate(ts: number): string {
   const d = new Date(ts);
-  return `${d.getDate()} ${months[d.getMonth()]}`;
+  const year = d.getFullYear() === new Date().getFullYear() ? "" : ` ${d.getFullYear()}`;
+  return `${d.getDate()} ${months[d.getMonth()]}${year}`;
 }
 
 /** «🇳🇱 Нидерланды» → { code: "NL", name: "Нидерланды" }. */

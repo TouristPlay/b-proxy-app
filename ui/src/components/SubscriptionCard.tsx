@@ -68,7 +68,9 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
           <span className="text-ink-2">Трафик</span>
           <span className="tabular-nums">
             {unlimited ? (
-              <span className="text-good">Безлимит</span>
+              <>
+                {formatBytes(sub.usedBytes)} <span className="text-good">· без лимита</span>
+              </>
             ) : (
               <>
                 {formatBytes(sub.usedBytes)} <span className="text-ink-3">из {formatBytes(sub.totalBytes)}</span>
