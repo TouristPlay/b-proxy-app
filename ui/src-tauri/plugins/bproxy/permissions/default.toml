@@ -9,4 +9,8 @@ permissions = [
   "allow-start",
   "allow-stop",
   "allow-stats",
+  "allow-log",
+  "allow-log-info",
+  "allow-read-log",
+  "allow-open-logs-dir",
 ]

@@ -9,6 +9,7 @@
 //!   (pkexec / osascript). Он пишет состояние в файл `core.state`
 //!   и завершается, когда появляется файл `core.stop`.
 
+use crate::logs;
 use crate::models::{PrepareResult, StartArgs, StateEvent, Stats};
 use serde::de::DeserializeOwned;
 use std::ffi::{c_char, CStr, CString};
@@ -91,7 +92,9 @@ impl<R: Runtime> Vpn<R> {
             return Ok(core.clone());
         }
         let dir = self.app.path().resource_dir().map_err(|e| e.to_string())?;
-        let core = Arc::new(Core::load(&dir.join(LIB_NAME))?);
+        let path = dir.join(LIB_NAME);
+        let core = Arc::new(Core::load(&path).inspect_err(|e| logs::error("core", e))?);
+        logs::info("core", &format!("libXray загружен: {}", path.display()));
         *guard = Some(core.clone());
         Ok(core)
     }
@@ -121,19 +124,30 @@ impl<R: Runtime> Vpn<R> {
     }
 
     pub async fn start(&self, args: StartArgs) -> Result<(), String> {
+        logs::info("vpn", &format!("Запуск ядра, конфиг {} байт", args.config.len()));
+        logs::rotate_core_log();
+        let started = std::time::Instant::now();
         let result = self.start_inner(args).await;
         match &result {
             Ok(()) => {
                 *self.running.lock().unwrap() = true;
+                logs::info("vpn", &format!("VPN подключён за {} мс", started.elapsed().as_millis()));
                 self.emit("connected", None);
             }
-            Err(e) => self.emit("disconnected", Some(e.clone())),
+            Err(e) => {
+                logs::error("vpn", &format!("Не удалось подключиться: {e}"));
+                self.emit("disconnected", Some(e.clone()));
+            }
         }
         result
     }
 
     pub async fn stop(&self) -> Result<(), String> {
+        logs::info("vpn", "Отключение");
         let result = self.stop_inner().await;
+        if let Err(e) = &result {
+            logs::error("vpn", &format!("Ошибка при отключении: {e}"));
+        }
         *self.running.lock().unwrap() = false;
         self.emit("disconnected", result.clone().err());
         result

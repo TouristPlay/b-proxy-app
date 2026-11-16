@@ -63,24 +63,34 @@ export function summarize(list: ActivityEntry[], since: number, now = Date.now()
   return { sessions, protectedMs, down, up, errors, top };
 }
 
-/** Трафик по дням за последние n дней (старые слева). */
+/** Трафик и время под защитой по дням за последние n дней (старые слева). */
 export function trafficByDay(list: ActivityEntry[], days: number, now = Date.now()) {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
   const result = Array.from({ length: days }, (_, i) => {
     const day = new Date(start);
     day.setDate(start.getDate() - (days - 1 - i));
-    return { day: day.getTime(), bytes: 0 };
+    return { day: day.getTime(), bytes: 0, ms: 0, sessions: 0 };
   });
   for (const e of list) {
     if (e.kind !== "session") continue;
     const d = new Date(e.startedAt);
     d.setHours(0, 0, 0, 0);
     const slot = result.find((r) => r.day === d.getTime());
-    if (slot) slot.bytes += e.down + e.up;
+    if (slot) {
+      slot.bytes += e.down + e.up;
+      slot.ms += Math.max(0, (e.endedAt ?? now) - e.startedAt);
+      slot.sessions += 1;
+    }
   }
   return result;
 }
+
+export const startOfDay = (t: number) => {
+  const d = new Date(t);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+};
 
 /** Текст журнала для поддержки: без ссылок, ключей и адресов. */
 export function supportReport(list: ActivityEntry[], meta: { app: string; xray: string; platform: string }) {

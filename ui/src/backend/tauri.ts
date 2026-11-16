@@ -78,6 +78,8 @@ export class TauriBackend implements Backend {
   /** Запись текущего сеанса в журнале активности. */
   private sessionId: string | null = null;
   private lastSave = 0;
+  /** Пути журналов на диске; null — плагин не ответил. */
+  private logPaths: { dir: string; appLog: string; coreLog: string } | null = null;
 
   constructor() {
     const saved = readJson<Persisted>(STATE_KEY);
@@ -111,7 +113,33 @@ export class TauriBackend implements Backend {
     void this.init();
   }
 
+  /** Строка в logs/bproxy.log. Ошибки записи не мешают работе. */
+  private writeLog(level: "info" | "warn" | "error", message: string) {
+    void invoke("plugin:bproxy|log", { level, message }).catch(() => undefined);
+  }
+
+  async readLog(which: "app" | "core") {
+    try {
+      return await invoke<string>("plugin:bproxy|read_log", { which, maxBytes: 128 * 1024 });
+    } catch {
+      return "";
+    }
+  }
+
+  async openLogsFolder() {
+    if (isMobile(this.platform)) return false;
+    try {
+      await invoke("plugin:bproxy|open_logs_dir");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private async init() {
+    this.logPaths = await invoke<{ dir: string; appLog: string; coreLog: string } | null>("plugin:bproxy|log_info").catch(() => null);
+    const sub = this.subs.map((x) => `«${x.title}» (${x.nodes.filter((n) => !n.divider).length})`).join(", ");
+    this.writeLog("info", `Интерфейс ${APP_VERSION}, ${this.platform}; подписки: ${sub || "нет"}`);
     // Состояние туннеля приходит из Rust (компьютеры) или из нативного кода (телефоны).
     const onState = (p: { state: string; error?: string | null }) => this.onTunnelState(p.state, p.error ?? null);
     if (isMobile(this.platform)) {
@@ -254,7 +282,8 @@ export class TauriBackend implements Backend {
 
   private logError(text: string) {
     // Ссылка на подписку — это ключ доступа: в журнал (и в отчёт для поддержки) она не попадает.
-    const clean = text.replace(/https?:\/\/\S+/g, "‹ссылка›");
+    const clean = text.replace(/[a-z0-9+]+:\/\/\S+/gi, "‹ссылка›");
+    this.writeLog("error", clean);
     this.log({ kind: "error", id: newId(), at: Date.now(), server: this.s.current?.node.name ?? null, text: clean });
   }
 
@@ -316,6 +345,7 @@ export class TauriBackend implements Backend {
 
   private async cancelConnect() {
     this.cancelled = true;
+    this.writeLog("info", "Подключение отменено пользователем");
     this.emit({ state: "disconnecting" });
     await invoke("plugin:bproxy|stop").catch(() => undefined);
     this.stopStats();
@@ -360,7 +390,16 @@ export class TauriBackend implements Backend {
       const permission = await invoke<{ granted: boolean }>("plugin:bproxy|prepare");
       if (!permission.granted) throw new Error("Разрешите B-Proxy создать VPN, чтобы подключиться");
 
-      const config = buildConfig(node, this.s.settings, this.platform, stored.fragment);
+      const coreLog = this.platform === "ios" ? null : (this.logPaths?.coreLog ?? null);
+      const config = buildConfig(node, this.s.settings, this.platform, stored.fragment, coreLog);
+      const set = this.s.settings;
+      this.writeLog(
+        "info",
+        `Подключение: ${target.node.name} [${target.node.tags.join("/")}], ` +
+          `маршруты: РФ напрямую=${set.russianSitesDirect}, DPI=${set.tlsFragment || stored.fragment != null}, ` +
+          `реклама=${set.blockAds}, IPv6=${set.ipv6}, DNS ${set.dnsServer}; ядро: память ${set.core.memoryLimitMb} МБ, ` +
+          `MTU ${set.core.mtu || 1500}, журнал ${set.core.logLevel}`,
+      );
       if (this.cancelled) return;
       await invoke("plugin:bproxy|start", { config });
       if (this.cancelled) {
@@ -409,10 +448,12 @@ export class TauriBackend implements Backend {
     this.last = null;
     this.startStats();
     this.openSession();
+    this.writeLog("info", `Подключено: ${this.s.current?.node.name ?? "?"}`);
   }
 
   private onTunnelState(state: string, error: string | null) {
     if (this.busy) return; // ход подключения ведёт connect()/disconnect()
+    this.writeLog(error ? "error" : "info", `Состояние туннеля от системы: ${state}${error ? ` (${error})` : ""}`);
     if (state === "connected") this.onConnected();
     else if (state === "disconnected" && this.s.state !== "disconnected") {
       // Туннель выключила система или кнопка в уведомлении.
@@ -520,6 +561,11 @@ export class TauriBackend implements Backend {
     );
     this.setSubs(next);
     for (const e of errors) this.logError(`Подписка не обновилась — ${e}`);
+    this.writeLog(
+      "info",
+      `Обновление подписок${silent ? " (авто)" : ""}: ` +
+        next.map((x) => `«${x.title}» ${x.nodes.filter((n) => !n.divider).length} серв.`).join(", "),
+    );
     if (errors.length < this.subs.length) {
       this.log({ kind: "subscription", id: newId(), at: Date.now(), text: silent ? "Подписки обновлены автоматически" : "Подписки обновлены" });
     }
@@ -587,6 +633,11 @@ export class TauriBackend implements Backend {
         }
       };
       await Promise.all([worker(), worker(), worker()]);
+      const ok = [...results.values()].filter((v) => v > 0);
+      this.writeLog(
+        ok.length ? "info" : "warn",
+        `Пинг: ответили ${ok.length} из ${results.size}` + (ok.length ? `, лучший ${Math.min(...ok)} мс` : ""),
+      );
 
       this.setSubs(
         this.subs.map((sub) => ({

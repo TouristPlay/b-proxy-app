@@ -1,15 +1,31 @@
-import { ArrowDown, ArrowUp, ClipboardCopy, RefreshCw, ShieldCheck, Trash2, TriangleAlert } from "lucide-react";
-import { useMemo, useState } from "react";
-import { backend, useSnapshot, type ActivityEntry } from "@/backend";
-import { entryTime, summarize, supportReport, trafficByDay } from "@/backend/activity";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ClipboardCopy,
+  FileText,
+  Plug,
+  RefreshCw,
+  ShieldCheck,
+  Trash2,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+import { type ReactNode, useMemo, useState } from "react";
+import { backend, useSnapshot, type ActivityEntry, type Snapshot } from "@/backend";
+import { entryTime, startOfDay, summarize, supportReport, trafficByDay } from "@/backend/activity";
 import { detectPlatform } from "@/backend/xray";
 import { Flag } from "@/components/bits";
 import { Button } from "@/components/ui/button";
-import { formatBytes, plural, splitFlag } from "@/lib/format";
+import { formatBytes, formatDuration, formatSpeed, plural, splitFlag } from "@/lib/format";
 import { useNow } from "@/lib/useMedia";
 import { cn } from "@/lib/utils";
+import { LogsSheet } from "./LogsSheet";
 
 type Period = "today" | "week" | "month";
+type Metric = "traffic" | "time";
+type Kind = "all" | "session" | "error";
+type Session = Extract<ActivityEntry, { kind: "session" }>;
 
 const periods: { id: Period; label: string; days: number }[] = [
   { id: "today", label: "Сегодня", days: 1 },
@@ -22,13 +38,21 @@ const platformName = { android: "Android", ios: "iOS", windows: "Windows", macos
 /**
  * Активность: сколько времени устройство было под защитой, сколько трафика прошло
  * через VPN, какими серверами пользуетесь чаще и журнал подключений.
- * Всё считается по записям на этом устройстве, никуда не отправляется.
+ * День на графике, сервер в «Чаще всего» и тип записи фильтруют журнал;
+ * сеанс раскрывается в подробности и подключается заново одним нажатием.
+ * Данные — только записи на этом устройстве.
  */
 export function ActivityScreen({ embedded }: { embedded?: boolean }) {
   const s = useSnapshot();
   const [period, setPeriod] = useState<Period>("week");
-  const live = s.activity.some((e) => e.kind === "session" && e.endedAt == null);
-  const now = useNow(live);
+  const [metric, setMetric] = useState<Metric>("traffic");
+  const [day, setDay] = useState<number | null>(null);
+  const [server, setServer] = useState<string | null>(null);
+  const [kind, setKind] = useState<Kind>("all");
+  const [open, setOpen] = useState<string | null>(null);
+  const [logs, setLogs] = useState(false);
+  const live = s.activity.find((e): e is Session => e.kind === "session" && e.endedAt == null) ?? null;
+  const now = useNow(live != null);
   const days = periods.find((p) => p.id === period)!.days;
 
   const since = useMemo(() => {
@@ -38,9 +62,33 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
     return d.getTime();
   }, [now, days]);
 
-  const sum = useMemo(() => summarize(s.activity, since, now), [s.activity, since, now]);
+  // Выбранный день сужает всё, кроме самого графика.
+  const range = useMemo(
+    () => (day != null ? { from: day, to: day + 86_400_000 } : { from: since, to: Infinity }),
+    [day, since],
+  );
+  const inRange = useMemo(
+    () => s.activity.filter((e) => entryTime(e) >= range.from && entryTime(e) < range.to),
+    [s.activity, range],
+  );
+  const sum = useMemo(() => summarize(inRange, range.from, now), [inRange, range, now]);
   const bars = useMemo(() => trafficByDay(s.activity, period === "month" ? 30 : 7, now), [s.activity, period, now]);
-  const journal = useMemo(() => groupByDay(s.activity.filter((e) => entryTime(e) >= since)), [s.activity, since]);
+
+  const journal = useMemo(() => {
+    const filtered = inRange.filter(
+      (e) =>
+        (kind === "all" || e.kind === kind || (kind === "error" && e.kind === "session" && e.end === "error")) &&
+        (!server || (e.kind === "session" ? e.server === server : e.kind === "error" && e.server === server)),
+    );
+    return groupByDay(filtered);
+  }, [inRange, kind, server]);
+
+  // Короткое подтверждение под кнопкой копирования.
+  const [note, setNote] = useState<string | null>(null);
+  function flash(text: string) {
+    setNote(text);
+    window.setTimeout(() => setNote(null), 3500);
+  }
 
   async function copyReport() {
     const text = supportReport(s.activity, { ...s.version, platform: platformName[detectPlatform()] });
@@ -52,18 +100,19 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
     }
   }
 
-  // Короткое подтверждение под кнопкой: уведомления бэкенда заняты «Вернуть».
-  const [note, setNote] = useState<string | null>(null);
-  function flash(text: string) {
-    setNote(text);
-    window.setTimeout(() => setNote(null), 3500);
+  function changePeriod(p: Period) {
+    setPeriod(p);
+    setDay(null);
   }
 
   const empty = s.activity.length === 0;
+  const filtered = day != null || server != null || kind !== "all";
 
   return (
     <div className={embedded ? "w-full" : "mx-auto w-full max-w-md px-5 pt-[max(18px,env(safe-area-inset-top))] pb-32"}>
       {!embedded && <h1 className="mb-5 font-display text-[28px] font-semibold tracking-[-0.02em]">Активность</h1>}
+
+      {live && s.state === "connected" && <LiveCard session={live} s={s} now={now} />}
 
       {empty ? (
         <div className="glass flex flex-col items-center rounded-[28px] px-6 py-10 text-center">
@@ -82,23 +131,7 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="glass grid grid-cols-3 gap-1 rounded-2xl p-1" role="tablist" aria-label="Период">
-            {periods.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                role="tab"
-                aria-selected={period === p.id}
-                onClick={() => setPeriod(p.id)}
-                className={cn(
-                  "h-10 rounded-xl text-sm font-medium transition-colors",
-                  period === p.id ? "bg-ink text-base" : "text-ink-2 hover:text-ink",
-                )}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <Segmented label="Период" value={period} onChange={changePeriod} options={periods.map((p) => ({ id: p.id, label: p.label }))} />
 
           <div className="grid grid-cols-2 gap-3">
             <section className="glass rounded-[22px] px-4 py-3.5" aria-label="Под защитой">
@@ -108,6 +141,12 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
               </p>
               <p className="mt-0.5 text-[13px] text-ink-3 tabular-nums">
                 {sum.sessions.length} {plural(sum.sessions.length, "сеанс", "сеанса", "сеансов")}
+                {sum.errors > 0 && (
+                  <span className="text-bad">
+                    {" "}
+                    · {sum.errors} {plural(sum.errors, "ошибка", "ошибки", "ошибок")}
+                  </span>
+                )}
               </p>
             </section>
             <section className="glass rounded-[22px] px-4 py-3.5" aria-label="Трафик через VPN">
@@ -115,7 +154,7 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
               <p className="mt-1 font-display text-[24px] leading-tight font-semibold tracking-tight tabular-nums">
                 {formatBytes(sum.down + sum.up)}
               </p>
-              <p className="mt-0.5 flex gap-2.5 text-[13px] text-ink-3 tabular-nums">
+              <p className="mt-0.5 flex gap-2 text-[12.5px] whitespace-nowrap text-ink-3 tabular-nums">
                 <span className="flex items-center gap-0.5">
                   <ArrowDown className="size-3.5" aria-label="получено" />
                   {formatBytes(sum.down)}
@@ -128,28 +167,45 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
             </section>
           </div>
 
-          {period !== "today" && <DayBars bars={bars} now={now} />}
+          {period !== "today" && <DayBars bars={bars} now={now} metric={metric} onMetric={setMetric} selected={day} onSelect={setDay} />}
 
           {sum.top.length > 0 && (
-            <section className="glass rounded-[24px] p-4" aria-labelledby="top-servers">
-              <h2 id="top-servers" className="mb-3 text-[13px] font-medium text-ink-2">
+            <section className="glass rounded-[24px] p-2" aria-labelledby="top-servers">
+              <h2 id="top-servers" className="px-2 pt-2 pb-1 text-[13px] font-medium text-ink-2">
                 Чаще всего
               </h2>
-              <ul className="flex flex-col gap-3">
-                {sum.top.map(([server, ms]) => {
+              <ul className="flex flex-col">
+                {sum.top.map(([name, ms]) => {
                   const share = sum.protectedMs > 0 ? ms / sum.protectedMs : 0;
+                  const active = server === name;
                   return (
-                    <li key={server} className="flex items-center gap-3">
-                      <Flag name={server} size="sm" />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline justify-between gap-2">
-                          <span className="truncate font-medium">{splitFlag(server).name}</span>
-                          <span className="shrink-0 text-[13px] text-ink-2 tabular-nums">{humanDuration(ms)}</span>
+                    <li key={name}>
+                      <button
+                        type="button"
+                        aria-pressed={active}
+                        aria-label={`${splitFlag(name).name}: ${humanDuration(ms)}. Показать в журнале`}
+                        onClick={() => setServer(active ? null : name)}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-[16px] px-2 py-2.5 text-left transition-colors duration-[var(--dur)]",
+                          active ? "bg-amber/10" : "hover:bg-glass-2",
+                        )}
+                      >
+                        <Flag name={name} size="sm" />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className={cn("truncate font-medium", active && "text-amber")}>{splitFlag(name).name}</span>
+                            <span className="shrink-0 text-[13px] text-ink-2 tabular-nums">
+                              {humanDuration(ms)} · {Math.round(share * 100)}%
+                            </span>
+                          </span>
+                          <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-glass-3" aria-hidden>
+                            <span
+                              className="block h-full rounded-full bg-amber transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-out)]"
+                              style={{ width: `${Math.max(3, share * 100)}%` }}
+                            />
+                          </span>
                         </span>
-                        <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-glass-3" aria-hidden>
-                          <span className="block h-full rounded-full bg-amber" style={{ width: `${Math.max(3, share * 100)}%` }} />
-                        </span>
-                      </span>
+                      </button>
                     </li>
                   );
                 })}
@@ -158,19 +214,61 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
           )}
 
           <section aria-labelledby="journal" className="mt-1">
-            <h2 id="journal" className="mb-2 px-1 text-[13px] font-medium text-ink-2">
-              Журнал
-            </h2>
+            <div className="mb-2 flex items-center justify-between gap-2 px-1">
+              <h2 id="journal" className="text-[13px] font-medium text-ink-2">
+                Журнал
+              </h2>
+              {filtered && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDay(null);
+                    setServer(null);
+                    setKind("all");
+                  }}
+                  className="min-h-9 text-[13px] font-medium text-amber hover:text-amber-2"
+                >
+                  Сбросить фильтры
+                </button>
+              )}
+            </div>
+
+            <div className="mb-3 flex flex-wrap gap-2">
+              {(
+                [
+                  ["all", "Всё"],
+                  ["session", "Подключения"],
+                  ["error", "Ошибки"],
+                ] as const
+              ).map(([id, text]) => (
+                <Chip key={id} active={kind === id} onClick={() => setKind(id)}>
+                  {text}
+                </Chip>
+              ))}
+              {day != null && (
+                <Chip active onClick={() => setDay(null)} removable>
+                  {dayTitle(day, now)}
+                </Chip>
+              )}
+              {server && (
+                <Chip active onClick={() => setServer(null)} removable>
+                  {splitFlag(server).name}
+                </Chip>
+              )}
+            </div>
+
             {journal.length === 0 && (
-              <p className="glass rounded-[20px] px-4 py-4 text-[15px] text-ink-2">За этот период подключений не было</p>
+              <p className="glass rounded-[20px] px-4 py-4 text-[15px] text-ink-2">
+                {filtered ? "Под эти условия ничего не попало" : "За этот период подключений не было"}
+              </p>
             )}
             <div className="flex flex-col gap-4">
-              {journal.map(({ day, entries }) => (
-                <div key={day}>
-                  <h3 className="mb-1.5 px-1 text-[13px] text-ink-3">{dayTitle(day, now)}</h3>
+              {journal.map(({ day: d, entries }) => (
+                <div key={d}>
+                  <h3 className="mb-1.5 px-1 text-[13px] text-ink-3">{dayTitle(d, now)}</h3>
                   <ul className="glass divide-y divide-edge overflow-hidden rounded-[22px]">
                     {entries.map((e) => (
-                      <JournalRow key={e.id} entry={e} now={now} />
+                      <JournalRow key={e.id} entry={e} now={now} open={open === e.id} onToggle={() => setOpen(open === e.id ? null : e.id)} s={s} />
                     ))}
                   </ul>
                 </div>
@@ -179,10 +277,16 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
           </section>
 
           <div className="mt-2 flex flex-col gap-2">
-            <Button variant="glass" onClick={() => void copyReport()}>
-              <ClipboardCopy />
-              Скопировать для поддержки
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="glass" className="px-3" onClick={() => void copyReport()}>
+                <ClipboardCopy />
+                Для поддержки
+              </Button>
+              <Button variant="glass" className="px-3" onClick={() => setLogs(true)}>
+                <FileText />
+                Тех. журналы
+              </Button>
+            </div>
             <p aria-live="polite" className="min-h-5 text-center text-[13px] text-good">
               {note}
             </p>
@@ -196,26 +300,108 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
           </div>
         </div>
       )}
+
+      <LogsSheet open={logs} onOpenChange={setLogs} />
     </div>
   );
 }
 
-function JournalRow({ entry: e, now }: { entry: ActivityEntry; now: number }) {
+/** Текущий сеанс: таймер, скорость и график в реальном времени. */
+function LiveCard({ session, s, now }: { session: Session; s: Snapshot; now: number }) {
+  const history = s.speedHistory.slice(-40);
+  const max = Math.max(...history, 1);
+  return (
+    <section className="glass anim-rise mb-4 rounded-[24px] border-good/30 p-4" aria-label="Текущее подключение">
+      <div className="flex items-center gap-3">
+        <Flag name={session.server} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{splitFlag(session.server).name}</span>
+          <span className="flex items-center gap-1.5 text-[13px] text-good tabular-nums">
+            <span className="size-1.5 animate-pulse rounded-full bg-good" aria-hidden />
+            Сейчас · {formatDuration(now - session.startedAt)}
+          </span>
+        </span>
+        <span className="text-right text-[13px] text-ink-2 tabular-nums">
+          <span className="flex items-center justify-end gap-1">
+            <ArrowDown className="size-3.5 text-good" aria-label="загрузка" />
+            {formatSpeed(s.downSpeed ?? 0)}
+          </span>
+          <span className="flex items-center justify-end gap-1">
+            <ArrowUp className="size-3.5" aria-label="отдача" />
+            {formatSpeed(s.upSpeed ?? 0)}
+          </span>
+        </span>
+      </div>
+      <div className="mt-3 flex h-10 items-end gap-[2px]" aria-hidden>
+        {Array.from({ length: 40 }, (_, i) => {
+          const v = history[history.length - 40 + i] ?? 0;
+          return (
+            <span
+              key={i}
+              className="flex-1 rounded-sm bg-good/60 transition-[height] duration-500 ease-[var(--ease-out)]"
+              style={{ height: `${Math.max(6, (v / max) * 100)}%` }}
+            />
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function JournalRow({ entry: e, now, open, onToggle, s }: { entry: ActivityEntry; now: number; open: boolean; onToggle: () => void; s: Snapshot }) {
   if (e.kind === "session") {
     const live = e.endedAt == null;
     const end = e.endedAt ?? now;
+    const dur = end - e.startedAt;
+    // Сервер ещё есть в подписках — можно подключиться к нему снова.
+    const target = findServer(s, e.server);
+    const canReconnect = target != null && s.state === "disconnected";
     return (
-      <li className="flex items-center gap-3 px-4 py-3">
-        <Flag name={e.server} size="sm" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-medium">{splitFlag(e.server).name}</span>
-          <span className={cn("block text-[13px] tabular-nums", live ? "text-good" : "text-ink-2")}>
-            {live ? `Подключено с ${time(e.startedAt)}` : `${time(e.startedAt)}–${time(end)}`} · {humanDuration(end - e.startedAt)}
-            {e.end === "system" && " · прервано системой"}
-            {e.end === "error" && " · обрыв"}
+      <li>
+        <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-glass-2">
+          <Flag name={e.server} size="sm" />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium">{splitFlag(e.server).name}</span>
+            <span className={cn("block text-[13px] tabular-nums", live ? "text-good" : e.end === "error" ? "text-bad" : "text-ink-2")}>
+              {live ? `Подключено с ${time(e.startedAt)}` : `${time(e.startedAt)}–${time(end)}`} · {humanDuration(dur)}
+              {e.end === "system" && " · прервано системой"}
+              {e.end === "error" && " · обрыв"}
+            </span>
           </span>
-        </span>
-        <span className="shrink-0 text-right text-[13px] text-ink-2 tabular-nums">{formatBytes(e.down + e.up)}</span>
+          <span className="shrink-0 text-right text-[13px] text-ink-2 tabular-nums">{formatBytes(e.down + e.up)}</span>
+          <ChevronDown className={cn("size-4 shrink-0 text-ink-3 transition-transform duration-[var(--dur)]", open && "rotate-180")} aria-hidden />
+        </button>
+        {open && (
+          <div className="anim-status border-t border-edge px-4 py-3">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
+              <Detail term="Начало" value={`${dateFmt.format(e.startedAt)}, ${time(e.startedAt)}`} />
+              <Detail term="Длительность" value={humanDuration(dur)} />
+              <Detail term="Получено" value={formatBytes(e.down)} />
+              <Detail term="Отправлено" value={formatBytes(e.up)} />
+              <Detail term="Средняя скорость" value={formatSpeed(dur > 0 ? (e.down / dur) * 1000 : 0)} />
+              <Detail
+                term="Чем закончилось"
+                value={live ? "Идёт сейчас" : e.end === "manual" ? "Отключили вы" : e.end === "system" ? "Прервала система" : "Обрыв связи"}
+              />
+              {e.subscription && <Detail term="Подписка" value={e.subscription} />}
+              {e.error && <Detail term="Ошибка" value={e.error} wide />}
+            </dl>
+            {canReconnect && (
+              <Button
+                size="sm"
+                variant="amber"
+                className="mt-3"
+                onClick={async () => {
+                  await backend.select({ subUrl: target.subUrl, nodeId: target.nodeId });
+                  await backend.toggle();
+                }}
+              >
+                <Plug />
+                Подключиться к нему
+              </Button>
+            )}
+          </div>
+        )}
       </li>
     );
   }
@@ -224,10 +410,7 @@ function JournalRow({ entry: e, now }: { entry: ActivityEntry; now: number }) {
   return (
     <li className="flex items-start gap-3 px-4 py-3">
       <span
-        className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-xl border",
-          error ? "border-bad/30 bg-bad/10 text-bad" : "border-edge bg-glass-2 text-ink-2",
-        )}
+        className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl border", error ? "border-bad/30 bg-bad/10 text-bad" : "border-edge bg-glass-2 text-ink-2")}
         aria-hidden
       >
         <Icon className="size-4" />
@@ -246,40 +429,116 @@ function JournalRow({ entry: e, now }: { entry: ActivityEntry; now: number }) {
   );
 }
 
-/** Столбики трафика по дням; сегодняшний — цвета акцента. */
-function DayBars({ bars, now }: { bars: { day: number; bytes: number }[]; now: number }) {
-  const max = Math.max(...bars.map((b) => b.bytes), 1);
-  const total = bars.reduce((n, b) => n + b.bytes, 0);
-  const many = bars.length > 7;
+function Detail({ term, value, wide }: { term: string; value: string; wide?: boolean }) {
   return (
-    <section className="glass rounded-[24px] p-4" aria-labelledby="traffic-by-day">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 id="traffic-by-day" className="text-[13px] font-medium text-ink-2">
-          Трафик по дням
+    <div className={cn("min-w-0", wide && "col-span-2")}>
+      <dt className="text-ink-3">{term}</dt>
+      <dd className="break-words text-ink tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+/**
+ * Столбики по дням. Нажатие выбирает день и фильтрует журнал, повторное — снимает выбор.
+ * Переключатель — трафик или время под защитой.
+ */
+function DayBars({
+  bars,
+  now,
+  metric,
+  onMetric,
+  selected,
+  onSelect,
+}: {
+  bars: { day: number; bytes: number; ms: number; sessions: number }[];
+  now: number;
+  metric: Metric;
+  onMetric: (m: Metric) => void;
+  selected: number | null;
+  onSelect: (day: number | null) => void;
+}) {
+  const value = (b: (typeof bars)[number]) => (metric === "traffic" ? b.bytes : b.ms);
+  const show = (v: number) => (metric === "traffic" ? formatBytes(v) : humanDuration(v));
+  const max = Math.max(...bars.map(value), 1);
+  const many = bars.length > 7;
+  const picked = bars.find((b) => b.day === selected) ?? null;
+  const total = bars.reduce((n, b) => n + value(b), 0);
+  const today = startOfDay(now);
+
+  return (
+    <section className="glass rounded-[24px] p-4" aria-labelledby="by-day">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 id="by-day" className="text-[13px] font-medium text-ink-2">
+          По дням
         </h2>
-        <span className="text-[13px] text-ink-3 tabular-nums">макс. {formatBytes(max)}</span>
+        <div className="glass flex rounded-full p-0.5" role="group" aria-label="Что показать на графике">
+          {(
+            [
+              ["traffic", "Трафик"],
+              ["time", "Время"],
+            ] as const
+          ).map(([id, text]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={metric === id}
+              onClick={() => onMetric(id)}
+              className={cn(
+                "h-9 rounded-full px-3.5 text-[13px] font-medium transition-colors duration-[var(--dur)]",
+                metric === id ? "bg-ink text-base" : "text-ink-2 hover:text-ink",
+              )}
+            >
+              {text}
+            </button>
+          ))}
+        </div>
       </div>
-      <div
-        className={cn("flex h-28 items-end", many ? "gap-[3px]" : "gap-2")}
-        role="img"
-        aria-label={`Трафик по дням, всего ${formatBytes(total)}`}
-      >
+
+      <p key={`${selected}-${metric}`} className="anim-status mb-3 min-h-5 text-[14px] tabular-nums" aria-live="polite">
+        {picked ? (
+          <>
+            <span className="font-medium text-amber">{dayTitle(picked.day, now)}:</span> {show(value(picked))}
+            <span className="text-ink-3">
+              {" "}
+              · {picked.sessions} {plural(picked.sessions, "сеанс", "сеанса", "сеансов")}
+            </span>
+          </>
+        ) : (
+          <span className="text-ink-2">
+            Всего {show(total)} <span className="text-ink-3">· выберите день</span>
+          </span>
+        )}
+      </p>
+
+      <div className={cn("flex h-28 items-end", many ? "gap-[3px]" : "gap-2")}>
         {bars.map((b) => {
-          const today = isSameDay(b.day, now);
+          const isSel = b.day === selected;
+          const v = value(b);
           return (
-            <div key={b.day} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${dayTitle(b.day, now)}: ${formatBytes(b.bytes)}`}>
-              <div
-                className={cn("w-full rounded-md", today ? "bg-amber" : "bg-ink/20")}
-                style={{ height: b.bytes > 0 ? `${Math.max(4, (b.bytes / max) * 100)}%` : "2px" }}
+            <button
+              key={b.day}
+              type="button"
+              onClick={() => onSelect(isSel ? null : b.day)}
+              aria-pressed={isSel}
+              aria-label={`${dayTitle(b.day, now)}: ${show(v)}`}
+              className="group flex h-full min-w-0 flex-1 flex-col justify-end rounded-md"
+            >
+              <span
+                className={cn(
+                  "block w-full rounded-md transition-[height,background-color,opacity] duration-[var(--dur-slow)] ease-[var(--ease-out)]",
+                  isSel ? "bg-amber" : b.day === today && selected == null ? "bg-amber/80" : "bg-ink/20 group-hover:bg-ink/35",
+                  selected != null && !isSel && "opacity-50",
+                )}
+                style={{ height: v > 0 ? `${Math.max(4, (v / max) * 100)}%` : "2px" }}
               />
-            </div>
+            </button>
           );
         })}
       </div>
       {!many && (
         <div className="mt-2 flex gap-2" aria-hidden>
           {bars.map((b) => (
-            <span key={b.day} className={cn("flex-1 text-center text-[12px]", isSameDay(b.day, now) ? "text-amber" : "text-ink-3")}>
+            <span key={b.day} className={cn("flex-1 text-center text-[12px]", b.day === selected || (selected == null && b.day === today) ? "text-amber" : "text-ink-3")}>
               {weekday.format(b.day)}
             </span>
           ))}
@@ -289,18 +548,80 @@ function DayBars({ bars, now }: { bars: { day: number; bytes: number }[]; now: n
   );
 }
 
+function Segmented<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: { id: T; label: string }[];
+}) {
+  const index = options.findIndex((o) => o.id === value);
+  return (
+    <div className="glass relative grid gap-1 rounded-2xl p-1" style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }} role="tablist" aria-label={label}>
+      {/* Подложка переезжает к выбранному пункту. */}
+      <span
+        aria-hidden
+        className="absolute top-1 bottom-1 left-1 rounded-xl bg-ink transition-transform duration-[380ms] ease-[var(--ease-out)]"
+        style={{
+          width: `calc((100% - 8px - ${(options.length - 1) * 4}px) / ${options.length})`,
+          transform: `translateX(calc(${index} * (100% + 4px)))`,
+        }}
+      />
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          role="tab"
+          aria-selected={value === o.id}
+          onClick={() => onChange(o.id)}
+          className={cn("relative h-10 rounded-xl text-sm font-medium transition-colors duration-[var(--dur)]", value === o.id ? "text-base" : "text-ink-2 hover:text-ink")}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Chip({ active, onClick, removable, children }: { active: boolean; onClick: () => void; removable?: boolean; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors duration-[var(--dur)]",
+        active ? "border-amber/50 bg-amber/12 text-amber" : "border-edge text-ink-2 hover:text-ink",
+      )}
+    >
+      {children}
+      {removable && <X className="size-3.5" aria-label="убрать" />}
+    </button>
+  );
+}
+
+/** Найти сервер по названию в текущих подписках, чтобы подключиться к нему снова. */
+function findServer(s: Snapshot, name: string) {
+  for (const sub of s.subscriptions) {
+    const node = sub.nodes.find((n) => !n.divider && n.name === name);
+    if (node) return { subUrl: sub.url, nodeId: node.id };
+  }
+  return null;
+}
+
 const weekday = new Intl.DateTimeFormat("ru-RU", { weekday: "short" });
 const timeFmt = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" });
 const dateFmt = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
 const time = (t: number) => timeFmt.format(t);
 
-function isSameDay(a: number, b: number) {
-  return new Date(a).toDateString() === new Date(b).toDateString();
-}
-
 function dayTitle(day: number, now: number) {
-  if (isSameDay(day, now)) return "Сегодня";
-  if (isSameDay(day, now - 86_400_000)) return "Вчера";
+  const d = startOfDay(day);
+  if (d === startOfDay(now)) return "Сегодня";
+  if (d === startOfDay(now - 86_400_000)) return "Вчера";
   return dateFmt.format(day);
 }
 
@@ -342,9 +663,7 @@ function humanDuration(ms: number) {
 function groupByDay(list: ActivityEntry[]) {
   const groups: { day: number; entries: ActivityEntry[] }[] = [];
   for (const e of list) {
-    const d = new Date(entryTime(e));
-    d.setHours(0, 0, 0, 0);
-    const day = d.getTime();
+    const day = startOfDay(entryTime(e));
     const last = groups.at(-1);
     if (last && last.day === day) last.entries.push(e);
     else groups.push({ day, entries: [e] });

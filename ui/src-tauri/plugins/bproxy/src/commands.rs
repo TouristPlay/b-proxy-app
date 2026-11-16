@@ -1,3 +1,4 @@
+use crate::logs::{self, LogInfo};
 use crate::models::{FetchResult, PrepareResult, StartArgs, Stats};
 use crate::{subscription, VpnExt};
 use tauri::{command, AppHandle, Runtime};
@@ -33,4 +34,35 @@ pub(crate) async fn stop<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 #[command]
 pub(crate) async fn stats<R: Runtime>(app: AppHandle<R>) -> Result<Option<Stats>, String> {
     app.vpn().stats().await
+}
+
+/// Строка в журнал приложения от интерфейса: уровень INFO / WARN / ERROR.
+#[command]
+pub(crate) fn log(level: String, message: String) {
+    let level = match level.as_str() {
+        "error" => "ERROR",
+        "warn" => "WARN",
+        _ => "INFO",
+    };
+    logs::write(level, "ui", &message);
+}
+
+/// Где лежат журналы: интерфейс передаёт путь журнала ядра в конфиг Xray.
+#[command]
+pub(crate) fn log_info() -> Option<LogInfo> {
+    logs::info_paths()
+}
+
+/// Конец журнала: which = "app" или "core".
+#[command]
+pub(crate) fn read_log(which: String, max_bytes: Option<u64>) -> Result<String, String> {
+    logs::tail(&which, max_bytes.unwrap_or(64 * 1024))
+}
+
+#[command]
+pub(crate) fn open_logs_dir() -> Result<(), String> {
+    #[cfg(desktop)]
+    return logs::open_dir();
+    #[cfg(mobile)]
+    Err("На телефоне папку журналов открыть нельзя — используйте «Скопировать»".into())
 }

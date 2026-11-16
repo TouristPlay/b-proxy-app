@@ -319,6 +319,42 @@
           "markdownDescription": "Denies the invoke_core command without any pre-configured scope."
         },
         {
+          "description": "Enables the log command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-log",
+          "markdownDescription": "Enables the log command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the log command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-log",
+          "markdownDescription": "Denies the log command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the log_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-log-info",
+          "markdownDescription": "Enables the log_info command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the log_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-log-info",
+          "markdownDescription": "Denies the log_info command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the open_logs_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-open-logs-dir",
+          "markdownDescription": "Enables the open_logs_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open_logs_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-open-logs-dir",
+          "markdownDescription": "Denies the open_logs_dir command without any pre-configured scope."
+        },
+        {
           "description": "Enables the prepare command without any pre-configured scope.",
           "type": "string",
           "const": "allow-prepare",
@@ -329,6 +365,18 @@
           "type": "string",
           "const": "deny-prepare",
           "markdownDescription": "Denies the prepare command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_log command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-read-log",
+          "markdownDescription": "Enables the read_log command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_log command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-read-log",
+          "markdownDescription": "Denies the read_log command without any pre-configured scope."
         },
         {
           "description": "Enables the start command without any pre-configured scope.",
@@ -367,10 +415,10 @@
           "markdownDescription": "Denies the stop command without any pre-configured scope."
         },
         {
-          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`",
+          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`"
+          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`"
         }
       ]
     }

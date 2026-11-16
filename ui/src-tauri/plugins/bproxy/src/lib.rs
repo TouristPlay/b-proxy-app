@@ -12,6 +12,7 @@ use tauri::{
 };
 
 mod commands;
+pub mod logs;
 mod models;
 mod subscription;
 
@@ -46,9 +47,16 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::prepare,
             commands::start,
             commands::stop,
-            commands::stats
+            commands::stats,
+            commands::log,
+            commands::log_info,
+            commands::read_log,
+            commands::open_logs_dir
         ])
         .setup(|app, api| {
+            if let Ok(dir) = app.path().app_local_data_dir() {
+                logs::init(dir.join("logs"));
+            }
             #[cfg(mobile)]
             let vpn = mobile::init(app, api)?;
             #[cfg(desktop)]

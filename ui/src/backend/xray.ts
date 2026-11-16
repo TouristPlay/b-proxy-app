@@ -101,6 +101,8 @@ export function buildConfig(
   s: Settings,
   platform: Platform,
   providerFragment: ProviderFragment | null,
+  /** Файл журнала ядра (logs/xray.log). На iOS ядро в расширении, туда пути нет — пишет в системный журнал. */
+  logFile?: string | null,
 ): string {
   const core = s.core;
   const useFragment = s.tlsFragment || providerFragment != null;
@@ -138,7 +140,8 @@ export function buildConfig(
   const middle = theirs.filter((r) => !isCatchAll(r));
 
   const config = {
-    log: { loglevel: core.logLevel },
+    // Журнал доступа (какие сайты открывались) не ведём никогда — только ошибки и события ядра.
+    log: { loglevel: core.logLevel, access: "none", ...(logFile && core.logLevel !== "none" ? { error: logFile } : {}) },
     env,
     policy: {
       levels: { "0": { connIdle: core.idleTimeoutSec, handshake: 8, uplinkOnly: 2, downlinkOnly: 5 } },

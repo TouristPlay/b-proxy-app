@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Ban, ChevronRight, Gauge, Globe, Info, Network, Palette, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
+import { Ban, ChevronRight, FileText, Gauge, Globe, Info, Network, Palette, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot, type Settings } from "@/backend";
 import { Group, IconTile, Row, type Tone } from "@/components/bits";
@@ -9,6 +9,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { AppearanceSheet } from "./AppearanceGroup";
 import { CoreSettingsSheet } from "./CoreSettingsSheet";
+import { LogsSheet } from "./LogsSheet";
 import { themeById } from "@/lib/theme";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
@@ -46,6 +47,7 @@ export function SettingsScreen({ embedded }: { embedded?: boolean }) {
   const [about, setAbout] = useState(false);
   const [look, setLook] = useState(false);
   const [routing, setRouting] = useState(false);
+  const [logs, setLogs] = useState(false);
   const ap = s.settings.appearance;
   const enabledRoutes = routes.filter((r) => s.settings[r.key]).map((r) => r.short);
   const dnsName = dns.find((d) => d.value === s.settings.dnsServer)?.title ?? s.settings.dnsServer;
@@ -115,6 +117,13 @@ export function SettingsScreen({ embedded }: { embedded?: boolean }) {
 
         <Group title="Приложение">
           <Row
+            onClick={() => setLogs(true)}
+            icon={<IconTile icon={FileText} tone="gray" />}
+            title="Технические журналы"
+            hint="Что делали приложение и ядро — для поддержки"
+            aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
+          />
+          <Row
             onClick={() => setAbout(true)}
             icon={<IconTile icon={Info} tone="gray" />}
             title="О приложении"
@@ -133,6 +142,7 @@ export function SettingsScreen({ embedded }: { embedded?: boolean }) {
       </div>
 
       <CoreSettingsSheet open={core} onOpenChange={setCore} />
+      <LogsSheet open={logs} onOpenChange={setLogs} />
       <AppearanceSheet open={look} onOpenChange={setLook} />
       <Sheet
         open={routing}

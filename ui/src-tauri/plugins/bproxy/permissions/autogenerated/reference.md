@@ -10,6 +10,10 @@
 - `allow-start`
 - `allow-stop`
 - `allow-stats`
+- `allow-log`
+- `allow-log-info`
+- `allow-read-log`
+- `allow-open-logs-dir`
 
 ## Permission Table
 
@@ -75,6 +79,84 @@ Denies the invoke_core command without any pre-configured scope.
 <tr>
 <td>
 
+`bproxy:allow-log`
+
+</td>
+<td>
+
+Enables the log command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-log`
+
+</td>
+<td>
+
+Denies the log command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-log-info`
+
+</td>
+<td>
+
+Enables the log_info command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-log-info`
+
+</td>
+<td>
+
+Denies the log_info command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-open-logs-dir`
+
+</td>
+<td>
+
+Enables the open_logs_dir command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-open-logs-dir`
+
+</td>
+<td>
+
+Denies the open_logs_dir command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `bproxy:allow-prepare`
 
 </td>
@@ -94,6 +176,32 @@ Enables the prepare command without any pre-configured scope.
 <td>
 
 Denies the prepare command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-read-log`
+
+</td>
+<td>
+
+Enables the read_log command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-read-log`
+
+</td>
+<td>
+
+Denies the read_log command without any pre-configured scope.
 
 </td>
 </tr>

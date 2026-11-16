@@ -150,6 +150,10 @@ export interface Backend {
   updateAppearance(patch: Partial<Appearance>): void;
   resetSettings(): Promise<void>;
   clearError(): void;
+  /** Технические журналы на диске: app — приложение, core — ядро Xray. Пустая строка — журнала нет. */
+  readLog(which: "app" | "core"): Promise<string>;
+  /** Открыть папку журналов (компьютер); false — на этой платформе нельзя. */
+  openLogsFolder(): Promise<boolean>;
   /** Очистить журнал активности (с возможностью вернуть). */
   clearActivity(): void;
   /** Кнопка в уведомлении: «Вернуть», «Переподключить». */

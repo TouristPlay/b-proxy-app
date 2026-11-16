@@ -357,6 +357,18 @@ export class DemoBackend implements Backend {
     this.emit({ error: null });
   }
 
+  async readLog(which: "app" | "core") {
+    // В демо журналов нет: показываем, как они выглядят в приложении.
+    const t = new Date().toISOString().slice(0, 19).replace("T", " ");
+    return which === "app"
+      ? `${t}Z INFO  [plugin] B-Proxy 0.1.0 запущен: windows x86_64\n${t}Z INFO  [ui] Подключение: 🇵🇱 Польша [VLESS/REALITY/GRPC]\n${t}Z INFO  [vpn] VPN подключён за 1840 мс`
+      : `${t} [Info] Xray 26.11.9 started\n${t} [Info] [tun] interface B-Proxy created`;
+  }
+
+  async openLogsFolder() {
+    return false;
+  }
+
   clearActivity() {
     const before = this.s.activity;
     this.emit({ activity: before.filter((e) => e.kind === "session" && e.id === this.sessionId) });
