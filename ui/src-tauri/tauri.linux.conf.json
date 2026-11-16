@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": {
+      "resources/linux/libXray.so": "core/libXray.so",
+      "resources/linux/bproxy-core": "core/bproxy-core"
+    }
+  }
+}

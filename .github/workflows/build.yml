@@ -1,5 +1,8 @@
 name: Сборка B-Proxy
 
+# Приложение на Tauri 2: интерфейс из ui/, ядро libXray из scripts/build_core.sh.
+# Flutter-версия (app/) больше не собирается.
+
 on:
   push:
     branches: [main]
@@ -13,7 +16,8 @@ concurrency:
 
 env:
   LIBXRAY_VERSION: v26.11.9
-  NDK_VERSION: r30
+  NDK_VERSION: r28c
+  CARGO_TERM_COLOR: always
 
 jobs:
   ui:
@@ -29,7 +33,7 @@ jobs:
           node-version: "22"
       - name: Установить зависимости
         working-directory: ui
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Проверить типы и собрать демо
         working-directory: ui
         run: npm run build:preview
@@ -39,7 +43,6 @@ jobs:
           path: ui/dist-preview/index.html
           if-no-files-found: error
 
-      # Готовое демо — в ветку ui-preview, чтобы его можно было открыть без скачивания архива.
       - name: Выложить демо в ветку ui-preview
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
@@ -52,241 +55,266 @@ jobs:
           git commit -qm "Демо интерфейса ${GITHUB_SHA::7}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ui-preview
 
-  android:
-    name: Android (APK)
-    runs-on: ubuntu-24.04
+  linux:
+    name: Linux (deb, rpm, AppImage)
+    needs: ui
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     steps:
-      - name: Освободить место на диске
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift \
-            /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/local/share/powershell \
-            /usr/local/lib/node_modules /opt/microsoft /opt/google/chrome
-          sudo docker image prune --all --force || true
-          df -h /
-
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-
+      - name: Системные пакеты
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - uses: actions/setup-go@v7
         with:
           go-version: stable
-
-      - uses: nttld/setup-ndk@v1
-        id: ndk
+      - uses: actions/setup-node@v5
         with:
-          ndk-version: ${{ env.NDK_VERSION }}
-          add-to-path: true
-
-      - uses: subosito/flutter-action@v2
+          node-version: "22"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          channel: stable
-          cache: true
-
-      - name: Подготовить проект
-        run: ./scripts/prepare.sh
-
-      - name: Собрать libXray
-        env:
-          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+          workspaces: ui/src-tauri
+      - name: Собрать ядро
+        run: ./scripts/build_core.sh linux
+      - name: Собрать приложение
+        working-directory: ui
         run: |
-          ./scripts/build_libxray.sh android
-          go clean -cache -modcache
-          rm -rf .build
-          df -h /
-
-      - name: Проверить код
-        working-directory: app
-        run: flutter analyze --no-fatal-infos
-
-      - name: Собрать APK
-        working-directory: app
-        run: flutter build apk --release --split-per-abi
-
+          npm ci --no-audit --no-fund
+          npx tauri icon src-tauri/app-icon.png
+          npx tauri build
       - uses: actions/upload-artifact@v7
         with:
-          name: b-proxy-android
-          path: app/build/app/outputs/flutter-apk/*-release.apk
+          name: b-proxy-linux
+          path: |
+            ui/src-tauri/target/release/bundle/deb/*.deb
+            ui/src-tauri/target/release/bundle/rpm/*.rpm
+            ui/src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
   windows:
     name: Windows (x64)
+    needs: ui
     runs-on: windows-2025
     timeout-minutes: 60
     defaults:
       run:
         shell: bash
-    env:
-      PYTHON: python
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-go@v7
         with:
           go-version: stable
-
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-node@v5
         with:
-          python-version: "3.x"
-
-      - uses: subosito/flutter-action@v2
+          node-version: "22"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          channel: stable
-          cache: true
-
-      - name: Подготовить проект
-        run: ./scripts/prepare.sh
-
-      - name: Собрать libXray и скачать Wintun
-        env:
-          CGO_ENABLED: "1"
-        run: ./scripts/build_libxray.sh windows
-
+          workspaces: ui/src-tauri
+      - name: Собрать ядро и скачать Wintun
+        run: ./scripts/build_core.sh windows
       - name: Собрать приложение
-        working-directory: app
-        run: flutter build windows --release
-
-      - name: Положить ядро рядом с b_proxy.exe
+        working-directory: ui
         run: |
-          OUT=app/build/windows/x64/runner/Release
-          cp app/windows/deps/*.dll "$OUT/"
-          mkdir -p dist
-          (cd "$OUT" && 7z a -tzip "$GITHUB_WORKSPACE/dist/b-proxy-windows-x64.zip" . >/dev/null)
-
+          npm ci --no-audit --no-fund
+          npx tauri icon src-tauri/app-icon.png
+          npx tauri build
       - uses: actions/upload-artifact@v7
         with:
           name: b-proxy-windows
-          path: dist/b-proxy-windows-x64.zip
+          path: |
+            ui/src-tauri/target/release/bundle/nsis/*.exe
+            ui/src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
 
-  linux:
-    name: Linux (x64)
-    runs-on: ubuntu-24.04
+  macos:
+    name: macOS (Apple Silicon и Intel)
+    needs: ui
+    runs-on: macos-15
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
-
-      - name: Системные пакеты
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
-
       - uses: actions/setup-go@v7
         with:
           go-version: stable
-
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-node@v5
         with:
-          channel: stable
-          cache: true
-
-      - name: Подготовить проект
-        run: ./scripts/prepare.sh
-
-      - name: Собрать libXray
-        env:
-          CGO_ENABLED: "1"
-        run: ./scripts/build_libxray.sh linux
-
-      - name: Собрать приложение
-        working-directory: app
-        run: flutter build linux --release
-
-      - name: Положить ядро в сборку
+          node-version: "22"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ui/src-tauri
+      - name: Собрать ядро
+        run: ./scripts/build_core.sh macos
+      - name: Собрать приложение (без подписи)
+        working-directory: ui
         run: |
-          BUNDLE=app/build/linux/x64/release/bundle
-          cp app/linux/deps/libXray.so app/linux/deps/xray "$BUNDLE/lib/"
-          mkdir -p dist
-          tar -C "$BUNDLE" -czf dist/b-proxy-linux-x64.tar.gz .
-
+          npm ci --no-audit --no-fund
+          npx tauri icon src-tauri/app-icon.png
+          npx tauri build --target universal-apple-darwin --bundles dmg
       - uses: actions/upload-artifact@v7
         with:
-          name: b-proxy-linux
-          path: dist/b-proxy-linux-x64.tar.gz
+          name: b-proxy-macos
+          path: ui/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
           if-no-files-found: error
 
-  apple:
-    name: iOS и macOS
+  android:
+    name: Android (APK)
+    needs: ui
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Освободить место на диске
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift \
+            /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/local/share/powershell \
+            /opt/microsoft /opt/google/chrome
+          sudo docker image prune --all --force || true
+          df -h /
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ui/src-tauri
+      - name: Собрать ядро
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          ./scripts/build_core.sh android
+          go clean -cache
+          rm -rf .build
+      - name: Создать проект Android
+        working-directory: ui
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          npm ci --no-audit --no-fund
+          npx tauri android init --ci
+          npx tauri icon src-tauri/app-icon.png
+          # Ядро libXray (gomobile) — в само приложение; плагин видит только его классы.
+          cat >> src-tauri/gen/android/app/build.gradle.kts <<'EOF'
+
+          // B-Proxy: ядро Xray, собирает scripts/build_core.sh android
+          dependencies {
+              implementation(files("../../../resources/android/libXray.aar"))
+          }
+          EOF
+      - name: Собрать APK
+        working-directory: ui
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: npx tauri android build --apk --split-per-abi --target aarch64 armv7 x86_64
+      - name: Подписать тестовым ключом
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          mkdir -p dist
+          for apk in $(find ui/src-tauri/gen/android/app/build/outputs/apk -name '*-unsigned.apk'); do
+            abi=$(basename "$(dirname "$(dirname "$apk")")")
+            "$BT/zipalign" -f 4 "$apk" /tmp/aligned.apk
+            "$BT/apksigner" sign --ks ui/src-tauri/signing/test-release.jks \
+              --ks-pass pass:bproxy-test --ks-key-alias bproxy-test \
+              --out "dist/b-proxy-$abi.apk" /tmp/aligned.apk
+          done
+          ls -la dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: b-proxy-android
+          path: dist/*.apk
+          if-no-files-found: error
+
+  ios:
+    name: iOS (без подписи)
+    needs: ui
     runs-on: macos-15
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-go@v7
         with:
           go-version: stable
-
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-node@v5
         with:
-          channel: stable
-          cache: true
-
-      - name: Подготовить проект
-        run: ./scripts/prepare.sh
-
-      - name: Собрать libXray (iOS, симулятор, macOS)
-        env:
-          CGO_ENABLED: "1"
-        run: ./scripts/build_libxray.sh apple
-
-      - name: Добавить расширение PacketTunnel
+          node-version: "22"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ui/src-tauri
+      - name: Собрать ядро
+        run: ./scripts/build_core.sh ios
+      - name: Создать проект iOS и добавить PacketTunnel
+        working-directory: ui
         run: |
-          gem list -i xcodeproj >/dev/null || sudo gem install xcodeproj
-          ruby scripts/apple_extension.rb ios
-          ruby scripts/apple_extension.rb macos
-
-      # Пока нет аккаунта Apple Developer, собираем без подписи:
-      # это проверка, что код компилируется. Поставить такую сборку на устройство нельзя.
-      - name: Собрать iOS (без подписи)
-        working-directory: app
-        run: flutter build ios --release --no-codesign
-
-      - name: Собрать macOS (без подписи)
-        working-directory: app
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          pip install pyyaml
+          npm ci --no-audit --no-fund
+          npx tauri ios init --ci
+          npx tauri icon src-tauri/app-icon.png
+          python ../scripts/tauri_ios_extension.py --unsigned
+          (cd src-tauri/gen/apple && xcodegen generate)
+      - name: Собрать приложение
+        working-directory: ui
         run: |
           set -o pipefail
-          flutter build macos --release --config-only
-          # Полный лог — в файл; при ошибке показываем все строки с ошибками и конец лога.
-          xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
-            -configuration Release -derivedDataPath build/macos-dd \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build > xcodebuild-macos.log 2>&1 || {
-              grep -nE "error:|: error|fatal|Undefined symbol|ld: " xcodebuild-macos.log | head -80
-              tail -80 xcodebuild-macos.log
-              exit 1
-            }
-          tail -5 xcodebuild-macos.log
-
-      - name: Упаковать
-        run: |
-          mkdir -p dist
-          (cd app/build/ios/iphoneos && ditto -c -k --keepParent Runner.app "$GITHUB_WORKSPACE/dist/b-proxy-ios-unsigned.zip")
-          APP=$(find app/build/macos-dd/Build/Products/Release -maxdepth 1 -name "*.app" | head -1)
-          ditto -c -k --keepParent "$APP" dist/b-proxy-macos-unsigned.zip
-
+          # Без подписи экспорт .ipa падает, но архив с приложением уже собран.
+          npx tauri ios build --ci --target aarch64 2>&1 | tee /tmp/ios-build.log || true
+          APP=$(find src-tauri/gen/apple/build -name "*.app" -path "*Products/Applications*" | head -1)
+          if [ -z "$APP" ]; then
+            grep -nE "error:|: error|fatal|Undefined symbol|ld: " /tmp/ios-build.log | head -80
+            tail -60 /tmp/ios-build.log
+            exit 1
+          fi
+          ls "$APP" "$APP/PlugIns" || true
+          mkdir -p /tmp/ipa/Payload "$GITHUB_WORKSPACE/dist"
+          cp -R "$APP" /tmp/ipa/Payload/
+          (cd /tmp/ipa && zip -qry "$GITHUB_WORKSPACE/dist/b-proxy-ios-unsigned.ipa" Payload)
       - uses: actions/upload-artifact@v7
         with:
-          name: b-proxy-apple-unsigned
-          path: dist/*.zip
+          name: b-proxy-ios-unsigned
+          path: dist/b-proxy-ios-unsigned.ipa
           if-no-files-found: error
 
   release:
     name: Релиз
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [android, windows, linux]
+    needs: [linux, windows, macos, android, ios]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v8
         with:
-          path: dist
-          merge-multiple: true
-      - uses: softprops/action-gh-release@v3
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
         with:
-          name: B-Proxy ${{ github.ref_name }}
-          files: dist/*
-          prerelease: true
+          files: |
+            artifacts/b-proxy-linux/**/*
+            artifacts/b-proxy-windows/**/*
+            artifacts/b-proxy-macos/*
+            artifacts/b-proxy-android/*
+            artifacts/b-proxy-ios-unsigned/*

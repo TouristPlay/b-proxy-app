@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": {
+      "resources/macos/libXray.dylib": "core/libXray.dylib",
+      "resources/macos/bproxy-core": "core/bproxy-core"
+    }
+  }
+}

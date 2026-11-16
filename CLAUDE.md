@@ -7,29 +7,42 @@ VPN-клиент сервиса BaobabVPN (сайт baobabproxy.com) на ядр
 
 ## Состояние и направление
 
-- `ui/` — **новый интерфейс**: React 19 + TypeScript + Tailwind CSS v4 + компоненты в стиле shadcn/ui (Radix).
-  Станет фронтендом приложения на **Tauri 2**. Сейчас работает на демо-бэкенде с тестовыми данными.
-- `app/` — первая версия на Flutter. Рабочая (Android, Windows, Linux собираются), но интерфейс заменяется на `ui/`.
-  Нативные части оттуда переедут в Tauri: Kotlin `VpnService`, Swift Network Extension, вызовы libXray.
-- План: утвердить дизайн по демо → оболочка Tauri 2 → логика подписок и конфига Xray на TypeScript →
-  настраиваемый лимит памяти в libXray → подпись iOS/macOS → QR, диплинки `bproxy://`, kill switch, VPN по приложениям, трей,
-  разделы «Тарифы» и «Баланс» (нужен API панели/бота).
+- `ui/` — приложение на **Tauri 2**: интерфейс React 19 + TypeScript + Tailwind CSS v4 + shadcn/ui (Radix),
+  `ui/src-tauri/` — оболочка на Rust и плагин `bproxy` (ядро Xray и VPN на всех платформах).
+  В приложении работает `TauriBackend`, в браузере (демо дизайна) — `DemoBackend` с тестовыми данными.
+- `app/` — первая версия на Flutter, больше не собирается. Оставлена как справка.
+- Дальше: подпись iOS/macOS (TestFlight), проверка VPN на устройствах → QR, диплинки `bproxy://`, kill switch,
+  VPN по приложениям, трей, разделы «Тарифы» и «Баланс» (нужен API панели/бота).
 
 ## Структура
 
 ```
 ui/src/
   backend/types.ts      интерфейс Backend и типы: Snapshot, Subscription, ServerNode, Settings, Appearance
-  backend/demo.ts       DemoBackend — имитация ядра и VPN для показа дизайна
-  backend/index.ts      выбор бэкенда и хук useSnapshot(); #empty в адресе — экран без подписок
+  backend/tauri.ts      TauriBackend — настоящий: подписки, пинг, VPN через плагин bproxy, хранение в localStorage
+  backend/subscription.ts  разбор подписки: заголовки INCY/Happ, base64/ссылки/Xray JSON, разделители
+  backend/xray.ts       конфиг Xray: TUN по платформам, маршруты провайдера, фрагментация, настройки ядра → env
+  backend/demo.ts       DemoBackend — имитация для показа дизайна в браузере; там же настройки по умолчанию
+  backend/index.ts      выбор бэкенда и хук useSnapshot(); #empty в адресе — экран без подписок (демо)
   lib/theme.ts          темы оформления, применение акцента/режима/размытия к <html>
   components/           PowerOrb, ServerList, SubscriptionCard, Backdrop, Toast, bits (Flag, Tags, SignalPing, Group, Row)
   components/ui/        примитивы: Button, Switch, Slider, RadioGroup, Sheet
   screens/              HomeScreen, ServersScreen, SettingsScreen, AppearanceGroup, CoreSettingsSheet,
                         AddSubscriptionSheet, DesktopLayout (компьютер, ширина ≥ 1024)
-app/                    Flutter-версия; app/packages/b_proxy_apple — плагин iOS/macOS; app/apple/PacketTunnel — расширение
-scripts/                prepare.sh, build_libxray.sh (android | windows | linux | apple), apple_extension.rb
-.github/workflows/      build.yml — демо интерфейса, APK, Windows, Linux, iOS/macOS без подписи, релиз по тегу
+ui/src-tauri/
+  src/lib.rs            приложение: плагины opener и bproxy
+  plugins/bproxy/       плагин: команды invoke_core, fetch_subscription, prepare, start, stop, stats; событие состояния
+    src/desktop.rs      Windows — ядро в процессе (Wintun); Linux/macOS — процесс bproxy-core через pkexec/osascript
+    src/mobile.rs       мост к android/ (Kotlin: BProxyPlugin, BProxyVpnService) и ios/ (Swift: BProxyPlugin)
+  apple/PacketTunnel/   расширение iOS, в нём работает ядро; добавляется в проект scripts/tauri_ios_extension.py
+  resources/<платформа>/  ядро из scripts/build_core.sh (не в git)
+  signing/              открытый тестовый ключ подписи APK (только для тестовых сборок)
+core/
+  memory/memory.go      замена пакета memory в libXray: лимит памяти и сборка мусора из env BPROXY_*
+  runner/main.go        bproxy-core — ядро отдельным процессом для Linux и macOS
+scripts/                build_core.sh (linux | windows | macos | android | ios), tauri_ios_extension.py
+app/                    Flutter-версия (не собирается)
+.github/workflows/      build.yml — демо интерфейса, Linux, Windows, macOS, Android (APK), iOS без подписи, релиз по тегу
 ```
 
 ## Команды
@@ -40,7 +53,14 @@ npm run typecheck                          # проверка типов
 npm run build:preview                      # один HTML-файл с демо: ui/dist-preview/index.html
 ```
 
-В облачной сессии Claude npm-пакеты не ставятся (нет сети). Тогда проверка такая: пуш в `main` → GitHub Actions
+Приложение целиком (нужны Go, Rust, Node):
+
+```bash
+./scripts/build_core.sh linux              # ядро в ui/src-tauri/resources/linux
+cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
+```
+
+Если в облачной сессии нет сети для npm, проверка такая: пуш в `main` → GitHub Actions
 (job «Интерфейс (React)») собирает демо и кладёт его в ветку `ui-preview` → `git fetch origin ui-preview` →
 скриншоты через Playwright и `/usr/bin/google-chrome` → публикация артефакта
 «B-Proxy — демо интерфейса» (https://claude.ai/artifact/8rMwLyWDbRBxuFViNEqh9c) с тем же slug.
@@ -88,16 +108,24 @@ npm run build:preview                      # один HTML-файл с демо:
 
 ## Ядро и платформы
 
-- Ядро: Xray-core через [libXray](https://github.com/XTLS/libXray) **v26.11.9**, единый вход `Invoke` (apiVersion 3):
+- Ядро: Xray-core через [libXray](https://github.com/XTLS/libXray) **v26.11.9** (с заменой из `core/`), единый вход `Invoke` (apiVersion 3):
   `convertShareLinksToXrayJson`, `pingBatch`, `runXray`, `stopXray`, `xrayVersion`.
 - Встроенный TUN в Xray, tun2socks не нужен. На Android/iOS/macOS дескриптор туннеля передаётся через
   `env["xray.tun.fd"]` в конфиге. Адреса туннеля: 172.19.0.1/30, DNS 172.19.0.2.
 - Android: `BProxyVpnService` (VpnService), само приложение исключено из туннеля.
-- iOS/macOS: расширение PacketTunnel. LibXray линкуется в приложение и в расширение **напрямую**,
-  плагин `b_proxy_apple` берёт `CGoInvoke`/`CGoFree` через `dlsym` — иначе Xcode падает с
-  «Redefinition of module 'LibXray'». На iOS расширению доступно ~50 МБ памяти: лимит Go по умолчанию 30 МБ.
+- iOS: расширение PacketTunnel. LibXray линкуется в приложение и в расширение **напрямую**,
+  Swift-плагин берёт `CGoInvoke`/`CGoFree` через `dlsym` — иначе Xcode падает с
+  «Redefinition of module 'LibXray'». На iOS расширению доступно ~50 МБ памяти: лимит Go по умолчанию 30 МБ,
+  меняется в «Ядро Xray» (env `BPROXY_MEMORY_LIMIT_MB`, `BPROXY_AGGRESSIVE_GC`).
+- Идентификатор приложения `com.baobabproxy.bproxy`, расширения — `.PacketTunnel`, группа — `group.com.baobabproxy.bproxy`.
 - Windows: libXray.dll внутри приложения + Wintun, приложение просит права администратора.
-- Linux: процесс `xray` запускается через `pkexec`, остановка через файл-флаг.
+- Linux и macOS: процесс `bproxy-core` с правами администратора (pkexec / osascript), копия лежит в папке
+  данных приложения. Он пишет `core.state` (running / error: … / stopped) и выходит, когда появляется `core.stop`.
+  Счётчики трафика — по интерфейсу туннеля (`bproxy0`, `utun199`, на Windows `B-Proxy`).
+- Подписка Remnawave с заголовком `v2rayNG/1.9.30` приходит как Xray JSON: у каждого сервера полный конфиг,
+  у «Auto» — балансировщики и burstObservatory. Берём outbound'ы, балансировщики и правила провайдера,
+  выкидывая ссылки на geosite/geoip (их баз у нас нет), и ставим свой TUN, DNS и правила сверху.
+- libXray `pingBatch` принимает не больше 5 конфигов за вызов.
 - Подписки понимают те же заголовки, что INCY/Happ: `profile-title`, `subscription-userinfo`, `announce`,
   `support-url`, `profile-web-page-url`, `hide-url`, `sort-order`, `new-url`, `fragmentation-*`, метаданные `#key:` в теле.
 

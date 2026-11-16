@@ -1,13 +1,15 @@
 import { useSyncExternalStore } from "react";
 import { DemoBackend } from "./demo";
+import { TauriBackend } from "./tauri";
 import type { Backend, Snapshot } from "./types";
 
 /**
- * Выбор бэкенда. Пока интерфейс делается отдельно, везде работает DemoBackend.
- * Когда подключим Tauri, здесь появится TauriBackend: вызовы invoke() к ядру Xray.
- * #empty в адресе показывает экран без подписки.
+ * Выбор бэкенда: в приложении — TauriBackend (ядро Xray и VPN),
+ * в браузере — DemoBackend с тестовыми данными для показа дизайна.
+ * #empty в адресе показывает экран без подписки (только демо).
  */
 function createBackend(): Backend {
+  if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) return new TauriBackend();
   const empty = typeof location !== "undefined" && location.hash === "#empty";
   return new DemoBackend(empty);
 }

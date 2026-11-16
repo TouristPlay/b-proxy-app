@@ -1,0 +1,12 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN"
+permissions = [
+  "allow-invoke-core",
+  "allow-fetch-subscription",
+  "allow-prepare",
+  "allow-start",
+  "allow-stop",
+  "allow-stats",
+]
