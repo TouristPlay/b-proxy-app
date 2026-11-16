@@ -23,10 +23,13 @@ jobs:
     steps:
       - name: Загрузить и разобрать
         env:
-          INPUT_URL: ${{ inputs.url }}
+          # Секреты GitHub прячет в логах сам.
           SECRET_URL: ${{ secrets.TEST_SUBSCRIPTION_URL }}
         run: |
-          URL="${INPUT_URL:-$SECRET_URL}"
+          # Ссылку из поля запуска читаем из данных события, а не через env:
+          # иначе GitHub напечатает её в шапке шага до того, как сработает маска.
+          URL="$(jq -r '.inputs.url // empty' "$GITHUB_EVENT_PATH")"
+          URL="${URL:-$SECRET_URL}"
           if [ -z "$URL" ]; then echo "Ссылка не передана"; exit 1; fi
           echo "::add-mask::$URL"
           python3 - "$URL" <<'PY'
