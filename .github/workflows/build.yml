@@ -1,0 +1,180 @@
+name: Сборка B-Proxy
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LIBXRAY_VERSION: v26.11.9
+  NDK_VERSION: r30
+
+jobs:
+  android:
+    name: Android (APK)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: true
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Подготовить проект
+        run: ./scripts/prepare.sh
+
+      - name: Собрать libXray
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: ./scripts/build_libxray.sh android
+
+      - name: Проверить код
+        working-directory: app
+        run: flutter analyze --no-fatal-infos
+
+      - name: Собрать APK
+        working-directory: app
+        run: flutter build apk --release --split-per-abi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: b-proxy-android
+          path: app/build/app/outputs/flutter-apk/*-release.apk
+          if-no-files-found: error
+
+  windows:
+    name: Windows (x64)
+    runs-on: windows-2025
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHON: python
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Подготовить проект
+        run: ./scripts/prepare.sh
+
+      - name: Собрать libXray и скачать Wintun
+        env:
+          CGO_ENABLED: "1"
+        run: ./scripts/build_libxray.sh windows
+
+      - name: Собрать приложение
+        working-directory: app
+        run: flutter build windows --release
+
+      - name: Положить ядро рядом с b_proxy.exe
+        run: |
+          OUT=app/build/windows/x64/runner/Release
+          cp app/windows/deps/*.dll "$OUT/"
+          mkdir -p dist
+          (cd "$OUT" && 7z a -tzip "$GITHUB_WORKSPACE/dist/b-proxy-windows-x64.zip" . >/dev/null)
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: b-proxy-windows
+          path: dist/b-proxy-windows-x64.zip
+          if-no-files-found: error
+
+  linux:
+    name: Linux (x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Системные пакеты
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Подготовить проект
+        run: ./scripts/prepare.sh
+
+      - name: Собрать libXray
+        env:
+          CGO_ENABLED: "1"
+        run: ./scripts/build_libxray.sh linux
+
+      - name: Собрать приложение
+        working-directory: app
+        run: flutter build linux --release
+
+      - name: Положить ядро в сборку
+        run: |
+          BUNDLE=app/build/linux/x64/release/bundle
+          cp app/linux/deps/libXray.so app/linux/deps/xray "$BUNDLE/lib/"
+          mkdir -p dist
+          tar -C "$BUNDLE" -czf dist/b-proxy-linux-x64.tar.gz .
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: b-proxy-linux
+          path: dist/b-proxy-linux-x64.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Релиз
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, windows, linux]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v3
+        with:
+          name: B-Proxy ${{ github.ref_name }}
+          files: dist/*
+          prerelease: true

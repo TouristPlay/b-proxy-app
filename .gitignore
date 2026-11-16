@@ -1,0 +1,18 @@
+# Исходники и сборка libXray
+.build/
+app/android/app/libs/*.aar
+app/windows/deps/
+app/linux/deps/
+
+# Flutter / Dart
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/pubspec.lock
+**/.gradle/
+**/local.properties
+**/*.iml
+.idea/
+.DS_Store
+dist/
