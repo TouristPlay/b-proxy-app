@@ -3,12 +3,13 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   Check,
   ChevronDown,
-  CircleHelp,
+  Gauge,
+  Megaphone,
+  MessageCircle,
   ExternalLink,
   MoreHorizontal,
   RefreshCw,
   Search,
-  Server as ServerIcon,
   Star,
   Trash2,
   X,
@@ -18,7 +19,7 @@ import { useMemo, useState } from "react";
 import { backend, nodeKey, useSnapshot, type Subscription } from "@/backend";
 import { Flag, SignalPing, Tags } from "@/components/bits";
 import { Switch } from "@/components/ui/switch";
-import { daysLeft, formatBytes, splitFlag } from "@/lib/format";
+import { daysLeft, formatBytes, plural, splitFlag } from "@/lib/format";
 import { useNow } from "@/lib/useMedia";
 import { cn } from "@/lib/utils";
 
@@ -238,9 +239,9 @@ function ago(t: number, now: number) {
 }
 
 /**
- * Карточка провайдера (как в INCY): название, когда обновлялась, кнопки «Обновить»,
- * «Проверить пинг» и меню; срок и трафик с полосой; объявление провайдера целиком;
- * «Поддержка»; внизу — дата обновления и число серверов. Видна и в свёрнутом виде.
+ * Карточка провайдера B-Proxy: слева кольцо срока с числом дней, рядом название, тариф и трафик,
+ * справа капсула «Пинг | Обновить» и меню. Объявление провайдера — в отдельной плашке,
+ * внизу «Продлить», «Поддержка» и кнопка «Скрыть / Показать серверы».
  */
 function ProviderHeader({
   sub,
@@ -260,92 +261,137 @@ function ProviderHeader({
   const count = sub.nodes.filter((n) => !n.divider).length;
   const days = daysLeft(sub.expireAt);
   const unlimited = sub.totalBytes <= 0;
-  const used = unlimited ? 0 : Math.min(1, sub.usedBytes / sub.totalBytes);
   const pinging = s.pingingSub === sub.url;
   const refreshing = s.refreshingSub === sub.url || s.refreshingSub === "*";
   const canPing = s.state === "disconnected" && !s.pinging;
-  const iconBtn =
-    "flex size-10 shrink-0 items-center justify-center rounded-full bg-glass-2 text-ink-2 transition-colors hover:bg-glass-3 hover:text-ink disabled:opacity-50";
+  const seg =
+    "flex h-10 w-10 items-center justify-center transition-colors hover:bg-glass-3 hover:text-ink disabled:opacity-50";
 
   return (
-    <div className={cn("glass mb-2 rounded-[24px]", compact ? "p-3" : "p-4")}>
-      <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={!closed}
-          aria-label={`${closed ? "Показать" : "Скрыть"} серверы ${sub.title}`}
-          className="-ml-1 flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-1 text-left"
-        >
-          <ChevronDown className={cn("size-5 shrink-0 text-ink-2 transition-transform duration-[var(--dur)]", closed && "-rotate-90")} aria-hidden />
-          <span className={cn("truncate font-display font-semibold", compact ? "text-[15px]" : "text-[17px]")}>{sub.title}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => void backend.refreshSubscription(sub.url)}
-          disabled={refreshing}
-          aria-label={`Обновить подписку ${sub.title}`}
-          title="Обновить подписку"
-          className={iconBtn}
-        >
-          <RefreshCw className={cn("size-[18px]", refreshing && "animate-spin")} />
-        </button>
-        <button
-          type="button"
-          onClick={() => void backend.ping(sub.url)}
-          disabled={!canPing}
-          aria-label={pinging ? `Меряем пинг ${sub.title}` : `Проверить пинг ${sub.title}`}
-          title={s.state === "disconnected" ? "Проверить пинг" : "Пинг проверяется при выключенном VPN"}
-          className={cn(iconBtn, pinging && "bg-amber/15 text-amber")}
-        >
-          <Zap className={cn("size-[18px]", pinging && "animate-pulse")} />
-        </button>
-        <ProviderMenu sub={sub} className={iconBtn} />
-      </div>
-
-      {/* Срок и трафик: полоса заполняется при лимите, при безлимите — пустая дорожка и «∞». */}
-      <div className="mt-2 flex items-center gap-3 text-[13px] text-ink-2 tabular-nums">
-        <span className="shrink-0">{days == null ? "Бессрочно" : days === 0 ? "Закончилась" : `Осталось ${days} дн.`}</span>
-        <span className="h-1.5 min-w-8 flex-1 overflow-hidden rounded-full bg-glass-3" aria-hidden>
-          {!unlimited && (
-            <span
-              className={cn("block h-full rounded-full", used > 0.9 ? "bg-bad" : "bg-amber")}
-              style={{ width: `${Math.max(2, used * 100)}%` }}
-            />
-          )}
+    <div className={cn("glass mb-2 rounded-[26px]", compact ? "p-3" : "p-4")}>
+      {/* Верх карточки целиком сворачивает и разворачивает серверы провайдера. */}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={!closed}
+        aria-label={`${sub.title}: ${closed ? "показать" : "скрыть"} серверы`}
+        className="flex w-full items-center gap-3 rounded-[18px] text-left"
+      >
+        <DaysRing days={days} />
+        <span className="min-w-0 flex-1">
+          <span className={cn("block truncate font-display font-semibold", compact ? "text-[15px]" : "text-[17px]")}>{sub.title}</span>
+          <span className="mt-0.5 block truncate text-[13px] text-ink-2 tabular-nums">
+            {sub.plan ?? "Подписка"} · {formatBytes(sub.usedBytes)}
+            {unlimited ? " без лимита" : ` из ${formatBytes(sub.totalBytes)}`}
+          </span>
+          <span className="mt-0.5 block truncate text-[12px] text-ink-3 tabular-nums" title={updatedFmt.format(sub.updatedAt)}>
+            {count} {plural(count, "сервер", "сервера", "серверов")} · обновлена {ago(sub.updatedAt, now)}
+            {ago(sub.updatedAt, now) === "сейчас" ? "" : " назад"}
+          </span>
         </span>
-        <span className="shrink-0">
-          {formatBytes(sub.usedBytes)} / {unlimited ? "∞" : formatBytes(sub.totalBytes)}
-        </span>
-      </div>
+        <ChevronDown
+          className={cn("size-5 shrink-0 text-ink-2 transition-transform duration-[var(--dur)]", !closed && "rotate-180")}
+          aria-hidden
+        />
+      </button>
 
       {sub.announce && !hideNote && (
-        <p className={cn("mt-3 leading-snug whitespace-pre-line break-words text-ink", compact ? "text-[13px]" : "text-[14.5px]")}>
-          {sub.announce}
-        </p>
+        <div className="mt-3 flex gap-2.5 rounded-[18px] bg-amber/[0.07] px-3.5 py-3 ring-1 ring-amber/15 ring-inset">
+          <Megaphone className="mt-0.5 size-4 shrink-0 text-amber" aria-hidden />
+          <p className={cn("min-w-0 leading-snug whitespace-pre-line break-words text-ink", compact ? "text-[13px]" : "text-[14px]")}>
+            {sub.announce}
+          </p>
+        </div>
       )}
 
-      {sub.supportUrl && (
-        <a
-          href={sub.supportUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-[14px] border border-tag-reality/25 bg-tag-reality/10 px-3.5 text-[14px] font-medium text-tag-reality transition-colors hover:bg-tag-reality/15"
-        >
-          <CircleHelp className="size-[18px]" aria-hidden />
-          Поддержка
-        </a>
-      )}
-
-      <p className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-ink-3 tabular-nums" title={`Обновлена ${updatedFmt.format(sub.updatedAt)}`}>
-        обновлена {ago(sub.updatedAt, now)}{ago(sub.updatedAt, now) === "сейчас" ? "" : " назад"} · {updatedFmt.format(sub.updatedAt)} · {count}
-        <ServerIcon className="size-3.5" aria-label="серверов" />
-      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {sub.webPageUrl && (
+          <a
+            href={sub.webPageUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-amber px-4 text-[14px] font-semibold text-on-accent transition-colors hover:bg-amber-2"
+          >
+            <ExternalLink className="size-4" aria-hidden />
+            Продлить
+          </a>
+        )}
+        {sub.supportUrl && (
+          <a
+            href={sub.supportUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-edge-2 px-4 text-[14px] font-medium text-ink-2 transition-colors hover:text-ink"
+          >
+            <MessageCircle className="size-4" aria-hidden />
+            Поддержка
+          </a>
+        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          {/* Капсула из двух действий только для этого провайдера. */}
+          <div className="flex overflow-hidden rounded-full border border-edge-2 bg-glass-2 text-ink-2">
+            <button
+              type="button"
+              onClick={() => void backend.ping(sub.url)}
+              disabled={!canPing}
+              aria-label={pinging ? `Меряем пинг ${sub.title}` : `Проверить пинг ${sub.title}`}
+              title={s.state === "disconnected" ? "Проверить пинг" : "Пинг проверяется при выключенном VPN"}
+              className={cn(seg, pinging && "bg-amber/15 text-amber")}
+            >
+              <Gauge className={cn("size-[18px]", pinging && "animate-pulse")} />
+            </button>
+            <span className="my-2 w-px bg-edge-2" aria-hidden />
+            <button
+              type="button"
+              onClick={() => void backend.refreshSubscription(sub.url)}
+              disabled={refreshing}
+              aria-label={`Обновить подписку ${sub.title}`}
+              title="Обновить подписку"
+              className={seg}
+            >
+              <RefreshCw className={cn("size-[17px]", refreshing && "animate-spin")} />
+            </button>
+          </div>
+          <ProviderMenu sub={sub} className="flex size-10 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink" />
+        </div>
+      </div>
     </div>
   );
 }
 
-/** Меню «⋯» провайдера: продлить, удалить (с «Вернуть»). */
+/** Кольцо срока: заполнено по оставшимся дням из последних 30, внутри — число. */
+function DaysRing({ days }: { days: number | null }) {
+  const r = 22;
+  const c = 2 * Math.PI * r;
+  const part = days == null ? 1 : Math.min(days, 30) / 30;
+  const tone = days != null && days <= 3 ? "var(--color-bad)" : "var(--color-amber)";
+  return (
+    <div className="relative size-[54px] shrink-0" aria-label={days == null ? "Бессрочно" : `Осталось ${days} ${plural(days, "день", "дня", "дней")}`}>
+      <svg viewBox="0 0 54 54" className="size-full -rotate-90" aria-hidden>
+        <circle cx="27" cy="27" r={r} fill="none" stroke="var(--color-glass-3)" strokeWidth="4" />
+        <circle
+          cx="27"
+          cy="27"
+          r={r}
+          fill="none"
+          stroke={tone}
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={`${c * part} ${c}`}
+          className="transition-[stroke-dasharray] duration-[var(--dur-slow)]"
+        />
+      </svg>
+      <span className="absolute inset-0 flex flex-col items-center justify-center leading-none tabular-nums" aria-hidden>
+        <span className="font-display text-[15px] font-semibold" style={{ color: tone }}>
+          {days == null ? "∞" : days}
+        </span>
+        <span className="mt-0.5 text-[9.5px] text-ink-3">{days == null ? "срок" : "дн."}</span>
+      </span>
+    </div>
+  );
+}
+
+/** Меню «⋯» провайдера: удалить подписку (с «Вернуть» в уведомлении). */
 function ProviderMenu({ sub, className }: { sub: Subscription; className: string }) {
   const item =
     "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-[15px] outline-none data-[highlighted]:bg-glass-2";
@@ -360,12 +406,6 @@ function ProviderMenu({ sub, className }: { sub: Subscription; className: string
           sideOffset={6}
           className="z-50 min-w-52 rounded-[18px] border border-edge-2 bg-panel p-1.5 shadow-[0_18px_40px_-16px_rgb(0_0_0/0.7)] data-[state=open]:animate-[dialog-in_var(--dur-fast)_var(--ease-out)]"
         >
-          {sub.webPageUrl && (
-            <DropdownMenu.Item className={item} onSelect={() => window.open(sub.webPageUrl!, "_blank", "noopener")}>
-              <ExternalLink className="size-[18px] text-ink-2" aria-hidden />
-              Продлить
-            </DropdownMenu.Item>
-          )}
           <DropdownMenu.Item className={cn(item, "text-bad")} onSelect={() => void backend.removeSubscription(sub.url)}>
             <Trash2 className="size-[18px]" aria-hidden />
             Удалить подписку
