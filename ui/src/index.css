@@ -68,6 +68,12 @@
   #root {
     height: 100%;
   }
+  /* Прокручиваются только экраны внутри приложения; сама страница — никогда,
+     иначе появлялась вторая полоса прокрутки (например, в «Активности»). */
+  html,
+  body {
+    overflow: hidden;
+  }
   body {
     @apply bg-base text-ink font-sans antialiased;
     font-feature-settings: "tnum" 1;
@@ -84,6 +90,12 @@
   }
   ::selection {
     background: color-mix(in srgb, var(--color-amber) 35%, transparent);
+  }
+  /* Место под полосу прокрутки зарезервировано всегда: появилась она или нет,
+     ширина содержимого одна и та же, ничего не прыгает. */
+  .scroll-area {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
   * {
     scrollbar-width: thin;

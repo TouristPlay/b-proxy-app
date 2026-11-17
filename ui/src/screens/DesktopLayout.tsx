@@ -47,7 +47,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
             <Plus className="size-5" strokeWidth={2.2} />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+        <div className="scroll-area min-h-0 flex-1 px-4 pb-4">
           <ServerList compact />
         </div>
       </aside>
@@ -93,7 +93,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
           </span>
         </header>
 
-        <div key={tab} className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+        <div key={tab} className="scroll-area mt-5 min-h-0 flex-1 pr-1">
           {tab === "home" ? (
             <DesktopHome now={now} onAdd={onAdd} />
           ) : (

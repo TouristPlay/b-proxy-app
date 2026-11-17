@@ -48,7 +48,7 @@ export default function App() {
         <>
           {/* Экран меняется сразу: полупрозрачный родитель на время проявления «выключает»
               размытие стекла (backdrop-filter), и карточки мигали. Движение даёт подсветка в меню. */}
-          <div key={tab} className="h-dvh overflow-y-auto">
+          <div key={tab} className="scroll-area h-dvh">
             {tab === "home" && <HomeScreen onOpenServers={() => setTab("servers")} onAdd={() => setAdding(true)} />}
             {tab === "servers" && <ServersScreen onPicked={() => setTab("home")} onAdd={() => setAdding(true)} />}
             {tab === "activity" && <ActivityScreen />}
