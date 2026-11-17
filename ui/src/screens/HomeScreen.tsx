@@ -9,7 +9,7 @@ import {
   Plus,
   TriangleAlert,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import logo from "@/assets/logo.png";
 import { ErrorBanner } from "@/components/ErrorBanner";
@@ -21,7 +21,7 @@ import {
   daysLeft,
   formatDuration,
   formatSpeed,
-  splitBytes,
+  formatBytes,
   splitFlag,
 } from "@/lib/format";
 import { useNow } from "@/lib/useMedia";
@@ -81,7 +81,7 @@ export function HomeScreen({
         : "Вставьте ссылку на подписку из личного кабинета или Telegram-бота";
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pt-[max(18px,env(safe-area-inset-top))] pb-24">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pt-[max(18px,env(safe-area-inset-top))] pb-[92px]">
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <img
@@ -119,7 +119,7 @@ export function HomeScreen({
             speed={s.downSpeed}
             onToggle={hasServers ? () => void backend.toggle() : onAdd}
             label={hasServers ? undefined : "Добавить подписку"}
-            size="clamp(150px, min(72vw, 25dvh), 300px)"
+            size="clamp(150px, min(72vw, 22dvh), 300px)"
           />
         </div>
 
@@ -139,15 +139,13 @@ export function HomeScreen({
 
         <div className="mt-[clamp(6px,1.2dvh,12px)] flex justify-center">
           {on && s.current && s.connectedAt ? (
-            <Entrance
-              as="span"
-              anim="anim-rise"
-              className="flex items-center gap-2 rounded-full border border-good/30 bg-good/10 px-4 py-1.5 text-[14px] font-medium text-good tabular-nums"
-            >
-              <span className="size-2 rounded-full bg-good" aria-hidden />
-              {splitFlag(s.current.node.name).name} ·{" "}
-              {formatDuration(now - s.connectedAt)}
-            </Entrance>
+            <LiveBar
+              time={formatDuration(now - s.connectedAt)}
+              down={s.downSpeed ?? 0}
+              up={s.upSpeed ?? 0}
+              downTotal={s.downTotal}
+              upTotal={s.upTotal}
+            />
           ) : (
             <Entrance
               as="p"
@@ -215,24 +213,6 @@ export function HomeScreen({
         </div>
       )}
 
-      {on && s.downSpeed != null && (
-        <div className="mt-[clamp(12px,2.5dvh,24px)] grid grid-cols-2 gap-3">
-          <Stat
-            icon={<ArrowDown className="size-4" />}
-            label="Получено"
-            bytes={s.downTotal}
-            speed={s.downSpeed}
-            delay={0}
-          />
-          <Stat
-            icon={<ArrowUp className="size-4" />}
-            label="Отправлено"
-            bytes={s.upTotal}
-            speed={s.upSpeed ?? 0}
-            delay={70}
-          />
-        </div>
-      )}
 
       {s.current && (
         <div className="glass mt-[clamp(10px,2dvh,16px)] divide-y divide-edge overflow-hidden rounded-[24px]">
@@ -266,39 +246,58 @@ export function HomeScreen({
   );
 }
 
-function Stat({
-  icon,
-  label,
-  bytes,
-  speed,
-  delay,
+/**
+ * Строка под «Защищено»: время сеанса, скорость и объём в обе стороны.
+ * Одна компактная строка вместо двух плиток — главная помещается на экран и при подключении.
+ * Подробнее (график, журнал) — во вкладке «Активность».
+ */
+function LiveBar({
+  time,
+  down,
+  up,
+  downTotal,
+  upTotal,
 }: {
-  icon: ReactNode;
-  label: string;
-  bytes: number;
-  speed: number;
-  delay: number;
+  time: string;
+  down: number;
+  up: number;
+  downTotal: number;
+  upTotal: number;
 }) {
-  const { value, unit } = splitBytes(bytes);
   const rise = useEntrance("anim-rise");
   return (
     <div
-      className={cn("glass rounded-[22px] px-4 py-3.5", rise)}
-      style={{ animationDelay: `${delay}ms` }}
+      className={cn(
+        "glass grid w-full grid-cols-3 divide-x divide-edge rounded-[20px] border-good/25 py-2 text-center tabular-nums",
+        rise,
+      )}
+      aria-label="Текущее подключение"
     >
-      <p className="flex items-center gap-1.5 text-[13px] text-ink-2">
-        <span aria-hidden>{icon}</span>
-        {label}
-      </p>
-      <p className="mt-1 tabular-nums">
-        <span className="font-display text-[26px] font-medium tracking-tight">
-          {value}
+      <span className="px-2">
+        <span className="flex items-center justify-center gap-1.5 text-[12px] text-good">
+          <span className="size-1.5 rounded-full bg-good" aria-hidden />
+          Время
         </span>
-        <span className="ml-1 text-[13px] text-ink-2">{unit}</span>
-      </p>
-      <p className="text-[12.5px] text-ink-3 tabular-nums">
-        {formatSpeed(speed)}
-      </p>
+        <span className="mt-0.5 block font-display text-[16px] font-semibold">{time}</span>
+      </span>
+      <span className="px-2">
+        <span className="flex items-center justify-center gap-1 text-[12px] text-ink-2">
+          <ArrowDown className="size-3.5 text-good" aria-hidden />
+          {formatBytes(downTotal)}
+        </span>
+        <span className="mt-0.5 block font-display text-[16px] font-semibold" aria-label={`Загрузка ${formatSpeed(down)}`}>
+          {formatSpeed(down)}
+        </span>
+      </span>
+      <span className="px-2">
+        <span className="flex items-center justify-center gap-1 text-[12px] text-ink-2">
+          <ArrowUp className="size-3.5 text-tag-tls" aria-hidden />
+          {formatBytes(upTotal)}
+        </span>
+        <span className="mt-0.5 block font-display text-[16px] font-semibold" aria-label={`Отдача ${formatSpeed(up)}`}>
+          {formatSpeed(up)}
+        </span>
+      </span>
     </div>
   );
 }

@@ -94,7 +94,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
         </div>
       </div>
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-3 flex gap-2">
         {sub.webPageUrl && (
           <a href={sub.webPageUrl} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "amber", className: "flex-1" })}>
             <ExternalLink />
