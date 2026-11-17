@@ -344,11 +344,20 @@ function ProviderHeader({
       </div>
 
       {sub.announce && !hideNote && (
-        <div className="mt-3 flex gap-2.5 rounded-[18px] bg-amber/[0.07] px-3.5 py-3 ring-1 ring-amber/15 ring-inset">
-          <Megaphone className="mt-0.5 size-4 shrink-0 text-amber" aria-hidden />
-          <p className={cn("min-w-0 leading-snug whitespace-pre-line break-words text-ink", compact ? "text-[13px]" : "text-[14px]")}>
-            {sub.announce}
-          </p>
+        <div className="mt-3 flex gap-2 rounded-[16px] bg-amber/[0.06] px-3 py-2.5 ring-1 ring-amber/15 ring-inset">
+          <Megaphone className="mt-[3px] size-3.5 shrink-0 text-amber" aria-hidden />
+          {/* Пустая строка между абзацами — маленький отступ, а не целая строка. */}
+          <div className="min-w-0 space-y-1 text-[13px] leading-[1.4] text-ink-2">
+            {sub.announce
+              .split(/\n\s*\n/)
+              .map((part) => part.trim())
+              .filter(Boolean)
+              .map((part, i) => (
+                <p key={i} className="whitespace-pre-line break-words">
+                  {part}
+                </p>
+              ))}
+          </div>
         </div>
       )}
 
