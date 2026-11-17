@@ -239,9 +239,9 @@ function ago(t: number, now: number) {
 }
 
 /**
- * Карточка провайдера B-Proxy: слева кольцо срока с числом дней, рядом название, тариф и трафик,
- * стрелка сворачивает серверы. Объявление — в плашке, ниже «Продлить», «Поддержка»,
- * пинг, обновление и меню. Серверы идут в том же блоке под чертой — это часть провайдера.
+ * Карточка провайдера: сверху название и действия (пинг, обновление, меню), под ним срок
+ * и полоса трафика. Объявление — в плашке, ниже «Продлить» и «Поддержка».
+ * Серверы идут в том же блоке под чертой — это часть провайдера.
  */
 function ProviderHeader({
   sub,
@@ -261,39 +261,86 @@ function ProviderHeader({
   const count = sub.nodes.filter((n) => !n.divider).length;
   const days = daysLeft(sub.expireAt);
   const unlimited = sub.totalBytes <= 0;
+  const used = unlimited ? 0 : Math.min(1, sub.usedBytes / sub.totalBytes);
   const pinging = s.pingingSub === sub.url;
   const refreshing = s.refreshingSub === sub.url || s.refreshingSub === "*";
   const canPing = s.state === "disconnected" && !s.pinging;
   const seg =
-    "flex size-10 items-center justify-center rounded-full transition-colors hover:bg-glass-2 hover:text-ink disabled:opacity-50";
+    "flex size-10 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink disabled:opacity-50";
+  const updated = ago(sub.updatedAt, now);
 
   return (
     <div className={compact ? "p-3" : "p-4"}>
-      {/* Верх карточки целиком сворачивает и разворачивает серверы провайдера. */}
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={!closed}
-        aria-label={`${sub.title}: ${closed ? "показать" : "скрыть"} серверы`}
-        className="flex w-full items-center gap-3 rounded-[18px] text-left"
-      >
-        <DaysRing days={days} />
-        <span className="min-w-0 flex-1">
-          <span className={cn("block truncate font-display font-semibold", compact ? "text-[15px]" : "text-[17px]")}>{sub.title}</span>
-          <span className="mt-0.5 block truncate text-[13px] text-ink-2 tabular-nums">
-            {sub.plan ?? "Подписка"} · {formatBytes(sub.usedBytes)}
-            {unlimited ? " без лимита" : ` из ${formatBytes(sub.totalBytes)}`}
-          </span>
-          <span className="mt-0.5 block truncate text-[12px] text-ink-3 tabular-nums" title={updatedFmt.format(sub.updatedAt)}>
-            {count} {plural(count, "сервер", "сервера", "серверов")} · обновлена {ago(sub.updatedAt, now)}
-            {ago(sub.updatedAt, now) === "сейчас" ? "" : " назад"}
-          </span>
-        </span>
-        <ChevronDown
-          className={cn("size-5 shrink-0 text-ink-2 transition-transform duration-[var(--dur)]", !closed && "rotate-180")}
-          aria-hidden
-        />
-      </button>
+      <div className="flex items-start gap-1">
+        {/* Название сворачивает и разворачивает серверы провайдера. */}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={!closed}
+          aria-label={`${sub.title}: ${closed ? "показать" : "скрыть"} серверы`}
+          className="flex min-w-0 flex-1 items-center gap-1.5 rounded-xl py-1.5 text-left"
+        >
+          <span className={cn("truncate font-display font-semibold", compact ? "text-[16px]" : "text-[18px]")}>{sub.title}</span>
+          <ChevronDown
+            className={cn("size-4 shrink-0 text-ink-3 transition-transform duration-[var(--dur)]", !closed && "rotate-180")}
+            aria-hidden
+          />
+        </button>
+        <button
+          type="button"
+          onClick={() => void backend.ping(sub.url)}
+          disabled={!canPing}
+          aria-label={pinging ? `Меряем пинг ${sub.title}` : `Проверить пинг ${sub.title}`}
+          title={s.state === "disconnected" ? "Проверить пинг" : "Пинг проверяется при выключенном VPN"}
+          className={cn(seg, pinging && "bg-amber/15 text-amber")}
+        >
+          <Gauge className={cn("size-[18px]", pinging && "animate-pulse")} />
+        </button>
+        <button
+          type="button"
+          onClick={() => void backend.refreshSubscription(sub.url)}
+          disabled={refreshing}
+          aria-label={`Обновить подписку ${sub.title}`}
+          title="Обновить подписку"
+          className={seg}
+        >
+          <RefreshCw className={cn("size-[17px]", refreshing && "animate-spin")} />
+        </button>
+        <ProviderMenu sub={sub} className={seg} />
+      </div>
+
+      <p className="text-[13px] text-ink-2 tabular-nums" title={updatedFmt.format(sub.updatedAt)}>
+        {count} {plural(count, "сервер", "сервера", "серверов")} · обновлена {updated}
+        {updated === "сейчас" ? "" : " назад"}
+      </p>
+
+      {/* Срок и трафик — две строки с полосами, как на главной, только компактнее. */}
+      <div className="mt-3 grid gap-2.5">
+        <div>
+          <div className="flex items-baseline justify-between gap-2 text-[13px]">
+            <span className="text-ink-2">{sub.plan ?? "Подписка"}</span>
+            <span className={cn("tabular-nums", days != null && days <= 3 ? "text-bad" : "text-ink")}>
+              {days == null ? "без срока" : days > 0 ? `${days} ${plural(days, "день", "дня", "дней")}` : "закончилась"}
+              {sub.expireAt ? <span className="text-ink-3"> · до {expireFmt.format(sub.expireAt)}</span> : null}
+            </span>
+          </div>
+          <Bar value={days == null ? 1 : Math.min(1, Math.max(0, days) / 30)} className={days != null && days <= 3 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber"} label="Осталось дней подписки" />
+        </div>
+        <div>
+          <div className="flex items-baseline justify-between gap-2 text-[13px]">
+            <span className="text-ink-2">Трафик</span>
+            <span className="tabular-nums">
+              {formatBytes(sub.usedBytes)}
+              {unlimited ? <span className="text-good"> · без лимита</span> : <span className="text-ink-3"> из {formatBytes(sub.totalBytes)}</span>}
+            </span>
+          </div>
+          <Bar
+            value={unlimited ? 1 : used}
+            className={unlimited ? "bg-good/60" : used > 0.9 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber"}
+            label="Использованный трафик"
+          />
+        </div>
+      </div>
 
       {sub.announce && !hideNote && (
         <div className="mt-3 flex gap-2.5 rounded-[18px] bg-amber/[0.07] px-3.5 py-3 ring-1 ring-amber/15 ring-inset">
@@ -321,79 +368,18 @@ function ProviderHeader({
             href={sub.supportUrl}
             target="_blank"
             rel="noreferrer"
-            aria-label="Поддержка"
-            title="Поддержка"
-            className={cn(
-              "inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border border-edge-2 text-[14px] font-medium text-ink-2 transition-colors hover:text-ink",
-              "size-10",
-            )}
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border border-edge-2 px-4 text-[14px] font-medium text-ink-2 transition-colors hover:text-ink"
           >
             <MessageCircle className="size-4" aria-hidden />
+            Поддержка
             
           </a>
         )}
-        <div className="ml-auto flex items-center">
-          {/* Пинг и обновление только для этого провайдера. */}
-          <div className="flex items-center text-ink-2">
-            <button
-              type="button"
-              onClick={() => void backend.ping(sub.url)}
-              disabled={!canPing}
-              aria-label={pinging ? `Меряем пинг ${sub.title}` : `Проверить пинг ${sub.title}`}
-              title={s.state === "disconnected" ? "Проверить пинг" : "Пинг проверяется при выключенном VPN"}
-              className={cn(seg, pinging && "bg-amber/15 text-amber")}
-            >
-              <Gauge className={cn("size-[18px]", pinging && "animate-pulse")} />
-            </button>
-              <button
-              type="button"
-              onClick={() => void backend.refreshSubscription(sub.url)}
-              disabled={refreshing}
-              aria-label={`Обновить подписку ${sub.title}`}
-              title="Обновить подписку"
-              className={seg}
-            >
-              <RefreshCw className={cn("size-[17px]", refreshing && "animate-spin")} />
-            </button>
-          </div>
-          <ProviderMenu sub={sub} className="flex size-10 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink" />
-        </div>
       </div>
     </div>
   );
 }
 
-/** Кольцо срока: заполнено по оставшимся дням из последних 30, внутри — число. */
-function DaysRing({ days }: { days: number | null }) {
-  const r = 22;
-  const c = 2 * Math.PI * r;
-  const part = days == null ? 1 : Math.min(days, 30) / 30;
-  const tone = days != null && days <= 3 ? "var(--color-bad)" : "var(--color-amber)";
-  return (
-    <div className="relative size-[54px] shrink-0" aria-label={days == null ? "Бессрочно" : `Осталось ${days} ${plural(days, "день", "дня", "дней")}`}>
-      <svg viewBox="0 0 54 54" className="size-full -rotate-90" aria-hidden>
-        <circle cx="27" cy="27" r={r} fill="none" stroke="var(--color-glass-3)" strokeWidth="4" />
-        <circle
-          cx="27"
-          cy="27"
-          r={r}
-          fill="none"
-          stroke={tone}
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={`${c * part} ${c}`}
-          className="transition-[stroke-dasharray] duration-[var(--dur-slow)]"
-        />
-      </svg>
-      <span className="absolute inset-0 flex flex-col items-center justify-center leading-none tabular-nums" aria-hidden>
-        <span className="font-display text-[15px] font-semibold" style={{ color: tone }}>
-          {days == null ? "∞" : days}
-        </span>
-        <span className="mt-0.5 text-[9.5px] text-ink-3">{days == null ? "срок" : "дн."}</span>
-      </span>
-    </div>
-  );
-}
 
 /** Меню «⋯» провайдера: удалить подписку (с «Вернуть» в уведомлении). */
 function ProviderMenu({ sub, className }: { sub: Subscription; className: string }) {
@@ -417,5 +403,23 @@ function ProviderMenu({ sub, className }: { sub: Subscription; className: string
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
+  );
+}
+
+const expireFmt = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
+
+/** Тонкая полоса прогресса внутри карточки провайдера. */
+function Bar({ value, className, label }: { value: number; className: string; label: string }) {
+  return (
+    <div
+      className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-glass-3"
+      role="progressbar"
+      aria-label={label}
+      aria-valuenow={Math.round(value * 100)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
+      <div className={cn("h-full rounded-full transition-[width] duration-[var(--dur)]", className)} style={{ width: `${Math.max(2, value * 100)}%` }} />
+    </div>
   );
 }
