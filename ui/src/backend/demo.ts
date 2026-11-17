@@ -51,7 +51,7 @@ const demoNodes: ServerNode[] = [
 // Заголовки как в настоящей подписке владельца (без ссылки и ключей).
 const demoSub: Subscription = {
   url: "https://sub.baobabproxy.com/demo",
-  title: "BoababVpn",
+  title: "BaobabVpn",
   plan: "Безлимит",
   nodes: demoNodes,
   usedBytes: 350_686_443_037,

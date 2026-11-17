@@ -1,5 +1,5 @@
 import { Entrance, useEntrance } from "@/lib/motion";
-import { Check, ChevronDown, Search, Star, X, Zap } from "lucide-react";
+import { Check, ChevronDown, Megaphone, Search, Star, X, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { backend, nodeKey, useSnapshot } from "@/backend";
 import { Flag, SignalPing, Tags } from "@/components/bits";
@@ -113,6 +113,8 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
               <span className="flex-1 font-medium text-ink">{sub.title}</span>
               <span className="text-sm text-ink-3 tabular-nums">{sub.nodes.filter((n) => !n.divider).length}</span>
             </button>
+            {/* Объявление провайдера — над его серверами; при поиске не мешаем результатам. */}
+            {!closed && sub.announce && !query.trim() && <ProviderNote text={sub.announce} compact={compact} />}
             {!closed && (
               <ul className="flex flex-col gap-2" aria-label={`Серверы ${sub.title}`}>
                 {nodes.length === 0 && (
@@ -201,4 +203,31 @@ function dividerTitle(name: string) {
 function FavStar({ fav }: { fav: boolean }) {
   const pop = useEntrance("anim-pop");
   return <Star className={cn("size-4", fav && pop)} fill={fav ? "currentColor" : "none"} />;
+}
+
+/**
+ * Объявление провайдера из подписки (заголовок announce): новости, сроки, советы.
+ * Длинное сворачивается до трёх строк с кнопкой «Показать полностью».
+ */
+function ProviderNote({ text, compact }: { text: string; compact?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const long = text.length > 120 || text.split("\n").length > 3;
+  return (
+    <div className={cn("mb-2 flex gap-3 rounded-[20px] border border-amber/20 bg-amber/[0.06] text-ink", compact ? "px-3 py-3 text-[13px]" : "px-4 py-3.5 text-[14px]")}>
+      <Megaphone className="mt-0.5 size-4 shrink-0 text-amber" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className={cn("leading-snug whitespace-pre-line break-words", long && !open && "line-clamp-3")}>{text}</p>
+        {long && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="-ml-1 mt-1 inline-flex min-h-8 items-center rounded-lg px-1 text-[13px] font-medium text-amber hover:text-amber-2"
+          >
+            {open ? "Свернуть" : "Показать полностью"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }

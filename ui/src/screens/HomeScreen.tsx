@@ -1,5 +1,5 @@
 import { Entrance, useEntrance } from "@/lib/motion";
-import { ArrowDown, ArrowUp, ChevronRight, ClipboardPaste, ExternalLink, LoaderCircle, Megaphone, Plus, TriangleAlert } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, ClipboardPaste, ExternalLink, LoaderCircle, Plus, TriangleAlert } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import logo from "@/assets/logo.png";
@@ -172,13 +172,6 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
             <SignalPing ms={s.current.node.pingMs} />
             <ChevronRight className="size-5 text-ink-3" aria-hidden />
           </button>
-        </div>
-      )}
-
-      {sub?.announce && (
-        <div className="glass mt-4 flex gap-3 rounded-[20px] px-4 py-3.5 text-[15px] leading-snug whitespace-pre-line">
-          <Megaphone className="mt-0.5 size-[18px] shrink-0 text-amber" aria-hidden />
-          {sub.announce}
         </div>
       )}
 
