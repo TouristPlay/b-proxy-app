@@ -81,7 +81,7 @@ export function HomeScreen({
         : "Вставьте ссылку на подписку из личного кабинета или Telegram-бота";
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pt-[max(18px,env(safe-area-inset-top))] pb-[92px]">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pt-[max(18px,env(safe-area-inset-top))] pb-[calc(max(14px,env(safe-area-inset-bottom))+86px)]">
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <img
@@ -121,7 +121,7 @@ export function HomeScreen({
             speed={s.downSpeed}
             onToggle={hasServers ? () => void backend.toggle() : onAdd}
             label={hasServers ? undefined : "Добавить подписку"}
-            size="clamp(140px, min(72vw, 100dvh - 670px), 320px)"
+            size={`clamp(140px, min(72vw, 100dvh - ${hasServers ? 674 : 460}px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 320px)`}
           />
         </div>
 
