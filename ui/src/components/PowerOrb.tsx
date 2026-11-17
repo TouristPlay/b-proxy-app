@@ -1,5 +1,6 @@
 import { Power, ShieldCheck } from "lucide-react";
 import type { TunnelState } from "@/backend";
+import { Entrance } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 /**
@@ -118,14 +119,17 @@ export function PowerOrb({
 
         <span className="relative z-10 flex size-full items-center justify-center">
           {on ? (
-            <ShieldCheck key="on" className="anim-pop text-on-accent" style={{ width: disc * 0.3, height: disc * 0.3 }} strokeWidth={1.8} />
+            <Entrance key="on" as="span" anim="anim-pop" className="flex">
+              <ShieldCheck className="text-on-accent" style={{ width: disc * 0.3, height: disc * 0.3 }} strokeWidth={1.8} />
+            </Entrance>
           ) : (
-            <Power
-              key="off"
-              className={cn("anim-pop transition-colors", busy ? "text-amber-2" : "text-ink-2")}
-              style={{ width: disc * 0.3, height: disc * 0.3 }}
-              strokeWidth={1.6}
-            />
+            <Entrance key="off" as="span" anim="anim-pop" className="flex">
+              <Power
+                className={cn("transition-colors", busy ? "text-amber-2" : "text-ink-2")}
+                style={{ width: disc * 0.3, height: disc * 0.3 }}
+                strokeWidth={1.6}
+              />
+            </Entrance>
           )}
         </span>
       </button>

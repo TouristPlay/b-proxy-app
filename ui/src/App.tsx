@@ -1,3 +1,4 @@
+import { markScreenEnter } from "@/lib/motion";
 import { Activity, House, Server, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { useSnapshot } from "@/backend";
@@ -25,7 +26,13 @@ const tabs = [
 export default function App() {
   const s = useSnapshot();
   const desktop = useIsDesktop();
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTabState] = useState<Tab>("home");
+  // Новый экран: элементы, пришедшие вместе с ним, не анимируются (lib/motion).
+  const setTab = (next: Tab) => {
+    if (next === tab) return;
+    markScreenEnter();
+    setTabState(next);
+  };
   const [adding, setAdding] = useState(false);
   const mode = useApplyAppearance(s.settings.appearance);
 
@@ -38,8 +45,9 @@ export default function App() {
         <DesktopLayout onAdd={() => setAdding(true)} />
       ) : (
         <>
-          {/* Экран проявляется при смене раздела; меню вынесено наружу, чтобы не ездило вместе с ним. */}
-          <div key={tab} className="anim-screen h-dvh overflow-y-auto">
+          {/* Экран меняется сразу: полупрозрачный родитель на время проявления «выключает»
+              размытие стекла (backdrop-filter), и карточки мигали. Движение даёт подсветка в меню. */}
+          <div key={tab} className="h-dvh overflow-y-auto">
             {tab === "home" && <HomeScreen onOpenServers={() => setTab("servers")} onAdd={() => setAdding(true)} />}
             {tab === "servers" && <ServersScreen onPicked={() => setTab("home")} />}
             {tab === "activity" && <ActivityScreen />}

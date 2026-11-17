@@ -1,3 +1,4 @@
+import { markScreenEnter } from "@/lib/motion";
 import { ArrowDown, ArrowUp, Gauge, Globe2, LoaderCircle, Lock, Plus, Power, RefreshCw, ShieldCheck } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { backend, useSnapshot } from "@/backend";
@@ -19,7 +20,13 @@ type Tab = "home" | "activity" | "settings";
 /** Компьютер: слева панель серверов, справа главная или настройки. */
 export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
   const s = useSnapshot();
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTabState] = useState<Tab>("home");
+  // Новый экран: элементы, пришедшие вместе с ним, не анимируются (lib/motion).
+  const setTab = (next: Tab) => {
+    if (next === tab) return;
+    markScreenEnter();
+    setTabState(next);
+  };
   const [refreshing, setRefreshing] = useState(false);
   const now = useNow(s.connectedAt != null);
   const canPing = s.state === "disconnected";
@@ -106,7 +113,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
           </span>
         </header>
 
-        <div key={tab} className="anim-screen mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+        <div key={tab} className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
           {tab === "home" ? (
             <DesktopHome now={now} onAdd={onAdd} />
           ) : (

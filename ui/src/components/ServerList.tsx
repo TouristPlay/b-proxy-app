@@ -1,3 +1,4 @@
+import { Entrance, useEntrance } from "@/lib/motion";
 import { Check, ChevronDown, Search, Star, X, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { backend, nodeKey, useSnapshot } from "@/backend";
@@ -163,9 +164,9 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         </span>
                         <SignalPing ms={node.pingMs} className="shrink-0" />
                         {active && !auto ? (
-                          <span className="anim-pop flex size-6 shrink-0 items-center justify-center rounded-full bg-amber text-on-accent" aria-label="Выбран">
+                          <Entrance as="span" anim="anim-pop" className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber text-on-accent" aria-label="Выбран">
                             <Check className="size-4" strokeWidth={3} />
-                          </span>
+                          </Entrance>
                         ) : null}
                       </button>
                       <button
@@ -177,7 +178,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                           fav ? "text-amber" : "text-ink-3/70 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100",
                         )}
                       >
-                        <Star key={String(fav)} className={cn("size-4", fav && "anim-pop")} fill={fav ? "currentColor" : "none"} />
+                        <FavStar key={String(fav)} fav={fav} />
                       </button>
                     </li>
                   );
@@ -194,4 +195,10 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
 /** «⬇️ Обходы глушилок | LTE ⬇️» → «Обходы глушилок | LTE»: убираем стрелки и тире по краям. */
 function dividerTitle(name: string) {
   return name.replace(/^[\s\p{Extended_Pictographic}\uFE0F\u2B07\u2B06\-–—=_*•.]+|[\s\p{Extended_Pictographic}\uFE0F\u2B07\u2B06\-–—=_*•.]+$/gu, "").trim();
+}
+
+/** Звёздочка «прыгает», только когда её нажали, а не при открытии списка. */
+function FavStar({ fav }: { fav: boolean }) {
+  const pop = useEntrance("anim-pop");
+  return <Star className={cn("size-4", fav && pop)} fill={fav ? "currentColor" : "none"} />;
 }

@@ -1,3 +1,4 @@
+import { Entrance, useEntrance } from "@/lib/motion";
 import {
   ArrowDown,
   ArrowUp,
@@ -310,8 +311,9 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
 function LiveCard({ session, s, now }: { session: Session; s: Snapshot; now: number }) {
   const history = s.speedHistory.slice(-40);
   const max = Math.max(...history, 1);
+  const rise = useEntrance("anim-rise");
   return (
-    <section className="glass anim-rise mb-4 rounded-[24px] border-good/30 p-4" aria-label="Текущее подключение">
+    <section className={cn("glass mb-4 rounded-[24px] border-good/30 p-4", rise)} aria-label="Текущее подключение">
       <div className="flex items-center gap-3">
         <Flag name={session.server} size="sm" />
         <span className="min-w-0 flex-1">
@@ -494,7 +496,7 @@ function DayBars({
         </div>
       </div>
 
-      <p key={`${selected}-${metric}`} className="anim-status mb-3 min-h-5 text-[14px] tabular-nums" aria-live="polite">
+      <Entrance as="p" anim="anim-status" key={`${selected}-${metric}`} className="mb-3 min-h-5 text-[14px] tabular-nums" aria-live="polite">
         {picked ? (
           <>
             <span className="font-medium text-amber">{dayTitle(picked.day, now)}:</span> {show(value(picked))}
@@ -508,7 +510,7 @@ function DayBars({
             Всего {show(total)} <span className="text-ink-3">· выберите день</span>
           </span>
         )}
-      </p>
+      </Entrance>
 
       <div className={cn("flex h-28 items-end", many ? "gap-[3px]" : "gap-2")}>
         {bars.map((b) => {

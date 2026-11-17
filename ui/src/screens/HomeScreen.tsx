@@ -1,3 +1,4 @@
+import { Entrance, useEntrance } from "@/lib/motion";
 import { ArrowDown, ArrowUp, ChevronRight, ClipboardPaste, ExternalLink, LoaderCircle, Megaphone, Plus, TriangleAlert } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { backend, useSnapshot } from "@/backend";
@@ -77,27 +78,33 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
         />
       </div>
 
-      <h1
+      <Entrance
+        as="h1"
+        anim="anim-status"
         key={hasServers ? title : "empty"}
         aria-live="polite"
         className={cn(
-          "anim-status mt-5 text-center font-display text-[34px] leading-tight font-semibold tracking-[-0.025em]",
+          "mt-5 text-center font-display text-[34px] leading-tight font-semibold tracking-[-0.025em]",
           on && "bg-gradient-to-b from-amber-2 to-amber bg-clip-text text-transparent",
         )}
       >
         {hasServers ? title : "Добавьте подписку"}
-      </h1>
+      </Entrance>
 
       <div className="mt-3 flex justify-center">
         {on && s.current && s.connectedAt ? (
-          <span className="anim-rise flex items-center gap-2 rounded-full border border-good/30 bg-good/10 px-4 py-1.5 text-[14px] font-medium text-good tabular-nums">
+          <Entrance
+            as="span"
+            anim="anim-rise"
+            className="flex items-center gap-2 rounded-full border border-good/30 bg-good/10 px-4 py-1.5 text-[14px] font-medium text-good tabular-nums"
+          >
             <span className="size-2 rounded-full bg-good" aria-hidden />
             {splitFlag(s.current.node.name).name} · {formatDuration(now - s.connectedAt)}
-          </span>
+          </Entrance>
         ) : (
-          <p key={hint} className="anim-status max-w-[30ch] text-center text-[15px] text-balance text-ink-2">
+          <Entrance as="p" anim="anim-status" key={hint} className="max-w-[30ch] text-center text-[15px] text-balance text-ink-2">
             {hint}
-          </p>
+          </Entrance>
         )}
       </div>
 
@@ -169,8 +176,9 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
 
 function Stat({ icon, label, bytes, speed, delay }: { icon: ReactNode; label: string; bytes: number; speed: number; delay: number }) {
   const { value, unit } = splitBytes(bytes);
+  const rise = useEntrance("anim-rise");
   return (
-    <div className="glass anim-rise rounded-[22px] px-4 py-3.5" style={{ animationDelay: `${delay}ms` }}>
+    <div className={cn("glass rounded-[22px] px-4 py-3.5", rise)} style={{ animationDelay: `${delay}ms` }}>
       <p className="flex items-center gap-1.5 text-[13px] text-ink-2">
         <span aria-hidden>{icon}</span>
         {label}
