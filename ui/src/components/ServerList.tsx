@@ -310,6 +310,7 @@ function ProviderHeader({
       </div>
 
       <p className="text-[13px] text-ink-2 tabular-nums" title={updatedFmt.format(sub.updatedAt)}>
+        {sub.plan ? `${sub.plan} · ` : ""}
         {count} {plural(count, "сервер", "сервера", "серверов")} · обновлена {updated}
         {updated === "сейчас" ? "" : " назад"}
       </p>
@@ -318,25 +319,25 @@ function ProviderHeader({
       <div className="mt-3 grid gap-2.5">
         <div>
           <div className="flex items-baseline justify-between gap-2 text-[13px]">
-            <span className="text-ink-2">{sub.plan ?? "Подписка"}</span>
+            <span className="text-ink-2">Срок</span>
             <span className={cn("tabular-nums", days != null && days <= 3 ? "text-bad" : "text-ink")}>
-              {days == null ? "без срока" : days > 0 ? `${days} ${plural(days, "день", "дня", "дней")}` : "закончилась"}
+              {days == null ? "бессрочно" : days > 0 ? `осталось ${days} ${plural(days, "день", "дня", "дней")}` : "закончилась"}
               {sub.expireAt ? <span className="text-ink-3"> · до {expireFmt.format(sub.expireAt)}</span> : null}
             </span>
           </div>
-          <Bar value={days == null ? 1 : Math.min(1, Math.max(0, days) / 30)} className={days != null && days <= 3 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber"} label="Осталось дней подписки" />
+          <Bar value={days == null ? 1 : Math.max(0, days) / termDays(days)} className={days != null && days <= 3 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber"} label="Осталось дней подписки" />
         </div>
         <div>
           <div className="flex items-baseline justify-between gap-2 text-[13px]">
             <span className="text-ink-2">Трафик</span>
             <span className="tabular-nums">
               {formatBytes(sub.usedBytes)}
-              {unlimited ? <span className="text-good"> · без лимита</span> : <span className="text-ink-3"> из {formatBytes(sub.totalBytes)}</span>}
+              {unlimited ? <span className="text-ink-3"> · не ограничен</span> : <span className="text-ink-3"> из {formatBytes(sub.totalBytes)}</span>}
             </span>
           </div>
           <Bar
             value={unlimited ? 1 : used}
-            className={unlimited ? "bg-good/60" : used > 0.9 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber"}
+            className={unlimited ? "bg-good/25" : used > 0.9 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber"}
             label="Использованный трафик"
           />
         </div>
@@ -422,4 +423,12 @@ function Bar({ value, className, label }: { value: number; className: string; la
       <div className={cn("h-full rounded-full transition-[width] duration-[var(--dur)]", className)} style={{ width: `${Math.max(2, value * 100)}%` }} />
     </div>
   );
+}
+
+/**
+ * Длина оплаченного периода для полосы срока. Даты начала подписка не сообщает,
+ * поэтому берём ближайший обычный период: месяц, 3 месяца, полгода, год.
+ */
+function termDays(days: number) {
+  return [30, 90, 180, 365].find((t) => days <= t) ?? days;
 }
