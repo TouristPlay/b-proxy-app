@@ -1,9 +1,8 @@
 import { addPluginListener, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { defaultAppearance, defaultSettings } from "./demo";
-import { checkUrl, parseSubscription, type FetchResult, type Outbound, type StoredSubscription } from "./subscription";
+import { checkUrl, mainOutbound, parseSubscription, type FetchResult, type NodeConfig, type Outbound, type StoredSubscription } from "./subscription";
 import {
-  nodeKey,
   type ActivityEntry,
   type Appearance,
   type Backend,
@@ -22,7 +21,6 @@ import { buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
 const APP_VERSION = "0.1.0";
 /** Remnawave отдаёт список серверов только приложениям; с этим заголовком приходят ссылки. */
 const USER_AGENT = "v2rayNG/1.9.30";
-const PING_URL = "https://www.gstatic.com/generate_204";
 /** libXray меряет не больше 5 серверов за вызов. */
 const PING_BATCH = 5;
 
@@ -96,6 +94,8 @@ export class TauriBackend implements Backend {
         ...defaultSettings,
         ...(saved?.settings ?? {}),
         core: { ...defaultSettings.core, ...(saved?.settings?.core ?? {}) },
+        ping: { ...defaultSettings.ping, ...(saved?.settings?.ping ?? {}) },
+        updates: { ...defaultSettings.updates, ...(saved?.settings?.updates ?? {}) },
         appearance,
       },
       downSpeed: null,
@@ -105,6 +105,8 @@ export class TauriBackend implements Backend {
       speedHistory: [],
       error: null,
       pinging: false,
+      pingingSub: null,
+      refreshingSub: null,
       toast: null,
       version: { app: APP_VERSION, xray: "—" },
       activity: loadActivity(),
@@ -164,14 +166,14 @@ export class TauriBackend implements Backend {
       // Ядро не загрузилось — покажем ошибку при подключении.
     }
 
-    // Обновляем подписки при запуске, если прошло больше их интервала (по умолчанию 12 ч).
-    const stale = this.subs.some(
-      (sub) => Date.now() - sub.updatedAt > (sub.updateIntervalHours ?? 12) * 3600_000,
-    );
-    if (stale) await this.refreshSubscriptions(true);
-    // Свежий пинг при запуске: автовыбор берёт лучший сервер, а не первый в списке.
-    if (this.s.state === "disconnected" && this.subs.length) void this.pingAll(true);
-    window.setInterval(() => void this.refreshSubscriptions(true), 6 * 3600_000);
+    // Подписки при запуске — по настройке «Обновлять при запуске», иначе только просроченные.
+    const { updates, ping } = this.s.settings;
+    if (updates.onStart && this.subs.length) await this.refreshSubscriptions(true);
+    else await this.refreshDue();
+    // Пинг выбранного провайдера: автовыбор берёт лучший сервер, а не первый в списке.
+    if (ping.onStart && this.s.state === "disconnected" && this.subs.length) void this.ping(undefined, true);
+    // Раз в 15 минут проверяем, не пора ли обновить какую-то подписку.
+    window.setInterval(() => void this.refreshDue(), 15 * 60_000);
   }
 
   // ---------- Хранилище и снимок ----------
@@ -379,7 +381,7 @@ export class TauriBackend implements Backend {
     this.emit({ state: "connecting", error: null });
     try {
       // Автовыбор без замеров: сначала находим самый быстрый сервер.
-      if (!this.s.selected && !this.hasPings()) await this.pingAll(true);
+      if (!this.s.selected && !this.hasPings()) await this.ping(undefined, true);
 
       const target = this.s.current;
       if (!target) throw new Error("Сначала добавьте подписку");
@@ -542,12 +544,47 @@ export class TauriBackend implements Backend {
     const count = sub.nodes.filter((n) => !n.divider).length;
     this.log({ kind: "subscription", id: newId(), at: Date.now(), text: `Добавлена подписка «${sub.title}»` });
     this.toast(`Подписка «${sub.title}» добавлена: ${count} ${plural(count, "сервер", "сервера", "серверов")}`);
-    // Сразу меряем пинг, чтобы автовыбор знал лучший сервер.
-    if (this.s.state === "disconnected") void this.pingAll(true);
+    // Сразу меряем пинг новой подписки, чтобы автовыбор знал лучший сервер.
+    if (this.s.state === "disconnected") void this.ping(sub.url, true);
+  }
+
+  /** Часы между обновлениями подписки по настройке; null — только вручную. */
+  private intervalHours(sub: StoredSubscription): number | null {
+    const interval = this.s.settings.updates.interval;
+    if (interval === "off") return null;
+    if (interval === "provider") return sub.updateIntervalHours ?? 12;
+    return interval;
+  }
+
+  /** Обновляет подписки, у которых истёк интервал. */
+  private async refreshDue() {
+    const due = this.subs.filter((sub) => {
+      const hours = this.intervalHours(sub);
+      return hours != null && Date.now() - sub.updatedAt >= hours * 3600_000;
+    });
+    for (const sub of due) await this.refreshSubscription(sub.url, true);
+  }
+
+  async refreshSubscription(url: string, silent = false) {
+    const sub = this.subs.find((x) => x.url === url);
+    if (!sub || this.s.refreshingSub) return;
+    this.emit({ refreshingSub: url });
+    try {
+      const fresh = await this.load(sub.url, sub);
+      this.setSubs(this.subs.map((x) => (x.url === url ? fresh : x)));
+      this.writeLog("info", `Подписка «${fresh.title}» обновлена${silent ? " (авто)" : ""}: ${fresh.nodes.filter((n) => !n.divider).length} серв.`);
+      if (!silent) this.toast(`Подписка «${fresh.title}» обновлена`);
+    } catch (e) {
+      this.logError(`Подписка не обновилась — ${sub.title}: ${message(e)}`);
+      if (!silent) this.emit({ error: `Не удалось обновить «${sub.title}»: ${message(e)}` });
+    } finally {
+      this.emit({ refreshingSub: null });
+    }
   }
 
   async refreshSubscriptions(silent = false) {
-    if (this.subs.length === 0) return;
+    if (this.subs.length === 0 || this.s.refreshingSub) return;
+    this.emit({ refreshingSub: "*" });
     const errors: string[] = [];
     const next = await Promise.all(
       this.subs.map(async (sub) => {
@@ -569,6 +606,7 @@ export class TauriBackend implements Backend {
     if (errors.length < this.subs.length) {
       this.log({ kind: "subscription", id: newId(), at: Date.now(), text: silent ? "Подписки обновлены автоматически" : "Подписки обновлены" });
     }
+    this.emit({ refreshingSub: null });
     if (errors.length && !silent) this.emit({ error: errors.join("\n") });
     else if (!silent) this.toast("Подписки обновлены");
   }
@@ -598,56 +636,75 @@ export class TauriBackend implements Backend {
     return this.subs.some((sub) => sub.nodes.some((n) => n.pingMs != null && n.pingMs > 0));
   }
 
-  async pingAll(quiet = false) {
+  /**
+   * Пинг серверов одного провайдера (по умолчанию — того, чей сервер выбран).
+   * TCP — время соединения с адресом сервера (быстро, без ядра);
+   * «реальная задержка» — запрос через ядро к проверочному адресу (pingBatch, по 5 за вызов).
+   */
+  async ping(subUrl?: string, quiet = false) {
+    const sub = this.subs.find((x) => x.url === (subUrl ?? this.s.current?.sub.url)) ?? this.subs[0];
     // Под VPN замер пошёл бы через туннель и показал неправду.
-    if (this.s.pinging || (!quiet && this.s.state !== "disconnected")) return;
-    this.emit({ pinging: true });
+    if (!sub || this.s.pinging || (!quiet && this.s.state !== "disconnected")) return;
+    const { method, timeoutSec, url } = this.s.settings.ping;
+    this.emit({ pinging: true, pingingSub: sub.url });
     try {
-      const jobs = this.subs.flatMap((sub) =>
-        sub.nodes
-          .filter((n) => !n.divider && sub.outbounds[n.id])
-          .map((n) => ({ subUrl: sub.url, id: n.id, config: buildPingConfig(sub.outbounds[n.id]) })),
-      );
+      const nodes = sub.nodes.filter((n) => !n.divider && sub.outbounds[n.id]);
       const results = new Map<string, number>();
-      const chunks: (typeof jobs)[] = [];
-      for (let i = 0; i < jobs.length; i += PING_BATCH) chunks.push(jobs.slice(i, i + PING_BATCH));
 
-      // Три пачки одновременно: быстрее, но не забивает канал.
-      let next = 0;
-      const worker = async () => {
-        while (next < chunks.length) {
-          const chunk = chunks[next++];
-          try {
-            const data = await this.core<{ results?: { success: boolean; delay: number }[] }>("pingBatch", {
-              configs: chunk.map((j) => ({ xrayJson: j.config, outboundTag: "proxy" })),
-              timeout: 5,
-              url: PING_URL,
-            });
-            chunk.forEach((j, i) => {
-              const r = data.results?.[i];
-              results.set(nodeKey(j.subUrl, j.id), r?.success ? Math.max(1, Math.round(r.delay)) : -1);
-            });
-          } catch {
-            chunk.forEach((j) => results.set(nodeKey(j.subUrl, j.id), -1));
+      if (method === "tcp") {
+        const targets = nodes.flatMap((n) => {
+          const t = serverEndpoint(sub.outbounds[n.id]);
+          if (!t) {
+            results.set(n.id, -1);
+            return [];
           }
-        }
-      };
-      await Promise.all([worker(), worker(), worker()]);
+          return [{ id: n.id, ...t }];
+        });
+        const res = await invoke<{ id: string; ms: number | null }[]>("plugin:bproxy|tcp_ping", {
+          targets,
+          timeoutMs: timeoutSec * 1000,
+        });
+        for (const r of res) results.set(r.id, r.ms ?? -1);
+      } else {
+        const chunks: (typeof nodes)[] = [];
+        for (let i = 0; i < nodes.length; i += PING_BATCH) chunks.push(nodes.slice(i, i + PING_BATCH));
+        // Три пачки одновременно: быстрее, но не забивает канал.
+        let next = 0;
+        const worker = async () => {
+          while (next < chunks.length) {
+            const chunk = chunks[next++];
+            try {
+              const data = await this.core<{ results?: { success: boolean; delay: number }[] }>("pingBatch", {
+                configs: chunk.map((n) => ({ xrayJson: buildPingConfig(sub.outbounds[n.id]), outboundTag: "proxy" })),
+                timeout: timeoutSec,
+                url,
+              });
+              chunk.forEach((n, i) => {
+                const r = data.results?.[i];
+                results.set(n.id, r?.success ? Math.max(1, Math.round(r.delay)) : -1);
+              });
+            } catch {
+              chunk.forEach((n) => results.set(n.id, -1));
+            }
+          }
+        };
+        await Promise.all([worker(), worker(), worker()]);
+      }
+
       const ok = [...results.values()].filter((v) => v > 0);
       this.writeLog(
         ok.length ? "info" : "warn",
-        `Пинг: ответили ${ok.length} из ${results.size}` + (ok.length ? `, лучший ${Math.min(...ok)} мс` : ""),
+        `Пинг (${method === "tcp" ? "TCP" : "реальная задержка"}) «${sub.title}»: ответили ${ok.length} из ${results.size}` +
+          (ok.length ? `, лучший ${Math.min(...ok)} мс` : ""),
       );
-
       this.setSubs(
-        this.subs.map((sub) => ({
-          ...sub,
-          nodes: sub.nodes.map((n) => (n.divider ? n : { ...n, pingMs: results.get(nodeKey(sub.url, n.id)) ?? n.pingMs })),
-        })),
+        this.subs.map((x) =>
+          x.url !== sub.url ? x : { ...x, nodes: x.nodes.map((n) => (n.divider ? n : { ...n, pingMs: results.get(n.id) ?? n.pingMs })) },
+        ),
       );
-      if (!quiet) this.toast("Пинг обновлён");
+      if (!quiet) this.toast(`Пинг «${sub.title}» обновлён`);
     } finally {
-      this.emit({ pinging: false });
+      this.emit({ pinging: false, pingingSub: null });
     }
   }
 
@@ -708,4 +765,14 @@ export class TauriBackend implements Backend {
 function publicSub(s: StoredSubscription): Subscription {
   const { outbounds: _o, fragment: _f, hideUrl: _h, updateIntervalHours: _u, ...rest } = s;
   return rest;
+}
+
+/** Адрес и порт сервера из outbound'а — для TCP-пинга. */
+function serverEndpoint(node: NodeConfig): { host: string; port: number } | null {
+  const o = mainOutbound(node);
+  const s = (o.settings ?? {}) as Record<string, unknown>;
+  const first = ((s.vnext ?? s.servers) as { address?: string; port?: number }[] | undefined)?.[0];
+  const host = (first?.address ?? s.address) as string | undefined;
+  const port = Number(first?.port ?? s.port);
+  return host && port > 0 && port < 65536 ? { host, port } : null;
 }

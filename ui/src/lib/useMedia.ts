@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { markScreenEnter } from "./motion";
 
 /** true, если окно шире 1024 px — показываем раскладку для компьютера. */
 export function useIsDesktop() {
@@ -6,7 +7,11 @@ export function useIsDesktop() {
   const [match, setMatch] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
   useEffect(() => {
     const m = window.matchMedia(query);
-    const on = () => setMatch(m.matches);
+    // Смена раскладки при изменении окна — как новый экран: без «прыжков» появления.
+    const on = () => {
+      markScreenEnter();
+      setMatch(m.matches);
+    };
     m.addEventListener("change", on);
     return () => m.removeEventListener("change", on);
   }, []);

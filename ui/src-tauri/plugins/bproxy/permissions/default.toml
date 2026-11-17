@@ -13,4 +13,5 @@ permissions = [
   "allow-log-info",
   "allow-read-log",
   "allow-open-logs-dir",
+  "allow-tcp-ping",
 ]

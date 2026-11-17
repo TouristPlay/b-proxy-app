@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Ban, ChevronRight, FileText, Gauge, Globe, Info, Network, Palette, Plus, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
+import { Ban, ChevronRight, FileText, Gauge, Globe, Info, Network, Palette, Plus, RefreshCw, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot, type Settings } from "@/backend";
 import { Group, IconTile, Row, type Tone } from "@/components/bits";
@@ -9,6 +9,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { AppearanceSheet } from "./AppearanceGroup";
 import { CoreSettingsSheet } from "./CoreSettingsSheet";
+import { intervalTitle, PingSheet, UpdatesSheet } from "./PingUpdateSheets";
 import { LogsSheet } from "./LogsSheet";
 import { themeById } from "@/lib/theme";
 
@@ -44,6 +45,8 @@ const dns = [
 export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd: () => void }) {
   const s = useSnapshot();
   const [core, setCore] = useState(false);
+  const [ping, setPing] = useState(false);
+  const [updates, setUpdates] = useState(false);
   const [about, setAbout] = useState(false);
   const [look, setLook] = useState(false);
   const [routing, setRouting] = useState(false);
@@ -72,6 +75,23 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
             icon={<IconTile icon={Route} tone="green" />}
             title="Маршруты и DNS"
             hint={routingHint}
+            aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
+          />
+        </Group>
+
+        <Group title="Серверы и подписки">
+          <Row
+            onClick={() => setPing(true)}
+            icon={<IconTile icon={Gauge} tone="amber" />}
+            title="Пинг"
+            hint={`${s.settings.ping.method === "tcp" ? "TCP" : "Реальная задержка"}, ожидание ${s.settings.ping.timeoutSec} с`}
+            aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
+          />
+          <Row
+            onClick={() => setUpdates(true)}
+            icon={<IconTile icon={RefreshCw} tone="teal" />}
+            title="Обновление подписок"
+            hint={intervalTitle(s.settings.updates.interval) + (s.settings.updates.onStart ? ", при запуске" : "")}
             aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
           />
         </Group>
@@ -145,6 +165,8 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
       </div>
 
       <CoreSettingsSheet open={core} onOpenChange={setCore} />
+      <PingSheet open={ping} onOpenChange={setPing} />
+      <UpdatesSheet open={updates} onOpenChange={setUpdates} />
       <LogsSheet open={logs} onOpenChange={setLogs} />
       <AppearanceSheet open={look} onOpenChange={setLook} />
       <Sheet
@@ -197,7 +219,6 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
         <Group>
           <Row title="Версия приложения" aside={<span className="text-ink-2 tabular-nums">{s.version.app}</span>} />
           <Row title="Версия Xray" aside={<span className="text-ink-2 tabular-nums">{s.version.xray}</span>} />
-          <Row title="Провайдер" aside={<span className="text-ink-2">BaobabVPN</span>} />
         </Group>
       </Sheet>
     </div>

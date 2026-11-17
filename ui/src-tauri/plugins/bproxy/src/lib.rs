@@ -12,6 +12,7 @@ use tauri::{
 };
 
 mod commands;
+mod ping;
 pub mod logs;
 mod models;
 mod subscription;
@@ -51,7 +52,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::log,
             commands::log_info,
             commands::read_log,
-            commands::open_logs_dir
+            commands::open_logs_dir,
+            commands::tcp_ping
         ])
         .setup(|app, api| {
             if let Ok(dir) = app.path().app_local_data_dir() {

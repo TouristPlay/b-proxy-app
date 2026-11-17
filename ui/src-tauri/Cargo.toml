@@ -1,7 +1,8 @@
 [package]
 name = "b-proxy"
 version = "0.1.0"
-description = "B-Proxy — VPN-клиент BaobabVPN на ядре Xray"
+authors = ["B-Proxy"]
+description = "B-Proxy — VPN-клиент на ядре Xray"
 edition = "2021"
 rust-version = "1.80"
 

@@ -14,8 +14,8 @@ import {
 
 
 /**
- * Серверы из настоящей подписки BaobabVpn владельца: только названия и транспорт,
- * без адресов и ключей. Пинги не известны, пока не нажать «Проверить пинг».
+ * Вымышленная подписка для показа дизайна: нейтральный провайдер, обычные страны.
+ * Ни адресов, ни ключей, ни связи с настоящими сервисами.
  */
 const v = (id: string, name: string, net: string, sec = "REALITY"): ServerNode => ({
   id,
@@ -25,42 +25,35 @@ const v = (id: string, name: string, net: string, sec = "REALITY"): ServerNode =
 });
 
 const demoNodes: ServerNode[] = [
-  v("auto-all", "🇪🇺 Auto | Все сервера", "GRPC"),
-  v("auto-eu", "🇪🇺 Auto | Европа | Азия", "GRPC"),
-  v("ru-yt", "🇷🇺 Россия | YouTube без рекламы", "TCP"),
+  v("auto-all", "🇪🇺 Auto | Все серверы", "GRPC"),
+  v("de", "🇩🇪 Германия", "TCP"),
+  v("nl", "🇳🇱 Нидерланды", "TCP"),
+  v("fi", "🇫🇮 Финляндия", "GRPC"),
   v("pl", "🇵🇱 Польша", "GRPC"),
   v("fr", "🇫🇷 Франция", "GRPC"),
-  v("ee", "🇪🇪 Эстония", "GRPC"),
-  v("nl", "🇳🇱 Нидерланды", "TCP"),
-  v("de", "🇩🇪 Германия", "TCP"),
+  v("se", "🇸🇪 Швеция", "XHTTP", "TLS"),
+  v("ch", "🇨🇭 Швейцария", "TCP"),
   v("us", "🇺🇸 США", "TCP"),
-  v("fi", "🇫🇮 Финляндия", "TCP"),
-  { id: "div-lte", name: "⬇️ Обходы глушилок | LTE ⬇️", tags: [], pingMs: null, divider: true },
-  v("ws-auto", "🇷🇺 Auto | Белые списки | LTE", "GRPC"),
-  v("ws-fi1", "🇫🇮 1. Финка | Белые списки | LTE", "TCP"),
-  v("ws-fi2", "🇫🇮 2. Финка | Белые списки | LTE", "TCP"),
-  v("ws-de1", "🇩🇪 1. Немцы | Белые списки | LTE", "TCP"),
-  v("ws-de2", "🇩🇪 2. Немцы | Белые списки | LTE", "TCP"),
-  v("ws-ee1", "🇪🇪 1. Эстония | Белые списки | LTE", "XHTTP", "TLS"),
-  v("ws-ee2", "🇪🇪 2. Эстония | Белые списки | LTE", "XHTTP", "TLS"),
-  v("ws-ee3", "🇪🇪 3. Эстония | Белые списки | LTE", "XHTTP", "TLS"),
-  v("ws-ee4", "🇪🇪 4. Эстония | Белые списки | LTE", "XHTTP", "TLS"),
-  v("ws-ee5", "🇪🇪 5. Эстония | Белые списки | LTE", "XHTTP", "TLS"),
+  v("jp", "🇯🇵 Япония", "XHTTP", "TLS"),
+  { id: "div-mobile", name: "⬇️ Для мобильного интернета ⬇️", tags: [], pingMs: null, divider: true },
+  v("m-auto", "🌐 Auto | Мобильная сеть", "GRPC"),
+  v("m-de", "🇩🇪 Германия | Мобильная сеть", "TCP"),
+  v("m-fi", "🇫🇮 Финляндия | Мобильная сеть", "XHTTP", "TLS"),
+  v("m-nl", "🇳🇱 Нидерланды | Мобильная сеть", "XHTTP", "TLS"),
 ];
 
-// Заголовки как в настоящей подписке владельца (без ссылки и ключей).
 const demoSub: Subscription = {
-  url: "https://sub.baobabproxy.com/demo",
-  title: "BaobabVpn",
+  url: "https://example.com/sub/demo",
+  title: "Demo VPN",
   plan: "Безлимит",
   nodes: demoNodes,
-  usedBytes: 350_686_443_037,
+  usedBytes: 128_402_113_536,
   totalBytes: 0,
-  expireAt: 1_855_050_020_000,
+  expireAt: Date.now() + 184 * 86_400_000,
   announce:
-    "BaobabVPN - корни свободы в интернете ❤️\nДней до окончания подписки - 696 📅\n\n❗️Если не работает, обновите подписку или попробуйте другие варианты ❗️",
-  supportUrl: "https://t.me/baobabvpnsupport",
-  webPageUrl: "https://baobabproxy.com",
+    "Добро пожаловать! Это пример объявления провайдера: новости, сроки подписки и советы.\n\nЕсли сервер не отвечает, обновите подписку или выберите другой.",
+  supportUrl: "https://example.com/support",
+  webPageUrl: "https://example.com/account",
   updatedAt: Date.now() - 3 * 3600_000,
 };
 
@@ -91,6 +84,8 @@ export const defaultSettings: Settings = {
   blockAds: false,
   ipv6: false,
   dnsServer: "1.1.1.1",
+  ping: { method: "tcp", timeoutSec: 5, url: "https://www.gstatic.com/generate_204", onStart: true },
+  updates: { interval: "provider", onStart: true },
   core: defaultCore,
   appearance: defaultAppearance,
 };
@@ -132,6 +127,8 @@ export class DemoBackend implements Backend {
       speedHistory: [],
       error: null,
       pinging: false,
+      pingingSub: null,
+      refreshingSub: null,
       toast: null,
       version: { app: "0.1.0", xray: "26.11.9" },
       activity: empty ? [] : demoActivity(),
@@ -281,13 +278,25 @@ export class DemoBackend implements Backend {
     this.emit({ subscriptions: [sub, ...this.s.subscriptions.filter((x) => x.url !== sub.url)] });
     this.toast("Подписка добавлена");
     // Сразу меряем пинг, чтобы автовыбор знал лучший сервер.
-    void this.pingAll(true);
+    void this.ping(sub.url, true);
   }
 
   async refreshSubscriptions() {
+    this.emit({ refreshingSub: "*" });
     await wait(700);
-    this.emit({ subscriptions: this.s.subscriptions.map((x) => ({ ...x, updatedAt: Date.now() })) });
+    this.emit({ subscriptions: this.s.subscriptions.map((x) => ({ ...x, updatedAt: Date.now() })), refreshingSub: null });
     this.toast("Подписки обновлены");
+  }
+
+  async refreshSubscription(url: string) {
+    this.emit({ refreshingSub: url });
+    await wait(700);
+    const sub = this.s.subscriptions.find((x) => x.url === url);
+    this.emit({
+      subscriptions: this.s.subscriptions.map((x) => (x.url === url ? { ...x, updatedAt: Date.now() } : x)),
+      refreshingSub: null,
+    });
+    this.toast(`Подписка «${sub?.title ?? ""}» обновлена`);
   }
 
   async removeSubscription(url: string) {
@@ -304,17 +313,24 @@ export class DemoBackend implements Backend {
     });
   }
 
-  async pingAll(quiet = false) {
-    if (this.s.state !== "disconnected" || this.s.pinging) return;
-    this.emit({ pinging: true });
-    await wait(1200);
-    const subscriptions = this.s.subscriptions.map((sub) => ({
-      ...sub,
-      nodes: sub.nodes.map((n) =>
-        n.divider ? n : { ...n, pingMs: n.id === "us" ? -1 : Math.round(15 + Math.random() * 180) },
-      ),
-    }));
-    this.emit({ subscriptions, pinging: false });
+  /** Пинг одного провайдера (по умолчанию — того, чей сервер выбран). */
+  async ping(subUrl?: string, quiet = false) {
+    const url = subUrl ?? this.s.current?.sub.url ?? this.s.subscriptions[0]?.url;
+    if (!url || this.s.state !== "disconnected" || this.s.pinging) return;
+    this.emit({ pinging: true, pingingSub: url });
+    await wait(this.s.settings.ping.method === "tcp" ? 600 : 1200);
+    const tcp = this.s.settings.ping.method === "tcp";
+    const subscriptions = this.s.subscriptions.map((sub) =>
+      sub.url !== url
+        ? sub
+        : {
+            ...sub,
+            nodes: sub.nodes.map((n) =>
+              n.divider ? n : { ...n, pingMs: n.id === "jp" ? -1 : Math.round((tcp ? 8 : 15) + Math.random() * (tcp ? 90 : 180)) },
+            ),
+          },
+    );
+    this.emit({ subscriptions, pinging: false, pingingSub: null });
     if (!quiet) this.toast("Пинг обновлён");
   }
 
@@ -363,7 +379,7 @@ export class DemoBackend implements Backend {
     // В демо журналов нет: показываем, как они выглядят в приложении.
     const t = new Date().toISOString().slice(0, 19).replace("T", " ");
     return which === "app"
-      ? `${t}Z INFO  [plugin] B-Proxy 0.1.0 запущен: windows x86_64\n${t}Z INFO  [ui] Подключение: 🇵🇱 Польша [VLESS/REALITY/GRPC]\n${t}Z INFO  [vpn] VPN подключён за 1840 мс`
+      ? `${t}Z INFO  [plugin] B-Proxy 0.1.0 запущен: windows x86_64\n${t}Z INFO  [ui] Подключение: 🇩🇪 Германия [VLESS/REALITY/GRPC]\n${t}Z INFO  [vpn] VPN подключён за 1840 мс`
       : `${t} [Info] Xray 26.11.9 started\n${t} [Info] [tun] interface B-Proxy created`;
   }
 
@@ -393,7 +409,7 @@ function demoActivity(): ActivityEntry[] {
   const H = 3_600_000;
   const now = Date.now();
   const list: ActivityEntry[] = [];
-  const servers = ["🇪🇺 Auto | Все сервера", "🇵🇱 Польша", "🇫🇷 Франция", "🇷🇺 Россия | YouTube без рекламы"];
+  const servers = ["🇪🇺 Auto | Все серверы", "🇩🇪 Германия", "🇳🇱 Нидерланды", "🇫🇮 Финляндия"];
   // Детерминированно, чтобы скриншоты демо не прыгали.
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -407,7 +423,7 @@ function demoActivity(): ActivityEntry[] {
         kind: "session",
         id: newId(),
         server: servers[Math.floor(rnd() * (day < 2 ? 2 : servers.length))],
-        subscription: "BaobabVPN",
+        subscription: "Demo VPN",
         startedAt,
         endedAt: startedAt + length,
         down,
@@ -417,6 +433,6 @@ function demoActivity(): ActivityEntry[] {
     }
   }
   list.push({ kind: "subscription", id: newId(), at: now - 26 * H, text: "Подписки обновлены автоматически" });
-  list.push({ kind: "error", id: newId(), at: now - 50 * H, server: "🇫🇷 Франция", text: "Сервер не ответил за 8 секунд. Попробуйте другой сервер" });
+  list.push({ kind: "error", id: newId(), at: now - 50 * H, server: "🇯🇵 Япония", text: "Сервер не ответил за 8 секунд. Попробуйте другой сервер" });
   return list.sort((a, b) => (b.kind === "session" ? b.startedAt : b.at) - (a.kind === "session" ? a.startedAt : a.at));
 }

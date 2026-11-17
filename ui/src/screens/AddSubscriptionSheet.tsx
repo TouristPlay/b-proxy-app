@@ -56,7 +56,7 @@ export function AddSubscriptionSheet({ open, onOpenChange }: { open: boolean; on
       open={open}
       onOpenChange={onOpenChange}
       title="Новая подписка"
-      description="Ссылка есть в личном кабинете и в Telegram-боте BaobabVPN"
+      description="Ссылку выдаёт ваш VPN-провайдер: в личном кабинете или в Telegram-боте"
       icon={<IconTile icon={Link2} tone="amber" />}
     >
       <form onSubmit={submit} noValidate>
@@ -81,7 +81,7 @@ export function AddSubscriptionSheet({ open, onOpenChange }: { open: boolean; on
               setUrl(e.target.value);
               if (error) setError(null);
             }}
-            placeholder="https://sub.baobabproxy.com/…"
+            placeholder="https://example.com/sub/…"
             aria-invalid={Boolean(error)}
             aria-describedby={hintId}
             className="h-14 min-w-0 flex-1 bg-transparent px-4 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none"

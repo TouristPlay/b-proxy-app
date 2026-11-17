@@ -66,3 +66,11 @@ pub(crate) fn open_logs_dir() -> Result<(), String> {
     #[cfg(mobile)]
     Err("На телефоне папку журналов открыть нельзя — используйте «Скопировать»".into())
 }
+
+/// TCP-пинг серверов: время соединения с адресом и портом каждого.
+#[command]
+pub(crate) async fn tcp_ping(targets: Vec<crate::ping::Target>, timeout_ms: u64) -> Result<Vec<crate::ping::Result_>, String> {
+    tauri::async_runtime::spawn_blocking(move || crate::ping::run(targets, timeout_ms))
+        .await
+        .map_err(|e| e.to_string())
+}

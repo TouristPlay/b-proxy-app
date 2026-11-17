@@ -68,12 +68,34 @@ export interface Appearance {
   motion: boolean;
 }
 
+/** tcp — время соединения с адресом сервера; real — реальная задержка через ядро до проверочного адреса. */
+export type PingMethod = "tcp" | "real";
+
+export interface PingSettings {
+  method: PingMethod;
+  timeoutSec: number;
+  /** Адрес для реальной задержки. */
+  url: string;
+  /** Мерить пинг выбранного провайдера при запуске. */
+  onStart: boolean;
+}
+
+/** Часы между обновлениями подписок; "provider" — как просит провайдер (обычно 12 ч), "off" — только вручную. */
+export type UpdateInterval = "provider" | "off" | 1 | 3 | 6 | 12 | 24;
+
+export interface UpdateSettings {
+  interval: UpdateInterval;
+  onStart: boolean;
+}
+
 export interface Settings {
   russianSitesDirect: boolean;
   tlsFragment: boolean;
   blockAds: boolean;
   ipv6: boolean;
   dnsServer: string;
+  ping: PingSettings;
+  updates: UpdateSettings;
   core: CoreSettings;
   appearance: Appearance;
 }
@@ -96,6 +118,10 @@ export interface Snapshot {
   speedHistory: number[];
   error: string | null;
   pinging: boolean;
+  /** Подписка, у которой сейчас меряется пинг. */
+  pingingSub: string | null;
+  /** Подписка, которая сейчас обновляется; "*" — все. */
+  refreshingSub: string | null;
   toast: ToastMessage | null;
   version: { app: string; xray: string };
   /** Журнал: сеансы VPN и события, новые сверху. Хранится только на устройстве. */
@@ -143,8 +169,11 @@ export interface Backend {
   toggleFavorite(nodeKey: string): void;
   addSubscription(url: string): Promise<void>;
   refreshSubscriptions(): Promise<void>;
+  /** Обновить одну подписку. */
+  refreshSubscription(url: string): Promise<void>;
   removeSubscription(url: string): Promise<void>;
-  pingAll(): Promise<void>;
+  /** Пинг серверов одного провайдера; без адреса — того, чей сервер выбран. */
+  ping(subUrl?: string): Promise<void>;
   updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>): Promise<void>;
   updateCore(patch: Partial<CoreSettings>): Promise<void>;
   updateAppearance(patch: Partial<Appearance>): void;

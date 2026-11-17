@@ -14,6 +14,7 @@
 - `allow-log-info`
 - `allow-read-log`
 - `allow-open-logs-dir`
+- `allow-tcp-ping`
 
 ## Permission Table
 
@@ -280,6 +281,32 @@ Enables the stop command without any pre-configured scope.
 <td>
 
 Denies the stop command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-tcp-ping`
+
+</td>
+<td>
+
+Enables the tcp_ping command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-tcp-ping`
+
+</td>
+<td>
+
+Denies the tcp_ping command without any pre-configured scope.
 
 </td>
 </tr>

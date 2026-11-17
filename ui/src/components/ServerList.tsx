@@ -1,10 +1,10 @@
 import { Entrance, useEntrance } from "@/lib/motion";
-import { Check, ChevronDown, Megaphone, Search, Star, X, Zap } from "lucide-react";
+import { Check, ChevronDown, Gauge, Megaphone, RefreshCw, Search, Star, X, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
-import { backend, nodeKey, useSnapshot } from "@/backend";
+import { backend, nodeKey, useSnapshot, type Subscription } from "@/backend";
 import { Flag, SignalPing, Tags } from "@/components/bits";
 import { Switch } from "@/components/ui/switch";
-import { splitFlag } from "@/lib/format";
+import { daysLeft, formatBytes, formatDate, plural, splitFlag } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -104,17 +104,13 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
         const closed = collapsed.includes(sub.url);
         return (
           <section key={sub.url} className="mt-1">
-            <button
-              onClick={() => setCollapsed((c) => (closed ? c.filter((x) => x !== sub.url) : [...c, sub.url]))}
-              className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-ink-2 hover:text-ink"
-              aria-expanded={!closed}
-            >
-              <ChevronDown className={cn("size-4 transition-transform", closed && "-rotate-90")} aria-hidden />
-              <span className="flex-1 font-medium text-ink">{sub.title}</span>
-              <span className="text-sm text-ink-3 tabular-nums">{sub.nodes.filter((n) => !n.divider).length}</span>
-            </button>
-            {/* Объявление провайдера — над его серверами; при поиске не мешаем результатам. */}
-            {!closed && sub.announce && !query.trim() && <ProviderNote text={sub.announce} compact={compact} />}
+            <ProviderHeader
+              sub={sub}
+              closed={closed}
+              compact={compact}
+              hideNote={!!query.trim()}
+              onToggle={() => setCollapsed((c) => (closed ? c.filter((x) => x !== sub.url) : [...c, sub.url]))}
+            />
             {!closed && (
               <ul className="flex flex-col gap-2" aria-label={`Серверы ${sub.title}`}>
                 {nodes.length === 0 && (
@@ -206,23 +202,96 @@ function FavStar({ fav }: { fav: boolean }) {
 }
 
 /**
- * Объявление провайдера из подписки (заголовок announce): новости, сроки, советы.
- * Длинное сворачивается до трёх строк с кнопкой «Показать полностью».
+ * Заголовок провайдера: название, сколько серверов, коротко трафик и срок, объявление
+ * из подписки (announce) и кнопки «Проверить пинг» и «Обновить» — только для этого провайдера.
+ * Виден и в свёрнутом виде.
  */
+function ProviderHeader({
+  sub,
+  closed,
+  compact,
+  hideNote,
+  onToggle,
+}: {
+  sub: Subscription;
+  closed: boolean;
+  compact?: boolean;
+  hideNote: boolean;
+  onToggle: () => void;
+}) {
+  const s = useSnapshot();
+  const count = sub.nodes.filter((n) => !n.divider).length;
+  const days = daysLeft(sub.expireAt);
+  const unlimited = sub.totalBytes <= 0;
+  const pinging = s.pingingSub === sub.url;
+  const refreshing = s.refreshingSub === sub.url || s.refreshingSub === "*";
+  const canPing = s.state === "disconnected" && !s.pinging;
+  const facts = [
+    unlimited ? `${formatBytes(sub.usedBytes)} · без лимита` : `${formatBytes(sub.usedBytes)} из ${formatBytes(sub.totalBytes)}`,
+    days == null ? "бессрочно" : `${days} ${plural(days, "день", "дня", "дней")}${sub.expireAt ? ` · до ${formatDate(sub.expireAt)}` : ""}`,
+  ];
+
+  return (
+    <div className={cn("glass mb-2 rounded-[22px]", compact ? "p-2.5" : "p-3")}>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={!closed}
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-1.5 text-left"
+        >
+          <ChevronDown className={cn("size-4 shrink-0 text-ink-2 transition-transform", closed && "-rotate-90")} aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-baseline gap-2">
+              <span className="truncate font-medium text-ink">{sub.title}</span>
+              <span className="shrink-0 text-[13px] text-ink-3 tabular-nums">{count}</span>
+            </span>
+            <span className={cn("block truncate text-ink-2 tabular-nums", compact ? "text-[12px]" : "text-[13px]")}>
+              {facts.join(" · ")}
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => void backend.ping(sub.url)}
+          disabled={!canPing}
+          aria-label={pinging ? `Меряем пинг ${sub.title}` : `Проверить пинг ${sub.title}`}
+          title={s.state === "disconnected" ? "Проверить пинг" : "Пинг проверяется при выключенном VPN"}
+          className="flex size-10 shrink-0 items-center justify-center rounded-full text-amber transition-colors hover:bg-glass-2 disabled:text-ink-3"
+        >
+          <Gauge className={cn("size-[18px]", pinging && "animate-pulse")} />
+        </button>
+        <button
+          type="button"
+          onClick={() => void backend.refreshSubscription(sub.url)}
+          disabled={refreshing}
+          aria-label={`Обновить подписку ${sub.title}`}
+          title="Обновить подписку"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink"
+        >
+          <RefreshCw className={cn("size-[18px]", refreshing && "animate-spin")} />
+        </button>
+      </div>
+      {sub.announce && !hideNote && <ProviderNote text={sub.announce} compact={compact} />}
+    </div>
+  );
+}
+
+/** Объявление провайдера; длинное сворачивается до двух строк. */
 function ProviderNote({ text, compact }: { text: string; compact?: boolean }) {
   const [open, setOpen] = useState(false);
-  const long = text.length > 120 || text.split("\n").length > 3;
+  const long = text.length > 90 || text.split("\n").length > 2;
   return (
-    <div className={cn("mb-2 flex gap-3 rounded-[20px] border border-amber/20 bg-amber/[0.06] text-ink", compact ? "px-3 py-3 text-[13px]" : "px-4 py-3.5 text-[14px]")}>
+    <div className={cn("mt-1.5 flex gap-2.5 border-t border-edge pt-2.5 text-ink", compact ? "px-1 text-[12.5px]" : "px-1.5 text-[13.5px]")}>
       <Megaphone className="mt-0.5 size-4 shrink-0 text-amber" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className={cn("leading-snug whitespace-pre-line break-words", long && !open && "line-clamp-3")}>{text}</p>
+        <p className={cn("leading-snug whitespace-pre-line break-words", long && !open && "line-clamp-2")}>{text}</p>
         {long && (
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="-ml-1 mt-1 inline-flex min-h-8 items-center rounded-lg px-1 text-[13px] font-medium text-amber hover:text-amber-2"
+            className="-ml-1 mt-0.5 inline-flex min-h-8 items-center rounded-lg px-1 text-[13px] font-medium text-amber hover:text-amber-2"
           >
             {open ? "Свернуть" : "Показать полностью"}
           </button>

@@ -20,7 +20,8 @@ export function PowerOrb({
 }: {
   state: TunnelState;
   onToggle: () => void;
-  size?: number;
+  /** Число — пиксели; строка — любое CSS-значение, например clamp(…) от высоты экрана. */
+  size?: number | string;
   /** Скорость загрузки, байт/с: от неё чуть колышется уровень. */
   speed?: number | null;
   /** Своя подпись для экранного диктора, например «Добавить подписку». */
@@ -33,7 +34,6 @@ export function PowerOrb({
   const label =
     customLabel ??
     (on ? "Отключить VPN" : state === "connecting" ? "Отменить подключение" : state === "disconnecting" ? "Идёт отключение" : "Подключить VPN");
-  const disc = size * 0.62;
 
   // Уровень поверхности света в координатах шара (0 — верх, 100 — низ).
   // При трафике уровень приподнимается на несколько пунктов: 1 МБ/с ≈ 3, потолок 8.
@@ -42,7 +42,9 @@ export function PowerOrb({
   const fast = state === "connecting";
 
   return (
-    <div className={cn("relative flex items-center justify-center", className)} style={{ width: size, height: size }}>
+    // Все размеры внутри — в процентах от кнопки, поэтому при изменении окна она плавно
+    // масштабируется вместе с CSS, без пересчёта в JS и рывков.
+    <div className={cn("relative flex shrink-0 items-center justify-center", className)} style={{ width: size, height: size }}>
       {/* Внешние тонкие кольца, внешнее — пунктиром. */}
       <span className="absolute inset-0 rounded-full border border-dashed border-edge" aria-hidden />
       <span
@@ -57,7 +59,7 @@ export function PowerOrb({
             key={i}
             aria-hidden
             className="absolute rounded-full border border-amber/45"
-            style={{ width: disc, height: disc, animation: `ring-wave 3.4s ease-out ${i * 1.7}s infinite` }}
+            style={{ width: "62%", height: "62%", animation: `ring-wave 3.4s ease-out ${i * 1.7}s infinite` }}
           />
         ))}
 
@@ -66,8 +68,8 @@ export function PowerOrb({
         <svg
           aria-hidden
           className="absolute"
-          width={disc + size * 0.1}
-          height={disc + size * 0.1}
+          width="72%"
+          height="72%"
           viewBox="0 0 100 100"
           style={{ animation: "spin-slow 1.2s linear infinite" }}
         >
@@ -86,8 +88,8 @@ export function PowerOrb({
           on ? "border-amber/50" : "border-edge-2",
         )}
         style={{
-          width: disc,
-          height: disc,
+          width: "62%",
+          height: "62%",
           background: "radial-gradient(circle at 50% 30%, var(--color-glass-3), var(--color-disc) 72%)",
           boxShadow: on
             ? "0 0 70px -10px color-mix(in srgb, var(--color-amber) 60%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.14)"
@@ -119,16 +121,12 @@ export function PowerOrb({
 
         <span className="relative z-10 flex size-full items-center justify-center">
           {on ? (
-            <Entrance key="on" as="span" anim="anim-pop" className="flex">
-              <ShieldCheck className="text-on-accent" style={{ width: disc * 0.3, height: disc * 0.3 }} strokeWidth={1.8} />
+            <Entrance key="on" as="span" anim="anim-pop" className="flex size-[30%]">
+              <ShieldCheck className="size-full text-on-accent" strokeWidth={1.8} />
             </Entrance>
           ) : (
-            <Entrance key="off" as="span" anim="anim-pop" className="flex">
-              <Power
-                className={cn("transition-colors", busy ? "text-amber-2" : "text-ink-2")}
-                style={{ width: disc * 0.3, height: disc * 0.3 }}
-                strokeWidth={1.6}
-              />
+            <Entrance key="off" as="span" anim="anim-pop" className="flex size-[30%]">
+              <Power className={cn("size-full transition-colors", busy ? "text-amber-2" : "text-ink-2")} strokeWidth={1.6} />
             </Entrance>
           )}
         </span>

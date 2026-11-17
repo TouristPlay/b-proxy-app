@@ -29,8 +29,8 @@
     "active": true,
     "targets": "all",
     "category": "Utility",
-    "shortDescription": "VPN-клиент BaobabVPN",
-    "longDescription": "B-Proxy — VPN-клиент сервиса BaobabVPN на ядре Xray.",
+    "shortDescription": "VPN-клиент на ядре Xray",
+    "longDescription": "B-Proxy — VPN-клиент на ядре Xray: подписки, выбор сервера по пингу, VPN для всей системы.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -46,6 +46,7 @@
     },
     "macOS": {
       "minimumSystemVersion": "13.0"
-    }
+    },
+    "publisher": "B-Proxy"
   }
 }

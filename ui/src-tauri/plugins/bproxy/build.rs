@@ -1,4 +1,4 @@
-const COMMANDS: &[&str] = &["invoke_core", "fetch_subscription", "prepare", "start", "stop", "stats", "log", "log_info", "read_log", "open_logs_dir"];
+const COMMANDS: &[&str] = &["invoke_core", "fetch_subscription", "prepare", "start", "stop", "stats", "log", "log_info", "read_log", "open_logs_dir", "tcp_ping"];
 
 fn main() {
     tauri_plugin::Builder::new(COMMANDS)

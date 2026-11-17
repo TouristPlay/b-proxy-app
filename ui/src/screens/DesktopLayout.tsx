@@ -1,6 +1,6 @@
 import { demoTab } from "@/lib/demoHash";
 import { markScreenEnter } from "@/lib/motion";
-import { ArrowDown, ArrowUp, Gauge, Globe2, LoaderCircle, Lock, Plus, Power, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowDown, ArrowUp, Globe2, LoaderCircle, Lock, Plus, Power, ShieldCheck } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import logo from "@/assets/logo.png";
@@ -28,52 +28,31 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
     markScreenEnter();
     setTabState(next);
   };
-  const [refreshing, setRefreshing] = useState(false);
   const now = useNow(s.connectedAt != null);
-  const canPing = s.state === "disconnected";
 
   return (
-    <div className="grid h-dvh grid-cols-[minmax(320px,360px)_1fr] gap-5 p-5">
+    <div className="grid h-dvh grid-cols-[clamp(300px,26vw,360px)_minmax(0,1fr)] gap-5 p-5">
       <aside className="glass flex min-h-0 flex-col rounded-[28px]" aria-label="Серверы">
         <div className="flex items-center gap-1 px-5 pt-5 pb-3">
           <img src={logo} alt="" width={32} height={32} className="mr-2 size-8 rounded-full" />
           <h2 className="flex-1 font-display text-[17px] font-semibold tracking-tight">Серверы</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Проверить пинг"
-            title={canPing ? "Проверить пинг" : "Пинг проверяется при выключенном VPN"}
-            disabled={!canPing || s.pinging}
-            onClick={() => void backend.pingAll()}
+          {/* Пинг и обновление — у каждого провайдера в списке; здесь только новая подписка. */}
+          <button
+            type="button"
+            onClick={onAdd}
+            aria-label="Добавить подписку"
+            title="Добавить подписку"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full border border-amber/35 bg-amber/14 text-amber transition-colors hover:bg-amber/22"
           >
-            <Gauge className={cn(s.pinging && "animate-pulse")} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Обновить подписки"
-            title="Обновить подписки"
-            disabled={refreshing}
-            onClick={async () => {
-              setRefreshing(true);
-              await backend.refreshSubscriptions().finally(() => setRefreshing(false));
-            }}
-          >
-            <RefreshCw className={cn(refreshing && "animate-spin")} />
-          </Button>
+            <Plus className="size-5" strokeWidth={2.2} />
+          </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
           <ServerList compact />
         </div>
-        <div className="border-t border-edge p-4">
-          <Button variant="glass" className="w-full" onClick={onAdd}>
-            <Plus />
-            Добавить подписку
-          </Button>
-        </div>
       </aside>
 
-      <main className="flex min-h-0 flex-col">
+      <main className="min-w-0 flex min-h-0 flex-col">
         <header className="flex items-center justify-between gap-4">
           <span className="w-40" />
           <nav className="glass flex gap-1 rounded-full p-1" aria-label="Разделы">
@@ -137,7 +116,7 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
   const status = on ? "Защищено" : s.state === "connecting" ? "Подключаемся" : s.state === "disconnecting" ? "Отключаемся" : "Не защищено";
 
   return (
-    <div className="grid gap-5 pb-6 xl:grid-cols-2">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 pb-6 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
       <section className="flex items-center gap-8 xl:col-span-2">
         <div className="min-w-0 flex-1">
           <p className={cn("flex items-center gap-2 text-[14px] font-medium", on ? "text-good" : "text-ink-2")} aria-live="polite">
@@ -182,7 +161,7 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
           speed={s.downSpeed}
           onToggle={node ? () => void backend.toggle() : onAdd}
           label={node ? undefined : "Добавить подписку"}
-          size={240}
+          size="clamp(160px, 17vw, 240px)"
           className="shrink-0"
         />
       </section>
