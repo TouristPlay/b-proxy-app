@@ -8,6 +8,7 @@ import { Flag, SignalPing, Tags } from "@/components/bits";
 import { PowerOrb } from "@/components/PowerOrb";
 import { ServerList } from "@/components/ServerList";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { SmoothChart } from "@/components/SmoothChart";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
 import { Button } from "@/components/ui/button";
 import { formatBytes, formatDuration, formatSpeed, splitFlag } from "@/lib/format";
@@ -229,22 +230,5 @@ function Chip({ icon, text }: { icon: ReactNode; text: string }) {
 
 /** Маленький график скорости загрузки за последние 40 секунд. */
 function Sparkline({ values }: { values: number[] }) {
-  const w = 300;
-  const h = 64;
-  const pts = values.length > 1 ? values : [0, 0];
-  const max = Math.max(...pts, 1);
-  const step = w / (pts.length - 1);
-  const line = pts.map((v, i) => `${(i * step).toFixed(1)},${(h - 4 - (v / max) * (h - 10)).toFixed(1)}`).join(" ");
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="mt-4 h-16 w-full" preserveAspectRatio="none" aria-hidden>
-      <defs>
-        <linearGradient id="spark" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--color-amber)" stopOpacity="0.35" />
-          <stop offset="1" stopColor="var(--color-amber)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={`0,${h} ${line} ${w},${h}`} fill="url(#spark)" />
-      <polyline points={line} fill="none" stroke="var(--color-amber)" strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
+  return <SmoothChart values={values} color="var(--color-amber)" className="mt-4 h-16 w-full" />;
 }

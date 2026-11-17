@@ -1,4 +1,5 @@
 import { Entrance, useEntrance } from "@/lib/motion";
+import { SmoothChart } from "@/components/SmoothChart";
 import {
   ArrowDown,
   ArrowUp,
@@ -309,8 +310,6 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
 
 /** Текущий сеанс: таймер, скорость и график в реальном времени. */
 function LiveCard({ session, s, now }: { session: Session; s: Snapshot; now: number }) {
-  const history = s.speedHistory.slice(-40);
-  const max = Math.max(...history, 1);
   const rise = useEntrance("anim-rise");
   return (
     <section className={cn("glass mb-4 rounded-[24px] border-good/30 p-4", rise)} aria-label="Текущее подключение">
@@ -334,18 +333,7 @@ function LiveCard({ session, s, now }: { session: Session; s: Snapshot; now: num
           </span>
         </span>
       </div>
-      <div className="mt-3 flex h-10 items-end gap-[2px]" aria-hidden>
-        {Array.from({ length: 40 }, (_, i) => {
-          const v = history[history.length - 40 + i] ?? 0;
-          return (
-            <span
-              key={i}
-              className="flex-1 rounded-sm bg-good/60 transition-[height] duration-500 ease-[var(--ease-out)]"
-              style={{ height: `${Math.max(6, (v / max) * 100)}%` }}
-            />
-          );
-        })}
-      </div>
+      <SmoothChart values={s.speedHistory} className="mt-3 h-14 w-full" />
     </section>
   );
 }

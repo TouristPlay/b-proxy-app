@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Права главного окна B-Proxy",
   "windows": ["main"],
-  "permissions": ["core:default", "opener:default", "bproxy:default"]
+  "permissions": ["core:default", "opener:default", "notification:default", "bproxy:default"]
 }

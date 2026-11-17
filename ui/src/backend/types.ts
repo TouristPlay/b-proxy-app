@@ -68,8 +68,12 @@ export interface Appearance {
   motion: boolean;
 }
 
-/** tcp — время соединения с адресом сервера; real — реальная задержка через ядро до проверочного адреса. */
-export type PingMethod = "tcp" | "real";
+/**
+ * tcp — время соединения с адресом сервера (без ядра);
+ * head / get — реальная задержка: HTTP-запрос через сервер к проверочному адресу.
+ * HEAD — только заголовки, GET — ответ целиком (до 64 КБ).
+ */
+export type PingMethod = "tcp" | "head" | "get";
 
 export interface PingSettings {
   method: PingMethod;
@@ -88,6 +92,19 @@ export interface UpdateSettings {
   onStart: boolean;
 }
 
+/** Системные уведомления: общий выключатель и по типам. */
+export interface NotificationSettings {
+  enabled: boolean;
+  /** VPN отключился сам: обрыв, сервер не отвечает, систему выключила. */
+  disconnect: boolean;
+  /** Подписка заканчивается (за 3 дня, за день) и закончилась. */
+  expiry: boolean;
+  /** Израсходовано 90% трафика (если есть лимит). */
+  traffic: boolean;
+  /** Новое объявление провайдера. */
+  announce: boolean;
+}
+
 export interface Settings {
   russianSitesDirect: boolean;
   tlsFragment: boolean;
@@ -96,6 +113,7 @@ export interface Settings {
   dnsServer: string;
   ping: PingSettings;
   updates: UpdateSettings;
+  notifications: NotificationSettings;
   core: CoreSettings;
   appearance: Appearance;
 }
@@ -183,6 +201,8 @@ export interface Backend {
   readLog(which: "app" | "core"): Promise<string>;
   /** Открыть папку журналов (компьютер); false — на этой платформе нельзя. */
   openLogsFolder(): Promise<boolean>;
+  /** Пример уведомления — проверить, что система их показывает. */
+  testNotification(): Promise<void>;
   /** Очистить журнал активности (с возможностью вернуть). */
   clearActivity(): void;
   /** Кнопка в уведомлении: «Вернуть», «Переподключить». */

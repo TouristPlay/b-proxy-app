@@ -1,3 +1,4 @@
+import { Entrance } from "@/lib/motion";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { splitFlag } from "@/lib/format";
@@ -59,9 +60,48 @@ export function Tags({ tags, className }: { tags: string[]; className?: string }
 }
 
 /** Пинг: полоски сигнала + число. Смысл несут и цвет, и число полосок, и цифра. */
-export function SignalPing({ ms, className, big }: { ms: number | null; className?: string; big?: boolean }) {
+/**
+ * Пинг: полоски сигнала и число. Пока идёт замер, полоски «дышат» волной, а число
+ * сменяется мерцающей заглушкой; результат появляется с небольшой задержкой по порядку
+ * строки — список «отвечает» сверху вниз.
+ */
+export function SignalPing({
+  ms,
+  className,
+  big,
+  measuring,
+  order = 0,
+}: {
+  ms: number | null;
+  className?: string;
+  big?: boolean;
+  measuring?: boolean;
+  order?: number;
+}) {
+  const delay = `${Math.min(order, 14) * 45}ms`;
+  if (measuring) {
+    return (
+      <span className={cn("flex items-center gap-2", className)} aria-label="Меряем пинг">
+        <span className="flex h-3.5 items-end gap-[2px]" aria-hidden>
+          {[0, 1, 2].map((b) => (
+            <span
+              key={b}
+              className="h-full w-[3px] origin-bottom rounded-full bg-amber"
+              style={{ animation: `ping-bar 900ms ease-in-out ${(order % 6) * 80 + b * 120}ms infinite` }}
+            />
+          ))}
+        </span>
+        <span className="ping-shimmer h-3.5 w-11 rounded-full" aria-hidden />
+      </span>
+    );
+  }
   if (ms == null) return <span className={cn("text-sm text-ink-3", className)}>—</span>;
-  if (ms < 0) return <span className={cn("text-sm font-medium text-bad", className)}>нет связи</span>;
+  if (ms < 0)
+    return (
+      <Entrance as="span" anim="anim-pop" key="fail" className={cn("text-sm font-medium text-bad", className)} style={{ animationDelay: delay }}>
+        нет связи
+      </Entrance>
+    );
   const bars = ms < 80 ? 3 : ms < 160 ? 2 : 1;
   const color = ms < 80 ? "bg-good" : ms < 160 ? "bg-warn" : "bg-ember";
   return (
@@ -70,15 +110,21 @@ export function SignalPing({ ms, className, big }: { ms: number | null; classNam
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className={cn("w-[3px] rounded-full", i < bars ? color : "bg-glass-3")}
+            className={cn("w-[3px] rounded-full transition-colors duration-[var(--dur)]", i < bars ? color : "bg-glass-3")}
             style={{ height: `${(i + 1) * 33}%` }}
           />
         ))}
       </span>
-      <span className={cn("tabular-nums", big ? "font-display text-lg font-semibold" : "text-[15px] font-medium")}>
+      <Entrance
+        as="span"
+        anim="anim-pop"
+        key={ms}
+        className={cn("tabular-nums", big ? "font-display text-lg font-semibold" : "text-[15px] font-medium")}
+        style={{ animationDelay: delay }}
+      >
         {ms}
         <span className="ml-0.5 text-xs font-normal text-ink-3"> мс</span>
-      </span>
+      </Entrance>
     </span>
   );
 }

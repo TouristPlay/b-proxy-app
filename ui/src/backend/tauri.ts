@@ -1,5 +1,6 @@
 import { addPluginListener, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { defaultAppearance, defaultSettings } from "./demo";
 import { checkUrl, mainOutbound, parseSubscription, type FetchResult, type NodeConfig, type Outbound, type StoredSubscription } from "./subscription";
 import {
@@ -25,6 +26,16 @@ const USER_AGENT = "v2rayNG/1.9.30";
 const PING_BATCH = 5;
 
 const STATE_KEY = "b-proxy.state";
+/** Какие уведомления о подписках уже показаны. */
+const ALERTS_KEY = "b-proxy.alerts";
+
+interface AlertMarks {
+  expireAt?: number | null;
+  /** Последний порог срока, о котором предупредили: 3, 1 или 0 дней. */
+  expiry?: number;
+  traffic?: boolean;
+  announce?: string;
+}
 const APPEARANCE_KEY = "b-proxy.appearance";
 
 interface Persisted {
@@ -76,6 +87,8 @@ export class TauriBackend implements Backend {
   /** Запись текущего сеанса в журнале активности. */
   private sessionId: string | null = null;
   private lastSave = 0;
+  /** Сколько секунд подряд нет счётчиков туннеля. */
+  private missedStats = 0;
   /** Пути журналов на диске; null — плагин не ответил. */
   private logPaths: { dir: string; appLog: string; coreLog: string } | null = null;
 
@@ -94,8 +107,9 @@ export class TauriBackend implements Backend {
         ...defaultSettings,
         ...(saved?.settings ?? {}),
         core: { ...defaultSettings.core, ...(saved?.settings?.core ?? {}) },
-        ping: { ...defaultSettings.ping, ...(saved?.settings?.ping ?? {}) },
+        ping: migratePing({ ...defaultSettings.ping, ...(saved?.settings?.ping ?? {}) }),
         updates: { ...defaultSettings.updates, ...(saved?.settings?.updates ?? {}) },
+        notifications: { ...defaultSettings.notifications, ...(saved?.settings?.notifications ?? {}) },
         appearance,
       },
       downSpeed: null,
@@ -214,6 +228,79 @@ export class TauriBackend implements Backend {
     this.subs = subs;
     this.emit({ subscriptions: subs.map(publicSub) });
     this.persist();
+    this.checkAlerts();
+  }
+
+  // ---------- Уведомления ----------
+
+  /** Системное уведомление, если включено в «Уведомлениях» и система разрешила. */
+  private async notify(kind: Exclude<keyof Settings["notifications"], "enabled"> | "test", title: string, body: string) {
+    const n = this.s.settings.notifications;
+    if (kind !== "test" && (!n.enabled || !n[kind])) return;
+    try {
+      let granted = await isPermissionGranted();
+      if (!granted) granted = (await requestPermission()) === "granted";
+      if (!granted) {
+        if (kind === "test") this.emit({ error: "Система не разрешила уведомления. Включите их для B-Proxy в настройках системы" });
+        return;
+      }
+      sendNotification({ title, body });
+      this.writeLog("info", `Уведомление: ${title}`);
+    } catch (e) {
+      this.writeLog("warn", `Уведомление не показано: ${message(e)}`);
+    }
+  }
+
+  async testNotification() {
+    await this.notify("test", "B-Proxy", "Уведомления работают: так придёт сообщение, если VPN отключится или подписка закончится");
+  }
+
+  /**
+   * Срок, трафик и объявления подписок. Каждое уведомление — один раз: что уже показали,
+   * помним в localStorage (по подписке). Новое объявление при первом знакомстве не шлём.
+   */
+  private checkAlerts() {
+    const marks = readJson<Record<string, AlertMarks>>(ALERTS_KEY) ?? {};
+    for (const sub of this.subs) {
+      const m: AlertMarks = marks[sub.url] ?? {};
+      // Продлили подписку — срок другой, предупреждения о нём снова актуальны.
+      if (m.expireAt !== sub.expireAt) {
+        m.expireAt = sub.expireAt;
+        m.expiry = undefined;
+      }
+      const days = sub.expireAt ? Math.ceil((sub.expireAt - Date.now()) / 86_400_000) : null;
+      if (days != null && days <= 3) {
+        const level = days <= 0 ? 0 : days <= 1 ? 1 : 3;
+        if (m.expiry == null || level < m.expiry) {
+          m.expiry = level;
+          void this.notify(
+            "expiry",
+            level === 0 ? `Подписка «${sub.title}» закончилась` : `Подписка «${sub.title}» заканчивается`,
+            level === 0
+              ? "Серверы перестанут работать. Продлите подписку у провайдера"
+              : `Осталось ${days} ${plural(days, "день", "дня", "дней")}. Продлите, чтобы VPN не отключился`,
+          );
+        }
+      }
+      if (sub.totalBytes > 0) {
+        const used = sub.usedBytes / sub.totalBytes;
+        if (used >= 0.9 && !m.traffic) {
+          m.traffic = true;
+          void this.notify("traffic", `Трафик «${sub.title}» почти закончился`, `Израсходовано ${Math.round(used * 100)}% от лимита`);
+        } else if (used < 0.5) m.traffic = false;
+      }
+      const announce = sub.announce ?? "";
+      if (m.announce !== undefined && announce && announce !== m.announce) {
+        void this.notify("announce", sub.title, announce.length > 180 ? `${announce.slice(0, 177)}…` : announce);
+      }
+      m.announce = announce;
+      marks[sub.url] = m;
+    }
+    try {
+      localStorage.setItem(ALERTS_KEY, JSON.stringify(marks));
+    } catch {
+      // Хранилище недоступно — в худшем случае уведомление придёт ещё раз.
+    }
   }
 
   private toast(text: string) {
@@ -459,6 +546,12 @@ export class TauriBackend implements Backend {
     if (state === "connected") this.onConnected();
     else if (state === "disconnected" && this.s.state !== "disconnected") {
       // Туннель выключила система или кнопка в уведомлении.
+      const server = this.s.current?.node.name;
+      void this.notify(
+        "disconnect",
+        "VPN отключился",
+        error ?? `Соединение${server ? ` с «${server.replace(/^\p{RI}{2}\s*/u, "")}»` : ""} прервано. Откройте B-Proxy, чтобы подключиться снова`,
+      );
       this.closeSession(error ? "error" : "system", error ?? undefined);
       if (error) this.logError(error);
       this.stopStats();
@@ -484,8 +577,14 @@ export class TauriBackend implements Backend {
     const now = await this.stats();
     if (!now) {
       this.emit({ downSpeed: null, upSpeed: null });
+      // Интерфейса туннеля нет 5 секунд подряд — ядро упало или его закрыли снаружи.
+      if (++this.missedStats >= 5 && this.s.state === "connected" && !this.busy) {
+        this.missedStats = 0;
+        this.onTunnelState("disconnected", "Ядро VPN перестало работать. Подключитесь снова");
+      }
       return;
     }
+    this.missedStats = 0;
     const at = Date.now();
     if (!this.base) this.base = now;
     let down = 0;
@@ -677,7 +776,8 @@ export class TauriBackend implements Backend {
               const data = await this.core<{ results?: { success: boolean; delay: number }[] }>("pingBatch", {
                 configs: chunk.map((n) => ({ xrayJson: buildPingConfig(sub.outbounds[n.id]), outboundTag: "proxy" })),
                 timeout: timeoutSec,
-                url,
+                // Способ запроса передаём во фрагменте: его разбирает core/nodep/measure.go.
+                url: `${url.split("#")[0]}#bproxy-method=${method === "get" ? "GET" : "HEAD"}`,
               });
               chunk.forEach((n, i) => {
                 const r = data.results?.[i];
@@ -694,7 +794,7 @@ export class TauriBackend implements Backend {
       const ok = [...results.values()].filter((v) => v > 0);
       this.writeLog(
         ok.length ? "info" : "warn",
-        `Пинг (${method === "tcp" ? "TCP" : "реальная задержка"}) «${sub.title}»: ответили ${ok.length} из ${results.size}` +
+        `Пинг (${method.toUpperCase()}) «${sub.title}»: ответили ${ok.length} из ${results.size}` +
           (ok.length ? `, лучший ${Math.min(...ok)} мс` : ""),
       );
       this.setSubs(
@@ -775,4 +875,10 @@ function serverEndpoint(node: NodeConfig): { host: string; port: number } | null
   const host = (first?.address ?? s.address) as string | undefined;
   const port = Number(first?.port ?? s.port);
   return host && port > 0 && port < 65536 ? { host, port } : null;
+}
+
+/** Старое значение «real» — это нынешний HEAD. */
+function migratePing(p: Settings["ping"]): Settings["ping"] {
+  const method = (p.method as string) === "real" ? "head" : p.method;
+  return { ...p, method: ["tcp", "head", "get"].includes(method) ? method : "tcp" };
 }

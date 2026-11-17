@@ -10,7 +10,8 @@
 #
 # Перед сборкой в libXray подкладываются наши файлы из core/:
 #   core/memory/memory.go — настраиваемый лимит памяти вместо жёстких 30 МБ на iOS;
-#   core/runner/main.go   — процесс bproxy-core для Linux и macOS.
+#   core/runner/main.go   — процесс bproxy-core для Linux и macOS;
+#   core/nodep/measure.go — пинг «реальной задержкой» запросом HEAD или GET.
 set -euo pipefail
 
 TARGET="${1:?Укажите платформу: linux | windows | macos | android | ios}"
@@ -31,6 +32,7 @@ fi
 # --- Наши изменения в libXray ---
 rm -f "$SRC"/memory/*.go
 cp "$ROOT/core/memory/memory.go" "$SRC/memory/memory.go"
+cp "$ROOT/core/nodep/measure.go" "$SRC/nodep/measure.go"
 mkdir -p "$SRC/bproxy_core"
 cp "$ROOT/core/runner/main.go" "$SRC/bproxy_core/main.go"
 

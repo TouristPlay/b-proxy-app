@@ -86,6 +86,7 @@ export const defaultSettings: Settings = {
   dnsServer: "1.1.1.1",
   ping: { method: "tcp", timeoutSec: 5, url: "https://www.gstatic.com/generate_204", onStart: true },
   updates: { interval: "provider", onStart: true },
+  notifications: { enabled: true, disconnect: true, expiry: true, traffic: true, announce: true },
   core: defaultCore,
   appearance: defaultAppearance,
 };
@@ -320,13 +321,14 @@ export class DemoBackend implements Backend {
     this.emit({ pinging: true, pingingSub: url });
     await wait(this.s.settings.ping.method === "tcp" ? 600 : 1200);
     const tcp = this.s.settings.ping.method === "tcp";
+    const get = this.s.settings.ping.method === "get";
     const subscriptions = this.s.subscriptions.map((sub) =>
       sub.url !== url
         ? sub
         : {
             ...sub,
             nodes: sub.nodes.map((n) =>
-              n.divider ? n : { ...n, pingMs: n.id === "jp" ? -1 : Math.round((tcp ? 8 : 15) + Math.random() * (tcp ? 90 : 180)) },
+              n.divider ? n : { ...n, pingMs: n.id === "jp" ? -1 : Math.round((tcp ? 8 : get ? 40 : 15) + Math.random() * (tcp ? 90 : get ? 260 : 180)) },
             ),
           },
     );
@@ -391,6 +393,11 @@ export class DemoBackend implements Backend {
     const before = this.s.activity;
     this.emit({ activity: before.filter((e) => e.kind === "session" && e.id === this.sessionId) });
     this.toaster.show("Журнал очищен", { id: "undo", label: "Вернуть", run: () => this.emit({ activity: before }) });
+  }
+
+  /** В демо системных уведомлений нет — показываем, как бы оно выглядело. */
+  async testNotification() {
+    this.toast("Уведомление: «B-Proxy — уведомления работают»");
   }
 
   toastAction() {

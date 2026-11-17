@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Ban, ChevronRight, FileText, Gauge, Globe, Info, Network, Palette, Plus, RefreshCw, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
+import { Ban, Bell, ChevronRight, FileText, Gauge, Globe, Info, Network, Palette, Plus, RefreshCw, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot, type Settings } from "@/backend";
 import { Group, IconTile, Row, type Tone } from "@/components/bits";
@@ -9,7 +9,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { AppearanceSheet } from "./AppearanceGroup";
 import { CoreSettingsSheet } from "./CoreSettingsSheet";
-import { intervalTitle, PingSheet, UpdatesSheet } from "./PingUpdateSheets";
+import { intervalTitle, NotificationsSheet, PingSheet, UpdatesSheet } from "./PingUpdateSheets";
 import { LogsSheet } from "./LogsSheet";
 import { themeById } from "@/lib/theme";
 
@@ -47,6 +47,7 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
   const [core, setCore] = useState(false);
   const [ping, setPing] = useState(false);
   const [updates, setUpdates] = useState(false);
+  const [notifications, setNotifications] = useState(false);
   const [about, setAbout] = useState(false);
   const [look, setLook] = useState(false);
   const [routing, setRouting] = useState(false);
@@ -84,7 +85,7 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
             onClick={() => setPing(true)}
             icon={<IconTile icon={Gauge} tone="amber" />}
             title="Пинг"
-            hint={`${s.settings.ping.method === "tcp" ? "TCP" : "Реальная задержка"}, ожидание ${s.settings.ping.timeoutSec} с`}
+            hint={`${{ tcp: "TCP", head: "HTTP HEAD", get: "HTTP GET" }[s.settings.ping.method]}, ожидание ${s.settings.ping.timeoutSec} с`}
             aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
           />
           <Row
@@ -140,6 +141,13 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
 
         <Group title="Приложение">
           <Row
+            onClick={() => setNotifications(true)}
+            icon={<IconTile icon={Bell} tone="amber" />}
+            title="Уведомления"
+            hint={s.settings.notifications.enabled ? "Обрывы VPN, срок подписки, трафик, объявления" : "Выключены"}
+            aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
+          />
+          <Row
             onClick={() => setLogs(true)}
             icon={<IconTile icon={FileText} tone="gray" />}
             title="Технические журналы"
@@ -167,6 +175,7 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
       <CoreSettingsSheet open={core} onOpenChange={setCore} />
       <PingSheet open={ping} onOpenChange={setPing} />
       <UpdatesSheet open={updates} onOpenChange={setUpdates} />
+      <NotificationsSheet open={notifications} onOpenChange={setNotifications} />
       <LogsSheet open={logs} onOpenChange={setLogs} />
       <AppearanceSheet open={look} onOpenChange={setLook} />
       <Sheet

@@ -40,6 +40,7 @@ ui/src-tauri/
 core/
   memory/memory.go      замена пакета memory в libXray: лимит памяти и сборка мусора из env BPROXY_*
   runner/main.go        bproxy-core — ядро отдельным процессом для Linux и macOS
+  nodep/measure.go      замена nodep/measure.go: «реальная задержка» запросом HEAD или GET (#bproxy-method= в адресе)
 scripts/                build_core.sh (linux | windows | macos | android | ios), tauri_ios_extension.py
 app/                    Flutter-версия (не собирается)
 .github/workflows/      build.yml — демо интерфейса, Linux, Windows, macOS, Android (APK), iOS без подписи, релиз по тегу
@@ -125,7 +126,11 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
 - Подписка Remnawave с заголовком `v2rayNG/1.9.30` приходит как Xray JSON: у каждого сервера полный конфиг,
   у «Auto» — балансировщики и burstObservatory. Берём outbound'ы, балансировщики и правила провайдера,
   выкидывая ссылки на geosite/geoip (их баз у нас нет), и ставим свой TUN, DNS и правила сверху.
-- libXray `pingBatch` принимает не больше 5 конфигов за вызов.
+- libXray `pingBatch` принимает не больше 5 конфигов за вызов. Пинг меряется по одному провайдеру:
+  TCP (команда плагина `tcp_ping`) по умолчанию, HTTP HEAD или GET — через ядро.
+- Уведомления — `tauri-plugin-notification`: VPN отключился, срок подписки (3 дня, 1 день, закончилась),
+  90% трафика, новое объявление провайдера. Что уже показано — `b-proxy.alerts` в localStorage.
+- В приложении и демо нет связи с конкретным VPN-сервисом: демо на вымышленном «Demo VPN», example.com.
 - Подписки понимают те же заголовки, что INCY/Happ: `profile-title`, `subscription-userinfo`, `announce`,
   `support-url`, `profile-web-page-url`, `hide-url`, `sort-order`, `new-url`, `fragmentation-*`, метаданные `#key:` в теле.
 

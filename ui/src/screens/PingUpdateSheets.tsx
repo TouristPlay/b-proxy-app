@@ -1,5 +1,14 @@
-import { Gauge, Minus, Plus, Power, RefreshCw } from "lucide-react";
-import { backend, useSnapshot, type PingMethod, type PingSettings, type UpdateInterval, type UpdateSettings } from "@/backend";
+import { Bell, BellRing, Gauge, Minus, Plus, Power, RefreshCw } from "lucide-react";
+import {
+  backend,
+  useSnapshot,
+  type NotificationSettings,
+  type PingMethod,
+  type PingSettings,
+  type UpdateInterval,
+  type UpdateSettings,
+} from "@/backend";
+import { Button } from "@/components/ui/button";
 import { Group, IconTile, Row } from "@/components/bits";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet } from "@/components/ui/sheet";
@@ -12,9 +21,14 @@ const methods: { value: PingMethod; title: string; hint: string }[] = [
     hint: "Время соединения с адресом сервера. Быстро и без ядра, но не проверяет, работает ли сам прокси",
   },
   {
-    value: "real",
-    title: "Реальная задержка",
-    hint: "Запрос через сервер к проверочному адресу — как будет работать VPN. Дольше и тратит немного трафика",
+    value: "head",
+    title: "HTTP HEAD",
+    hint: "Реальная задержка: запрос заголовков через сервер к проверочному адресу. Проверяет, что прокси работает",
+  },
+  {
+    value: "get",
+    title: "HTTP GET",
+    hint: "Как HEAD, но с загрузкой ответа (до 64 КБ). Ближе всего к открытию сайта, тратит чуть больше трафика",
   },
 ];
 
@@ -56,7 +70,7 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
           </div>
         </Group>
 
-        {p.method === "real" && (
+        {p.method !== "tcp" && (
           <Group title="Проверочный адрес">
             <label className="block px-4 py-3.5">
               <input
@@ -69,7 +83,11 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
                 className="w-full bg-transparent text-[15px] text-ink focus:outline-none"
                 aria-label="Проверочный адрес для реальной задержки"
               />
-              <span className="mt-1 block text-[13px] text-ink-3">Отвечает пустой страницей и быстро — например, generate_204 от Google</span>
+              <span className="mt-1 block text-[13px] text-ink-3">
+                {p.method === "get"
+                  ? "Для GET подойдёт небольшая страница — например, cp.cloudflare.com или generate_204 от Google"
+                  : "Отвечает пустой страницей и быстро — например, generate_204 от Google"}
+              </span>
             </label>
           </Group>
         )}
@@ -186,5 +204,60 @@ function Stepper({
         <Plus className="size-4" />
       </button>
     </div>
+  );
+}
+
+const notifyTypes: { key: Exclude<keyof NotificationSettings, "enabled">; title: string; hint: string }[] = [
+  { key: "disconnect", title: "VPN отключился", hint: "Обрыв сети, сервер не отвечает или туннель закрыла система" },
+  { key: "expiry", title: "Срок подписки", hint: "За 3 дня, за день и когда подписка закончилась" },
+  { key: "traffic", title: "Трафик заканчивается", hint: "Израсходовано 90% лимита — для подписок с лимитом" },
+  { key: "announce", title: "Объявления провайдера", hint: "Провайдер обновил текст в подписке" },
+];
+
+/** Системные уведомления: общий выключатель, типы и проверка. */
+export function NotificationsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { settings } = useSnapshot();
+  const n = settings.notifications;
+  const set = (patch: Partial<NotificationSettings>) => void backend.updateSettings({ notifications: { ...n, ...patch } });
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Уведомления"
+      description="Системные уведомления — даже когда B-Proxy свёрнут"
+      icon={<IconTile icon={Bell} tone="amber" />}
+    >
+      <div className="flex flex-col gap-6">
+        <Group>
+          <Row
+            htmlFor="notify-all"
+            icon={<IconTile icon={Bell} tone="amber" />}
+            title="Показывать уведомления"
+            aside={<Switch id="notify-all" checked={n.enabled} onCheckedChange={(enabled) => set({ enabled })} />}
+          />
+        </Group>
+        <Group title="О чём сообщать">
+          {notifyTypes.map((t) => (
+            <Row
+              key={t.key}
+              htmlFor={`notify-${t.key}`}
+              title={t.title}
+              hint={t.hint}
+              aside={
+                <Switch id={`notify-${t.key}`} checked={n.enabled && n[t.key]} disabled={!n.enabled} onCheckedChange={(v) => set({ [t.key]: v })} />
+              }
+            />
+          ))}
+        </Group>
+        <Button variant="glass" onClick={() => void backend.testNotification()}>
+          <BellRing />
+          Показать пример
+        </Button>
+        <p className="px-2 text-[13px] text-ink-3">
+          Если пример не появился, разрешите уведомления для B-Proxy в настройках системы.
+        </p>
+      </div>
+    </Sheet>
   );
 }
