@@ -1,7 +1,6 @@
-import { Entrance, useEntrance } from "@/lib/motion";
+import { useEntrance } from "@/lib/motion";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
-  Check,
   ChevronDown,
   Gauge,
   Megaphone,
@@ -181,11 +180,6 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                           <Tags tags={node.tags} className="mt-1.5" />
                         </span>
                         <SignalPing ms={node.pingMs} measuring={s.pingingSub === sub.url} order={i} className="shrink-0" />
-                        {active && !auto ? (
-                          <Entrance as="span" anim="anim-pop" className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber text-on-accent" aria-label="Выбран">
-                            <Check className="size-4" strokeWidth={3} />
-                          </Entrance>
-                        ) : null}
                       </button>
                       <button
                         onClick={() => backend.toggleFavorite(key)}
