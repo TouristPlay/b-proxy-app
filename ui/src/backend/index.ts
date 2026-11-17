@@ -1,3 +1,4 @@
+import { demoFlag } from "@/lib/demoHash";
 import { useSyncExternalStore } from "react";
 import { DemoBackend } from "./demo";
 import { TauriBackend } from "./tauri";
@@ -10,8 +11,10 @@ import type { Backend, Snapshot } from "./types";
  */
 function createBackend(): Backend {
   if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) return new TauriBackend();
-  const empty = typeof location !== "undefined" && location.hash === "#empty";
-  return new DemoBackend(empty);
+  const backend = new DemoBackend(demoFlag("empty"));
+  if (demoFlag("light")) backend.updateAppearance({ mode: "light" }, false);
+  if (demoFlag("connected")) void backend.toggle();
+  return backend;
 }
 
 export const backend: Backend = createBackend();

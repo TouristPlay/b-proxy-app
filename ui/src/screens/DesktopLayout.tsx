@@ -1,3 +1,4 @@
+import { demoTab } from "@/lib/demoHash";
 import { markScreenEnter } from "@/lib/motion";
 import { ArrowDown, ArrowUp, Gauge, Globe2, LoaderCircle, Lock, Plus, Power, RefreshCw, ShieldCheck } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -20,7 +21,7 @@ type Tab = "home" | "activity" | "settings";
 /** Компьютер: слева панель серверов, справа главная или настройки. */
 export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
   const s = useSnapshot();
-  const [tab, setTabState] = useState<Tab>("home");
+  const [tab, setTabState] = useState<Tab>(() => demoTab(["home", "activity", "settings"] as const, "home"));
   // Новый экран: элементы, пришедшие вместе с ним, не анимируются (lib/motion).
   const setTab = (next: Tab) => {
     if (next === tab) return;

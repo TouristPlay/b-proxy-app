@@ -1,3 +1,4 @@
+import { demoTab } from "@/lib/demoHash";
 import { markScreenEnter } from "@/lib/motion";
 import { Activity, House, Server, Settings2 } from "lucide-react";
 import { useState } from "react";
@@ -26,7 +27,7 @@ const tabs = [
 export default function App() {
   const s = useSnapshot();
   const desktop = useIsDesktop();
-  const [tab, setTabState] = useState<Tab>("home");
+  const [tab, setTabState] = useState<Tab>(() => demoTab(["home", "servers", "activity", "settings"] as const, "home"));
   // Новый экран: элементы, пришедшие вместе с ним, не анимируются (lib/motion).
   const setTab = (next: Tab) => {
     if (next === tab) return;

@@ -328,9 +328,11 @@ export class DemoBackend implements Backend {
     this.offerReconnect();
   }
 
-  updateAppearance(patch: Partial<Appearance>) {
+  /** persist = false — только на этот показ (страница ревью: #light). */
+  updateAppearance(patch: Partial<Appearance>, persist = true) {
     const appearance = { ...this.s.settings.appearance, ...patch };
     this.emit({ settings: { ...this.s.settings, appearance } });
+    if (!persist) return;
     try {
       // Картинку не сохраняем: она может быть больше лимита хранилища.
       localStorage.setItem(APPEARANCE_KEY, JSON.stringify({ ...appearance, backgroundImage: null }));
