@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Ban, ChevronRight, FileText, Gauge, Globe, Info, Network, Palette, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
+import { Ban, ChevronRight, FileText, Gauge, Globe, Info, Network, Palette, Plus, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot, type Settings } from "@/backend";
 import { Group, IconTile, Row, type Tone } from "@/components/bits";
@@ -41,7 +41,7 @@ const dns = [
   { value: "9.9.9.9", title: "Quad9" },
 ];
 
-export function SettingsScreen({ embedded }: { embedded?: boolean }) {
+export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd: () => void }) {
   const s = useSnapshot();
   const [core, setCore] = useState(false);
   const [about, setAbout] = useState(false);
@@ -91,9 +91,6 @@ export function SettingsScreen({ embedded }: { embedded?: boolean }) {
         </Group>
 
         <Group title="Подписки">
-          {s.subscriptions.length === 0 && (
-            <p className="px-4 py-4 text-[15px] text-ink-2">Добавьте подписку на главном экране — серверы появятся здесь</p>
-          )}
           {s.subscriptions.map((sub) => (
             <Row
               key={sub.url}
@@ -113,6 +110,12 @@ export function SettingsScreen({ embedded }: { embedded?: boolean }) {
               }
             />
           ))}
+          <Row
+            onClick={onAdd}
+            icon={<IconTile icon={Plus} tone="amber" />}
+            title="Добавить подписку"
+            hint={s.subscriptions.length === 0 ? "Ссылка из личного кабинета или Telegram-бота" : undefined}
+          />
         </Group>
 
         <Group title="Приложение">

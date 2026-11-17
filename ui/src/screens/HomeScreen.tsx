@@ -60,12 +60,25 @@ export function HomeScreen({ onOpenServers, onAdd }: { onOpenServers: () => void
           <img src={logo} alt="" width={32} height={32} className="size-8 rounded-full" />
           <span className="font-display text-[17px] font-semibold tracking-tight">B-Proxy</span>
         </div>
-        {sub && (
-          <span className="glass rounded-full px-3.5 py-1.5 text-[13px] text-ink-2 tabular-nums">
-            {sub.plan ?? sub.title}
-            {days != null && ` · ${days} дн.`}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {sub && (
+            <span className="glass rounded-full px-3.5 py-1.5 text-[13px] text-ink-2 tabular-nums">
+              {sub.plan ?? sub.title}
+              {days != null && ` · ${days} дн.`}
+            </span>
+          )}
+          {hasServers && (
+            <button
+              type="button"
+              onClick={onAdd}
+              aria-label="Добавить подписку"
+              title="Добавить подписку"
+              className="glass flex size-11 items-center justify-center rounded-full text-ink-2 transition-colors hover:text-amber"
+            >
+              <Plus className="size-5" />
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="mt-6 flex justify-center">

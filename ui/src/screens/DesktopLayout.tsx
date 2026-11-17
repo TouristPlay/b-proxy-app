@@ -118,7 +118,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
             <DesktopHome now={now} onAdd={onAdd} />
           ) : (
             <div className="mx-auto max-w-2xl pb-8">
-              {tab === "activity" ? <ActivityScreen embedded /> : <SettingsScreen embedded />}
+              {tab === "activity" ? <ActivityScreen embedded /> : <SettingsScreen embedded onAdd={onAdd} />}
             </div>
           )}
         </div>

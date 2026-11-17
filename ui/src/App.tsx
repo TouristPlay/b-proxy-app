@@ -49,9 +49,9 @@ export default function App() {
               размытие стекла (backdrop-filter), и карточки мигали. Движение даёт подсветка в меню. */}
           <div key={tab} className="h-dvh overflow-y-auto">
             {tab === "home" && <HomeScreen onOpenServers={() => setTab("servers")} onAdd={() => setAdding(true)} />}
-            {tab === "servers" && <ServersScreen onPicked={() => setTab("home")} />}
+            {tab === "servers" && <ServersScreen onPicked={() => setTab("home")} onAdd={() => setAdding(true)} />}
             {tab === "activity" && <ActivityScreen />}
-            {tab === "settings" && <SettingsScreen />}
+            {tab === "settings" && <SettingsScreen onAdd={() => setAdding(true)} />}
           </div>
 
           {/* Плавающее меню-«пилюля». */}

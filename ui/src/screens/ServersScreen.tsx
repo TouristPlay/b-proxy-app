@@ -1,11 +1,11 @@
-import { Gauge, RefreshCw } from "lucide-react";
+import { Gauge, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import { ServerList } from "@/components/ServerList";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function ServersScreen({ onPicked }: { onPicked: () => void }) {
+export function ServersScreen({ onPicked, onAdd }: { onPicked: () => void; onAdd: () => void }) {
   const s = useSnapshot();
   const [refreshing, setRefreshing] = useState(false);
   const total = s.subscriptions.reduce((n, x) => n + x.nodes.filter((v) => !v.divider).length, 0);
@@ -17,17 +17,20 @@ export function ServersScreen({ onPicked }: { onPicked: () => void }) {
         <h1 className="min-w-0 flex-1 truncate font-display text-[26px] font-semibold tracking-[-0.02em]">
           Серверы <span className="text-ink-3">{total}</span>
         </h1>
+        {/* Три кнопки-значка, чтобы заголовок «Серверы 20» помещался целиком. */}
         <Button
           variant="ghost"
-          size="sm"
-          className="shrink-0 px-3 whitespace-nowrap text-amber hover:text-amber-2"
+          size="icon"
+          className="shrink-0 text-amber hover:text-amber-2"
           onClick={() => void backend.pingAll()}
           disabled={!canPing || s.pinging}
-          aria-label="Проверить пинг"
+          aria-label={s.pinging ? "Меряем пинг" : "Проверить пинг"}
           title={canPing ? "Проверить пинг" : "Пинг проверяется при выключенном VPN"}
         >
           <Gauge className={cn(s.pinging && "animate-pulse")} aria-hidden />
-          {s.pinging ? "Меряем…" : "Пинг"}
+        </Button>
+        <Button variant="ghost" size="icon" className="shrink-0 text-amber hover:text-amber-2" onClick={onAdd} aria-label="Добавить подписку" title="Добавить подписку">
+          <Plus />
         </Button>
         <Button
           variant="ghost"
