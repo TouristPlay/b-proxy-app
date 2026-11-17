@@ -112,17 +112,16 @@ export function HomeScreen({
 
       {/* Кнопка с состоянием занимает свободную высоту и стоит по центру; сервер и подписка — внизу.
           Отступы и размеры от высоты экрана: на обычных телефонах главная помещается без прокрутки. */}
-      <div className="flex flex-1 flex-col">
-        {/* Свободная высота уходит в основном наверх: под счётчиками зазор не больше 20 px,
-            чтобы сервер и подписка не отрывались от кнопки. */}
-        <div className="min-h-[clamp(8px,2.5dvh,24px)] flex-[3]" aria-hidden />
+      {/* Свободную высоту забирает сама кнопка: её размер — высота экрана минус всё остальное
+          на главной (~670 px), поэтому пустоты нет ни сверху, ни снизу. */}
+      <div className="flex flex-1 flex-col justify-center py-[clamp(4px,1.5dvh,16px)]">
         <div className="flex justify-center">
           <PowerOrb
             state={s.state}
             speed={s.downSpeed}
             onToggle={hasServers ? () => void backend.toggle() : onAdd}
             label={hasServers ? undefined : "Добавить подписку"}
-            size="clamp(150px, min(72vw, 22dvh), 300px)"
+            size="clamp(140px, min(72vw, 100dvh - 670px), 320px)"
           />
         </div>
 
@@ -160,7 +159,6 @@ export function HomeScreen({
             </Entrance>
           )}
         </div>
-        <div className="max-h-5 flex-1" aria-hidden />
       </div>
 
       <ErrorBanner onOpenServers={onOpenServers} className="mt-5" />
