@@ -32,7 +32,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
   const now = useNow(s.connectedAt != null);
 
   return (
-    <div className="grid h-dvh grid-cols-[clamp(300px,26vw,360px)_minmax(0,1fr)] gap-5 p-5">
+    <div className="grid h-dvh grid-cols-[clamp(360px,30vw,420px)_minmax(0,1fr)] gap-5 p-5">
       <aside className="glass flex min-h-0 flex-col rounded-[28px]" aria-label="Серверы">
         <div className="flex items-center gap-1 px-5 pt-5 pb-3">
           <img src={logo} alt="" width={32} height={32} className="mr-2 size-8 rounded-full" />

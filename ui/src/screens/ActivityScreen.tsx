@@ -1,6 +1,8 @@
 import { Entrance, useEntrance } from "@/lib/motion";
 import { SmoothChart } from "@/components/SmoothChart";
 import {
+  ChevronRight,
+  ChevronLeft,
   ArrowDown,
   ArrowUp,
   ChevronDown,
@@ -13,7 +15,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { backend, useSnapshot, type ActivityEntry, type Snapshot } from "@/backend";
 import { entryTime, startOfDay, summarize, supportReport, trafficByDay } from "@/backend/activity";
 import { detectPlatform } from "@/backend/xray";
@@ -76,14 +78,29 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
   const sum = useMemo(() => summarize(inRange, range.from, now), [inRange, range, now]);
   const bars = useMemo(() => trafficByDay(s.activity, period === "month" ? 30 : 7, now), [s.activity, period, now]);
 
-  const journal = useMemo(() => {
+  const journalAll = useMemo(() => {
     const filtered = inRange.filter(
       (e) =>
         (kind === "all" || e.kind === kind || (kind === "error" && e.kind === "session" && e.end === "error")) &&
         (!server || (e.kind === "session" ? e.server === server : e.kind === "error" && e.server === server)),
     );
-    return groupByDay(filtered);
+    return filtered;
   }, [inRange, kind, server]);
+
+  // Журнал по страницам: на длинной истории экран не превращается в бесконечную ленту.
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(journalAll.length / JOURNAL_PAGE));
+  const current = Math.min(page, pages - 1);
+  useEffect(() => setPage(0), [kind, server, day, period]);
+  // При смене страницы возвращаемся к заголовку журнала, а не остаёмся внизу.
+  function turn(p: number) {
+    setPage(p);
+    document.getElementById("journal")?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+  const journal = useMemo(
+    () => groupByDay(journalAll.slice(current * JOURNAL_PAGE, (current + 1) * JOURNAL_PAGE)),
+    [journalAll, current],
+  );
 
   // Короткое подтверждение под кнопкой копирования.
   const [note, setNote] = useState<string | null>(null);
@@ -276,6 +293,37 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
                 </div>
               ))}
             </div>
+
+            {pages > 1 && (
+              <nav aria-label="Страницы журнала" className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => turn(current - 1)}
+                  disabled={current === 0}
+                  aria-label="Предыдущая страница"
+                  className="glass flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
+                >
+                  <ChevronLeft className="size-5" />
+                </button>
+                <div className="flex min-w-0 flex-1 flex-col items-center">
+                  <span className="text-[14px] font-medium tabular-nums">
+                    {current + 1} из {pages}
+                  </span>
+                  <span className="text-[12px] text-ink-3 tabular-nums">
+                    записи {current * JOURNAL_PAGE + 1}–{Math.min((current + 1) * JOURNAL_PAGE, journalAll.length)} из {journalAll.length}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => turn(current + 1)}
+                  disabled={current >= pages - 1}
+                  aria-label="Следующая страница"
+                  className="glass flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
+                >
+                  <ChevronRight className="size-5" />
+                </button>
+              </nav>
+            )}
           </section>
 
           <div className="mt-2 flex flex-col gap-2">
@@ -649,6 +697,9 @@ function humanDuration(ms: number) {
   if (h === 0) return `${m} мин`;
   return m ? `${h} ч ${m} мин` : `${h} ч`;
 }
+
+/** Сколько записей журнала на одной странице. */
+const JOURNAL_PAGE = 10;
 
 function groupByDay(list: ActivityEntry[]) {
   const groups: { day: number; entries: ActivityEntry[] }[] = [];

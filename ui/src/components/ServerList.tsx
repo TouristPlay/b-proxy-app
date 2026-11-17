@@ -119,7 +119,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
       {groups.map(({ sub, nodes }) => {
         const closed = collapsed.includes(sub.url);
         return (
-          <section key={sub.url} className="mt-1">
+          <section key={sub.url} className="glass mt-1 overflow-hidden rounded-[26px]">
             <ProviderHeader
               sub={sub}
               closed={closed}
@@ -128,7 +128,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
               onToggle={() => setCollapsed((c) => (closed ? c.filter((x) => x !== sub.url) : [...c, sub.url]))}
             />
             {!closed && (
-              <ul className="flex flex-col gap-2" aria-label={`Серверы ${sub.title}`}>
+              <ul className={cn("flex flex-col gap-0.5 border-t border-edge", compact ? "p-1.5" : "p-2")} aria-label={`Серверы ${sub.title}`}>
                 {nodes.length === 0 && (
                   <li className="px-3 py-4 text-[14px] text-ink-2">
                     {query.trim() ? (
@@ -148,7 +148,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                 {nodes.map((node, i) => {
                   if (node.divider) {
                     return (
-                      <li key={node.id} className="px-2 pt-3 pb-0.5 text-[13px] font-medium text-ink-2" role="presentation">
+                      <li key={node.id} className="px-3 pt-3 pb-1 text-[13px] font-medium text-ink-2" role="presentation">
                         {dividerTitle(node.name)}
                       </li>
                     );
@@ -165,10 +165,10 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         }}
                         aria-current={active ? "true" : undefined}
                         className={cn(
-                          "glass relative flex w-full items-center gap-3.5 overflow-hidden rounded-[22px] text-left transition-[background-color,border-color,transform] duration-[var(--dur)] hover:bg-glass-2 active:scale-[0.985]",
+                          "relative flex w-full items-center gap-3 overflow-hidden rounded-[18px] text-left transition-[background-color,box-shadow,transform] duration-[var(--dur)] hover:bg-glass-2 active:scale-[0.985]",
                           // Справа место под звёздочку «В избранное».
-                          compact ? "py-3 pr-12 pl-3" : "py-3.5 pr-12 pl-4",
-                          active && "border-amber/60 bg-amber/[0.07] hover:bg-amber/10",
+                          compact ? "py-2.5 pr-12 pl-2.5" : "py-3 pr-12 pl-3",
+                          active && "bg-amber/[0.08] ring-1 ring-amber/45 ring-inset hover:bg-amber/[0.11]",
                         )}
                       >
                         {/* Пока меряется пинг провайдера — по карточкам по очереди проходит полоса света. */}
@@ -240,8 +240,8 @@ function ago(t: number, now: number) {
 
 /**
  * Карточка провайдера B-Proxy: слева кольцо срока с числом дней, рядом название, тариф и трафик,
- * справа капсула «Пинг | Обновить» и меню. Объявление провайдера — в отдельной плашке,
- * внизу «Продлить», «Поддержка» и кнопка «Скрыть / Показать серверы».
+ * стрелка сворачивает серверы. Объявление — в плашке, ниже «Продлить», «Поддержка»,
+ * пинг, обновление и меню. Серверы идут в том же блоке под чертой — это часть провайдера.
  */
 function ProviderHeader({
   sub,
@@ -265,10 +265,10 @@ function ProviderHeader({
   const refreshing = s.refreshingSub === sub.url || s.refreshingSub === "*";
   const canPing = s.state === "disconnected" && !s.pinging;
   const seg =
-    "flex h-10 w-10 items-center justify-center transition-colors hover:bg-glass-3 hover:text-ink disabled:opacity-50";
+    "flex size-10 items-center justify-center rounded-full transition-colors hover:bg-glass-2 hover:text-ink disabled:opacity-50";
 
   return (
-    <div className={cn("glass mb-2 rounded-[26px]", compact ? "p-3" : "p-4")}>
+    <div className={compact ? "p-3" : "p-4"}>
       {/* Верх карточки целиком сворачивает и разворачивает серверы провайдера. */}
       <button
         type="button"
@@ -304,13 +304,13 @@ function ProviderHeader({
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex items-center gap-2">
         {sub.webPageUrl && (
           <a
             href={sub.webPageUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-amber px-4 text-[14px] font-semibold text-on-accent transition-colors hover:bg-amber-2"
+            className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-amber px-4 text-[14px] font-semibold text-on-accent transition-colors hover:bg-amber-2"
           >
             <ExternalLink className="size-4" aria-hidden />
             Продлить
@@ -321,15 +321,20 @@ function ProviderHeader({
             href={sub.supportUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-edge-2 px-4 text-[14px] font-medium text-ink-2 transition-colors hover:text-ink"
+            aria-label="Поддержка"
+            title="Поддержка"
+            className={cn(
+              "inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border border-edge-2 text-[14px] font-medium text-ink-2 transition-colors hover:text-ink",
+              "size-10",
+            )}
           >
             <MessageCircle className="size-4" aria-hidden />
-            Поддержка
+            
           </a>
         )}
-        <div className="ml-auto flex items-center gap-1.5">
-          {/* Капсула из двух действий только для этого провайдера. */}
-          <div className="flex overflow-hidden rounded-full border border-edge-2 bg-glass-2 text-ink-2">
+        <div className="ml-auto flex items-center">
+          {/* Пинг и обновление только для этого провайдера. */}
+          <div className="flex items-center text-ink-2">
             <button
               type="button"
               onClick={() => void backend.ping(sub.url)}
@@ -340,8 +345,7 @@ function ProviderHeader({
             >
               <Gauge className={cn("size-[18px]", pinging && "animate-pulse")} />
             </button>
-            <span className="my-2 w-px bg-edge-2" aria-hidden />
-            <button
+              <button
               type="button"
               onClick={() => void backend.refreshSubscription(sub.url)}
               disabled={refreshing}
