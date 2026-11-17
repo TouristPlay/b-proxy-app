@@ -70,7 +70,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
           <span className="tabular-nums">
             {unlimited ? (
               <>
-                {formatBytes(sub.usedBytes)} <span className="text-good">· без лимита</span>
+                {formatBytes(sub.usedBytes)} <span className="text-ink-3">· не ограничен</span>
               </>
             ) : (
               <>
@@ -88,7 +88,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
           aria-valuemax={100}
         >
           <div
-            className={cn("h-full rounded-full", unlimited ? "w-full bg-good/70" : used > 0.9 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber")}
+            className={cn("h-full rounded-full", unlimited ? "w-full bg-good/25" : used > 0.9 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber")}
             style={unlimited ? undefined : { width: `${Math.max(2, used * 100)}%` }}
           />
         </div>

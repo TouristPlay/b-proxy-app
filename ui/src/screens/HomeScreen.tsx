@@ -112,8 +112,11 @@ export function HomeScreen({
 
       {/* Кнопка с состоянием занимает свободную высоту и стоит по центру; сервер и подписка — внизу.
           Отступы и размеры от высоты экрана: на обычных телефонах главная помещается без прокрутки. */}
-      <div className="flex flex-1 flex-col justify-center">
-        <div className="mt-[clamp(8px,2.5dvh,24px)] flex justify-center">
+      <div className="flex flex-1 flex-col">
+        {/* Свободная высота уходит в основном наверх: под счётчиками зазор не больше 20 px,
+            чтобы сервер и подписка не отрывались от кнопки. */}
+        <div className="min-h-[clamp(8px,2.5dvh,24px)] flex-[3]" aria-hidden />
+        <div className="flex justify-center">
           <PowerOrb
             state={s.state}
             speed={s.downSpeed}
@@ -157,6 +160,7 @@ export function HomeScreen({
             </Entrance>
           )}
         </div>
+        <div className="max-h-5 flex-1" aria-hidden />
       </div>
 
       <ErrorBanner onOpenServers={onOpenServers} className="mt-5" />
