@@ -105,6 +105,12 @@ export interface NotificationSettings {
   announce: boolean;
 }
 
+/** Только компьютер. */
+export interface DesktopSettings {
+  /** Крестик прячет окно в трей, а не закрывает приложение. */
+  closeToTray: boolean;
+}
+
 export interface Settings {
   russianSitesDirect: boolean;
   tlsFragment: boolean;
@@ -114,6 +120,7 @@ export interface Settings {
   ping: PingSettings;
   updates: UpdateSettings;
   notifications: NotificationSettings;
+  desktop: DesktopSettings;
   core: CoreSettings;
   appearance: Appearance;
 }
@@ -142,6 +149,8 @@ export interface Snapshot {
   refreshingSub: string | null;
   toast: ToastMessage | null;
   version: { app: string; xray: string };
+  /** Запуск при входе в систему: null — недоступно (телефон, демо в браузере). */
+  autostart: boolean | null;
   /** Журнал: сеансы VPN и события, новые сверху. Хранится только на устройстве. */
   activity: ActivityEntry[];
 }
@@ -203,6 +212,9 @@ export interface Backend {
   openLogsFolder(): Promise<boolean>;
   /** Пример уведомления — проверить, что система их показывает. */
   testNotification(): Promise<void>;
+  /** Включить или выключить запуск при входе в систему (компьютер). */
+  setAutostart(on: boolean): Promise<void>;
+  updateDesktop(patch: Partial<DesktopSettings>): void;
   /** Очистить журнал активности (с возможностью вернуть). */
   clearActivity(): void;
   /** Кнопка в уведомлении: «Вернуть», «Переподключить». */

@@ -3,6 +3,7 @@ import { Toaster } from "./toaster";
 import {
   nodeKey,
   type ActivityEntry,
+  type DesktopSettings,
   type Appearance,
   type Backend,
   type CoreSettings,
@@ -87,6 +88,7 @@ export const defaultSettings: Settings = {
   ping: { method: "tcp", timeoutSec: 5, url: "https://www.gstatic.com/generate_204", onStart: true },
   updates: { interval: "provider", onStart: true },
   notifications: { enabled: true, disconnect: true, expiry: true, traffic: true, announce: true },
+  desktop: { closeToTray: true },
   core: defaultCore,
   appearance: defaultAppearance,
 };
@@ -132,6 +134,7 @@ export class DemoBackend implements Backend {
       refreshingSub: null,
       toast: null,
       version: { app: "0.1.0", xray: "26.11.9" },
+      autostart: false,
       activity: empty ? [] : demoActivity(),
     };
     this.recompute();
@@ -396,6 +399,15 @@ export class DemoBackend implements Backend {
   }
 
   /** В демо системных уведомлений нет — показываем, как бы оно выглядело. */
+  // В демо только меняем переключатель: в браузере автозапуска нет.
+  async setAutostart(on: boolean) {
+    this.emit({ autostart: on });
+  }
+
+  updateDesktop(patch: Partial<DesktopSettings>) {
+    this.emit({ settings: { ...this.s.settings, desktop: { ...this.s.settings.desktop, ...patch } } });
+  }
+
   async testNotification() {
     this.toast("Уведомление: «B-Proxy — уведомления работают»");
   }

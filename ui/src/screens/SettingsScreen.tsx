@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Ban, Bell, ChevronRight, FileText, Gauge, Globe, Info, Network, Palette, Plus, RefreshCw, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
+import { AppWindow, Ban, Bell, ChevronRight, FileText, Gauge, Power, Globe, Info, Network, Palette, Plus, RefreshCw, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot, type Settings } from "@/backend";
 import { Group, IconTile, Row, type Tone } from "@/components/bits";
@@ -138,6 +138,31 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
             hint={s.subscriptions.length === 0 ? "Ссылка из личного кабинета или Telegram-бота" : undefined}
           />
         </Group>
+
+        {s.autostart !== null && (
+          <Group title="Компьютер">
+            <Row
+              htmlFor="set-autostart"
+              icon={<IconTile icon={Power} tone="green" />}
+              title="Запускать вместе с системой"
+              hint="B-Proxy стартует свёрнутым в трей"
+              aside={<Switch id="set-autostart" checked={s.autostart} onCheckedChange={(v) => void backend.setAutostart(v)} />}
+            />
+            <Row
+              htmlFor="set-tray"
+              icon={<IconTile icon={AppWindow} tone="gray" />}
+              title="Сворачивать в трей при закрытии"
+              hint={s.settings.desktop.closeToTray ? "Крестик прячет окно, VPN продолжает работать" : "Крестик закрывает приложение и VPN"}
+              aside={
+                <Switch
+                  id="set-tray"
+                  checked={s.settings.desktop.closeToTray}
+                  onCheckedChange={(v) => backend.updateDesktop({ closeToTray: v })}
+                />
+              }
+            />
+          </Group>
+        )}
 
         <Group title="Приложение">
           <Row

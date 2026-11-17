@@ -5,6 +5,7 @@ import { defaultAppearance, defaultSettings } from "./demo";
 import { checkUrl, mainOutbound, parseSubscription, type FetchResult, type NodeConfig, type Outbound, type StoredSubscription } from "./subscription";
 import {
   type ActivityEntry,
+  type DesktopSettings,
   type Appearance,
   type Backend,
   type CoreSettings,
@@ -110,6 +111,7 @@ export class TauriBackend implements Backend {
         ping: migratePing({ ...defaultSettings.ping, ...(saved?.settings?.ping ?? {}) }),
         updates: { ...defaultSettings.updates, ...(saved?.settings?.updates ?? {}) },
         notifications: { ...defaultSettings.notifications, ...(saved?.settings?.notifications ?? {}) },
+        desktop: { ...defaultSettings.desktop, ...(saved?.settings?.desktop ?? {}) },
         appearance,
       },
       downSpeed: null,
@@ -123,6 +125,7 @@ export class TauriBackend implements Backend {
       refreshingSub: null,
       toast: null,
       version: { app: APP_VERSION, xray: "—" },
+      autostart: null,
       activity: loadActivity(),
     };
     this.recompute();
@@ -162,6 +165,13 @@ export class TauriBackend implements Backend {
       await addPluginListener("bproxy", "state", onState).catch(() => undefined);
     } else {
       await listen<{ state: string; error: string | null }>("bproxy://state", (e) => onState(e.payload));
+    }
+
+    // Компьютер: крестик в трей (настройка) и состояние автозапуска из системы.
+    if (!isMobile(this.platform)) {
+      void invoke("set_close_to_tray", { enabled: this.s.settings.desktop.closeToTray }).catch(() => undefined);
+      const auto = await invoke<boolean>("plugin:autostart|is_enabled").catch(() => null);
+      this.emit({ autostart: auto });
     }
 
     // Туннель мог остаться включённым с прошлого запуска (телефон, «Постоянная VPN»).
@@ -249,6 +259,24 @@ export class TauriBackend implements Backend {
     } catch (e) {
       this.writeLog("warn", `Уведомление не показано: ${message(e)}`);
     }
+  }
+
+  async setAutostart(on: boolean) {
+    try {
+      await invoke(on ? "plugin:autostart|enable" : "plugin:autostart|disable");
+      this.emit({ autostart: await invoke<boolean>("plugin:autostart|is_enabled") });
+      this.writeLog("info", `Автозапуск ${on ? "включён" : "выключен"}`);
+    } catch (e) {
+      this.writeLog("warn", `Автозапуск: ${String(e)}`);
+      this.toast("Не удалось изменить автозапуск — подробности в журнале");
+    }
+  }
+
+  updateDesktop(patch: Partial<DesktopSettings>) {
+    const desktop = { ...this.s.settings.desktop, ...patch };
+    this.emit({ settings: { ...this.s.settings, desktop } });
+    this.persist();
+    void invoke("set_close_to_tray", { enabled: desktop.closeToTray }).catch(() => undefined);
   }
 
   async testNotification() {
@@ -843,6 +871,7 @@ export class TauriBackend implements Backend {
   async resetSettings() {
     const before = this.s.settings;
     this.emit({ settings: structuredClone(defaultSettings) });
+    if (!isMobile(this.platform)) void invoke("set_close_to_tray", { enabled: defaultSettings.desktop.closeToTray }).catch(() => undefined);
     this.updateAppearance({});
     this.persist();
     this.toaster.show("Настройки сброшены", {
