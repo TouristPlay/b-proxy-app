@@ -34,7 +34,8 @@ rm -f "$SRC"/memory/*.go
 cp "$ROOT/core/memory/memory.go" "$SRC/memory/memory.go"
 cp "$ROOT/core/nodep/measure.go" "$SRC/nodep/measure.go"
 mkdir -p "$SRC/bproxy_core"
-cp "$ROOT/core/runner/main.go" "$SRC/bproxy_core/main.go"
+rm -f "$SRC"/bproxy_core/*.go
+cp "$ROOT"/core/runner/*.go "$SRC/bproxy_core/"
 
 cd "$SRC"
 export CGO_ENABLED=1
@@ -43,7 +44,8 @@ LDFLAGS="-s -w -buildid="
 case "$TARGET" in
   linux)
     go build -trimpath -ldflags "$LDFLAGS" -buildmode=c-shared -o "$DEST/libXray.so" ./cgo_bridge
-    go build -trimpath -ldflags "$LDFLAGS" -o "$DEST/bproxy-core" ./bproxy_core
+    # Без cgo: права (capabilities) меняются во всех потоках только так.
+    CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o "$DEST/bproxy-core" ./bproxy_core
     rm -f "$DEST/libXray.h"
     chmod 755 "$DEST/bproxy-core"
     ;;

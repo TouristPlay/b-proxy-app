@@ -37,9 +37,10 @@ ui/src-tauri/
   apple/PacketTunnel/   расширение iOS, в нём работает ядро; добавляется в проект scripts/tauri_ios_extension.py
   resources/<платформа>/  ядро из scripts/build_core.sh (не в git)
   signing/              открытый тестовый ключ подписи APK (только для тестовых сборок)
+  linux/postinst.sh     после установки deb/rpm: права на сеть ядру (VPN без пароля)
 core/
   memory/memory.go      замена пакета memory в libXray: лимит памяти и сборка мусора из env BPROXY_*
-  runner/main.go        bproxy-core — ядро отдельным процессом для Linux и macOS
+  runner/main.go        bproxy-core — ядро отдельным процессом для Linux и macOS (caps_linux.go — права в ambient)
   nodep/measure.go      замена nodep/measure.go: «реальная задержка» запросом HEAD или GET (#bproxy-method= в адресе)
 scripts/                build_core.sh (linux | windows | macos | android | ios), tauri_ios_extension.py
 app/                    Flutter-версия (не собирается)
@@ -131,8 +132,10 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   Если приложение выгружено, активность обновится при следующем открытии.
 - Идентификатор приложения `com.baobabproxy.bproxy`, расширения — `.PacketTunnel`, группа — `group.com.baobabproxy.bproxy`.
 - Windows: libXray.dll внутри приложения + Wintun, приложение просит права администратора.
-- Linux и macOS: процесс `bproxy-core` с правами администратора (pkexec / osascript), копия лежит в папке
-  данных приложения. Он пишет `core.state` (running / error: … / stopped) и выходит, когда появляется `core.stop`.
+- Linux и macOS: процесс `bproxy-core` с правами на сеть. Linux из deb/rpm — без пароля: `linux/postinst.sh` делает
+  `setcap cap_net_admin,cap_net_raw+ep` на `/usr/lib/B-Proxy/core/bproxy-core`, приложение видит это по xattr и
+  запускает ядро прямо оттуда; ядро поднимает права в ambient, чтобы их получил `resolvectl` (собирается без cgo,
+  иначе нельзя `AllThreadsSyscall`). AppImage и macOS — pkexec / osascript с паролем, копия ядра в папке данных. Он пишет `core.state` (running / error: … / stopped) и выходит, когда появляется `core.stop`.
   Счётчики трафика — по интерфейсу туннеля (`bproxy0`, `utun199`, на Windows `B-Proxy`).
 - Подписка Remnawave с заголовком `v2rayNG/1.9.30` приходит как Xray JSON: у каждого сервера полный конфиг,
   у «Auto» — балансировщики и burstObservatory. Берём outbound'ы, балансировщики и правила провайдера,

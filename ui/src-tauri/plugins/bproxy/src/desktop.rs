@@ -244,12 +244,18 @@ impl<R: Runtime> Vpn<R> {
         let _ = std::fs::remove_file(&stop);
         std::fs::write(&config, args.config.as_bytes()).map_err(|e| e.to_string())?;
 
-        // Копия ядра в папке данных: из AppImage (FUSE) root файлы не видит.
         let resources = self.app.path().resource_dir().map_err(|e| e.to_string())?;
-        let binary = dir.join("bproxy-core");
-        copy_if_changed(&resources.join("core/bproxy-core"), &binary)?;
-
-        launch_privileged(&binary, &config, &state, &stop)?;
+        let installed = resources.join("core/bproxy-core");
+        if has_net_caps(&installed) {
+            // Пакет deb/rpm дал ядру права на сеть — запускаем без пароля, прямо
+            // из папки установки (при копировании права теряются).
+            launch_direct(&installed, &config, &state, &stop)?;
+        } else {
+            // Копия ядра в папке данных: из AppImage (FUSE) root файлы не видит.
+            let binary = dir.join("bproxy-core");
+            copy_if_changed(&installed, &binary)?;
+            launch_privileged(&binary, &config, &state, &stop)?;
+        }
 
         // Ждём, пока ядро запустится: пользователь может долго вводить пароль.
         let started = Instant::now();
@@ -342,6 +348,59 @@ fn copy_if_changed(from: &PathBuf, to: &PathBuf) -> Result<(), String> {
 #[cfg(target_os = "macos")]
 fn shell_quote(path: &PathBuf) -> String {
     format!("'{}'", path.display().to_string().replace('\'', r"'\''"))
+}
+
+/// Есть ли у файла ядра права CAP_NET_ADMIN (ставит установщик пакета через setcap).
+#[cfg(target_os = "linux")]
+fn has_net_caps(path: &PathBuf) -> bool {
+    use std::os::unix::ffi::OsStrExt;
+    const CAP_NET_ADMIN: u32 = 12;
+    let Ok(cpath) = std::ffi::CString::new(path.as_os_str().as_bytes()) else {
+        return false;
+    };
+    let name = c"security.capability";
+    let mut buf = [0u8; 24];
+    // vfs_cap_data: magic_etc, затем пары (permitted, inheritable) по 32 бита.
+    let n = unsafe { libc::getxattr(cpath.as_ptr(), name.as_ptr(), buf.as_mut_ptr().cast(), buf.len()) };
+    if n < 12 {
+        return false;
+    }
+    let permitted = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
+    permitted & (1 << CAP_NET_ADMIN) != 0
+}
+
+#[cfg(target_os = "macos")]
+fn has_net_caps(_path: &PathBuf) -> bool {
+    false
+}
+
+/// Запуск ядра от пользователя: права на сеть уже есть у самого файла.
+#[cfg(target_os = "linux")]
+fn launch_direct(binary: &PathBuf, config: &PathBuf, state: &PathBuf, stop: &PathBuf) -> Result<(), String> {
+    let state_for_thread = state.clone();
+    let mut child = std::process::Command::new(binary)
+        .arg(config)
+        .arg(state)
+        .arg(stop)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Не удалось запустить ядро: {e}"))?;
+    std::thread::spawn(move || {
+        if let Ok(status) = child.wait() {
+            // Ядро упало, не успев записать состояние, — чтобы приложение не ждало 2 минуты.
+            if !status.success() && read_state(&state_for_thread).is_none() {
+                let _ = std::fs::write(&state_for_thread, format!("error: ядро завершилось ({status})"));
+            }
+        }
+    });
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn launch_direct(_: &PathBuf, _: &PathBuf, _: &PathBuf, _: &PathBuf) -> Result<(), String> {
+    Err("Запуск без пароля на macOS пока не поддерживается".into())
 }
 
 #[cfg(target_os = "linux")]

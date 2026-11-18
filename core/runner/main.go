@@ -1,5 +1,6 @@
-// bproxy-core — ядро Xray для Linux и macOS. Приложение запускает его
-// с правами администратора (их требует TUN) через pkexec или osascript.
+// bproxy-core — ядро Xray для Linux и macOS. TUN требует прав администратора:
+// на Linux из пакета deb/rpm у файла есть CAP_NET_ADMIN (ставит установщик) и
+// ядро запускается без пароля, иначе — через pkexec; на macOS — через osascript.
 //
 //	bproxy-core <config.json> <state-файл> <stop-файл>
 //
@@ -38,6 +39,8 @@ func main() {
 		return
 	}
 
+	raiseAmbientCaps()
+
 	config, err := os.ReadFile(configPath)
 	if err != nil {
 		setState("error: " + err.Error())
@@ -64,7 +67,8 @@ loop:
 			if _, err := os.Stat(stopPath); err == nil {
 				break loop
 			}
-			// pkexec заменяет себя ядром, поэтому на Linux родитель — само приложение.
+			// pkexec заменяет себя ядром, поэтому на Linux родитель — само приложение
+			// (и при запуске без пароля тоже).
 			// Если его не стало (упало, убили), выключаем VPN.
 			if runtime.GOOS == "linux" && os.Getppid() != parent {
 				break loop

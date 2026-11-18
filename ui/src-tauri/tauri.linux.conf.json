@@ -6,10 +6,17 @@
     },
     "linux": {
       "deb": {
-        "depends": ["pkexec | policykit-1"]
+        "depends": [
+          "pkexec | policykit-1",
+          "libcap2-bin"
+        ],
+        "postInstallScript": "linux/postinst.sh"
       },
       "rpm": {
-        "depends": ["polkit"]
+        "depends": [
+          "polkit"
+        ],
+        "postInstallScript": "linux/postinst.sh"
       }
     }
   }
