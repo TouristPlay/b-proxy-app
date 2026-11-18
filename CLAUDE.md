@@ -44,7 +44,8 @@ core/
   nodep/measure.go      замена nodep/measure.go: «реальная задержка» запросом HEAD или GET (#bproxy-method= в адресе)
 scripts/                build_core.sh (linux | windows | macos | android | ios), tauri_ios_extension.py
 app/                    Flutter-версия (не собирается)
-.github/workflows/      build.yml — демо интерфейса, Linux, Windows, macOS, Android (APK), iOS без подписи, релиз по тегу
+.github/workflows/      build.yml — демо интерфейса, Linux, Windows, Android (APK) на каждый пуш; iOS без подписи — только
+                        в релиз; macOS — только вручную (Run workflow → «Собрать и macOS»). Ядро кэшируется по core/** и build_core.sh
 ```
 
 ## Команды
