@@ -157,7 +157,8 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   Манифест — `latest.json` в последнем релизе GitHub, его собирает `scripts/updater_manifest.py` в job «Релиз»
   по ключам `{os}-{arch}-{установщик}` (deb обновляется через deb, AppImage через AppImage, nsis, msi, app).
   Подписи .sig делает сборка, если в секретах репозитория есть `TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`);
-  открытый ключ — в `plugins.updater.pubkey` в tauri.conf.json. Версия сборки берётся из тега (`scripts/tauri_build_conf.sh`).
+  открытый ключ — в `plugins.updater.pubkey` в tauri.conf.json. Версия сборки берётся из тега или из коммита в main с сообщением «Релиз vX.Y.Z» (`scripts/tauri_build_conf.sh`) —
+  так выпускается релиз из облачной сессии, где пуш тегов запрещён: тег создаёт job «Релиз».
   Без ключа релиз выходит без автообновления. Проверка — через минуту после запуска и раз в 12 часов
   (настройка `desktop.autoUpdate`), установка — только по кнопке; перед установкой VPN выключается.
 - Kill switch (настройка `killSwitch`): Linux — таблица nftables `inet bproxy_killswitch` (выпускает только `lo`,

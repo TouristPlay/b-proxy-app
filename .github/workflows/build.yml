@@ -15,6 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # Релиз: тег vX.Y.Z или коммит в main с сообщением «Релиз vX.Y.Z» (тег создаст job «Релиз»).
+  HEAD_MESSAGE: ${{ github.event.head_commit.message }}
   LIBXRAY_VERSION: v26.11.9
   NDK_VERSION: r28c
   CARGO_TERM_COLOR: always
@@ -317,7 +319,7 @@ jobs:
 
   release:
     name: Релиз
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Релиз v'))
     needs: [linux, windows, macos, android, ios]
     runs-on: ubuntu-24.04
     permissions:
@@ -329,16 +331,22 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
+      - name: Тег релиза
+        id: tag
+        run: echo "tag=v$(scripts/tauri_build_conf.sh --version)" >> "$GITHUB_OUTPUT"
       - name: Файл обновления latest.json
         run: |
           mkdir -p artifacts/updater
           if ls artifacts/*/*.sig artifacts/*/*/*.sig >/dev/null 2>&1; then
-            python3 scripts/updater_manifest.py artifacts "$GITHUB_REF_NAME" "$GITHUB_REPOSITORY" > artifacts/updater/latest.json
+            python3 scripts/updater_manifest.py artifacts "${{ steps.tag.outputs.tag }}" "$GITHUB_REPOSITORY" > artifacts/updater/latest.json
           else
             echo "::warning::Нет ключа подписи TAURI_SIGNING_PRIVATE_KEY — релиз без автообновления"
           fi
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: B-Proxy ${{ steps.tag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             artifacts/b-proxy-linux/**/*
             artifacts/b-proxy-windows/**/*
