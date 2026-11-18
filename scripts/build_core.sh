@@ -52,6 +52,8 @@ case "$TARGET" in
   windows)
     go build -trimpath -ldflags "$LDFLAGS" -buildmode=c-shared -o "$DEST/libXray.dll" ./cgo_bridge
     rm -f "$DEST/libXray.h"
+    # Помощник-служба (VPN без UAC) и запасной запуск ядра с правами администратора.
+    CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o "$DEST/bproxy-core.exe" ./bproxy_core
     # Драйвер виртуального адаптера — подписанная DLL от авторов WireGuard.
     curl -fsSL -o "$WORK/wintun.zip" "https://www.wintun.net/builds/wintun-$WINTUN_VERSION.zip"
     rm -rf "$WORK/wintun" && mkdir -p "$WORK/wintun"

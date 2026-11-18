@@ -4,9 +4,11 @@
 //! и вызывается через `CGoInvoke`/`CGoFree` — так работают разбор ссылок и пинг.
 //!
 //! Туннель:
-//! - Windows — ядро в процессе приложения (приложение запущено от администратора, Wintun).
-//! - Linux и macOS — отдельный процесс `bproxy-core` с правами администратора
-//!   (pkexec / osascript). Он пишет состояние в файл `core.state`
+//! - Windows и macOS — помощник с правами системы (служба `BProxyHelper` / LaunchDaemon,
+//!   `helper.rs`): VPN включается без окна UAC и пароля. Службу Windows ставит установщик,
+//!   помощника macOS — приложение при первом подключении (пароль один раз).
+//! - Без помощника и на Linux — отдельный процесс `bproxy-core`: Linux из deb/rpm — с правами
+//!   на сеть без пароля, иначе pkexec / osascript / окно UAC. Он пишет состояние в `core.state`
 //!   и завершается, когда появляется файл `core.stop`.
 
 use crate::logs;
@@ -72,6 +74,9 @@ pub struct Vpn<R: Runtime> {
     app: AppHandle<R>,
     core: Mutex<Option<Arc<Core>>>,
     running: Mutex<bool>,
+    /// VPN включён через помощника (Windows, macOS), а не отдельным процессом.
+    #[allow(dead_code)]
+    helper: Mutex<bool>,
 }
 
 pub fn init<R: Runtime, C: DeserializeOwned>(
@@ -82,6 +87,7 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
         app: app.clone(),
         core: Mutex::new(None),
         running: Mutex::new(false),
+        helper: Mutex::new(false),
     })
 }
 
@@ -220,11 +226,11 @@ impl<R: Runtime> Vpn<R> {
         if !*self.running.lock().unwrap() {
             return;
         }
-        #[cfg(target_os = "windows")]
-        if let Ok(core) = self.core() {
-            let _ = core.call(r#"{"apiVersion":3,"method":"stopXray"}"#);
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
+        if *self.helper.lock().unwrap() {
+            let _ = crate::helper::call(&serde_json::json!({ "cmd": "stop" }), std::time::Duration::from_secs(5));
+            return;
         }
-        #[cfg(not(target_os = "windows"))]
         if let Ok(dir) = self.data_dir() {
             let _ = std::fs::write(dir.join("core.stop"), b"");
         }
@@ -237,37 +243,94 @@ impl<R: Runtime> Vpn<R> {
         Ok(interface_stats())
     }
 
-    // ---------- Windows: ядро в процессе ----------
+    // ---------- Windows и macOS: помощник, без него — процесс ----------
 
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     async fn start_inner(&self, args: StartArgs) -> Result<(), String> {
-        let core = self.core()?;
-        let request = serde_json::json!({
-            "apiVersion": 3,
-            "method": "runXray",
-            "payload": { "xrayJson": args.config },
-        })
-        .to_string();
-        let raw = tauri::async_runtime::spawn_blocking(move || core.call(&request))
-            .await
-            .map_err(|e| e.to_string())??;
-        check_response(&raw)
+        if self.ensure_helper().await? {
+            let request = serde_json::json!({ "cmd": "start", "config": args.config });
+            tauri::async_runtime::spawn_blocking(move || crate::helper::call(&request, std::time::Duration::from_secs(60)))
+                .await
+                .map_err(|e| e.to_string())??;
+            *self.helper.lock().unwrap() = true;
+            logs::info("vpn", "Ядро запущено помощником");
+            return Ok(());
+        }
+        *self.helper.lock().unwrap() = false;
+        self.start_process(args).await
     }
 
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     async fn stop_inner(&self) -> Result<(), String> {
-        let core = self.core()?;
-        let request = r#"{"apiVersion":3,"method":"stopXray"}"#.to_string();
-        let raw = tauri::async_runtime::spawn_blocking(move || core.call(&request))
-            .await
-            .map_err(|e| e.to_string())??;
-        check_response(&raw)
+        if *self.helper.lock().unwrap() {
+            *self.helper.lock().unwrap() = false;
+            let request = serde_json::json!({ "cmd": "stop" });
+            return tauri::async_runtime::spawn_blocking(move || crate::helper::call(&request, std::time::Duration::from_secs(15)))
+                .await
+                .map_err(|e| e.to_string())?
+                .map(|_| ());
+        }
+        self.stop_process().await
     }
 
-    // ---------- Linux и macOS: процесс bproxy-core с правами администратора ----------
+    /// Windows: служба есть, если её поставил установщик NSIS.
+    #[cfg(target_os = "windows")]
+    async fn ensure_helper(&self) -> Result<bool, String> {
+        Ok(tauri::async_runtime::spawn_blocking(crate::helper::available).await.unwrap_or(false))
+    }
 
-    #[cfg(not(target_os = "windows"))]
+    /// macOS: помощника ставим сами — один раз спрашиваем пароль, и после обновления приложения
+    /// (отпечаток ядра изменился). Отказались — подключаемся по-старому, с паролем.
+    #[cfg(target_os = "macos")]
+    async fn ensure_helper(&self) -> Result<bool, String> {
+        let installed = self.app.path().resource_dir().map_err(|e| e.to_string())?.join("core/bproxy-core");
+        let path = installed.clone();
+        let fresh = tauri::async_runtime::spawn_blocking(move || {
+            crate::helper::available() && crate::helper::version().is_some_and(|v| Some(v) == crate::helper::file_hash(&path))
+        })
+        .await
+        .unwrap_or(false);
+        if fresh {
+            return Ok(true);
+        }
+        logs::info("vpn", "Ставим помощника B-Proxy (один раз попросим пароль)");
+        let command = format!("{} --install-helper", shell_quote(&installed));
+        let script = format!(
+            "do shell script \"{}\" with prompt \"B-Proxy ставит помощника, чтобы больше не спрашивать пароль при подключении\" with administrator privileges",
+            command.replace('\\', "\\\\").replace('"', "\\\"")
+        );
+        let ok = tauri::async_runtime::spawn_blocking(move || {
+            std::process::Command::new("osascript").arg("-e").arg(script).status().map(|s| s.success()).unwrap_or(false)
+        })
+        .await
+        .unwrap_or(false);
+        if !ok {
+            return Err("Подключение отменено".into());
+        }
+        // launchd поднимает помощника не мгновенно.
+        for _ in 0..25 {
+            if tauri::async_runtime::spawn_blocking(crate::helper::available).await.unwrap_or(false) {
+                return Ok(true);
+            }
+            tokio_sleep(std::time::Duration::from_millis(200)).await;
+        }
+        logs::error("vpn", "Помощник не ответил — подключаемся без него");
+        Ok(false)
+    }
+
+    #[cfg(target_os = "linux")]
     async fn start_inner(&self, args: StartArgs) -> Result<(), String> {
+        self.start_process(args).await
+    }
+
+    #[cfg(target_os = "linux")]
+    async fn stop_inner(&self) -> Result<(), String> {
+        self.stop_process().await
+    }
+
+    // ---------- Процесс bproxy-core с правами администратора ----------
+
+    async fn start_process(&self, args: StartArgs) -> Result<(), String> {
         use std::time::{Duration, Instant};
 
         let dir = self.data_dir()?;
@@ -285,7 +348,12 @@ impl<R: Runtime> Vpn<R> {
         std::fs::write(&config, args.config.as_bytes()).map_err(|e| e.to_string())?;
 
         let resources = self.app.path().resource_dir().map_err(|e| e.to_string())?;
+        // Windows: ядро запускаем прямо из папки установки, система спросит разрешение (UAC).
+        #[cfg(target_os = "windows")]
+        launch_privileged(&resources.join("bproxy-core.exe"), &config, &state, &stop)?;
+        #[cfg(not(target_os = "windows"))]
         let installed = resources.join("core/bproxy-core");
+        #[cfg(not(target_os = "windows"))]
         if has_net_caps(&installed) {
             // Пакет deb/rpm дал ядру права на сеть — запускаем без пароля, прямо
             // из папки установки (при копировании права теряются).
@@ -322,8 +390,7 @@ impl<R: Runtime> Vpn<R> {
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
-    async fn stop_inner(&self) -> Result<(), String> {
+    async fn stop_process(&self) -> Result<(), String> {
         use std::time::{Duration, Instant};
         let dir = self.data_dir()?;
         let state = dir.join("core.state");
@@ -351,25 +418,10 @@ impl<R: Runtime> Vpn<R> {
     }
 }
 
-#[cfg(target_os = "windows")]
-fn check_response(raw: &str) -> Result<(), String> {
-    let value: serde_json::Value = serde_json::from_str(raw).map_err(|e| e.to_string())?;
-    if value["success"].as_bool() == Some(true) {
-        Ok(())
-    } else {
-        Err(value["error"]
-            .as_str()
-            .unwrap_or("Ошибка ядра Xray")
-            .to_string())
-    }
-}
-
-#[cfg(not(target_os = "windows"))]
 async fn tokio_sleep(d: std::time::Duration) {
     let _ = tauri::async_runtime::spawn_blocking(move || std::thread::sleep(d)).await;
 }
 
-#[cfg(not(target_os = "windows"))]
 fn read_state(path: &PathBuf) -> Option<String> {
     std::fs::read_to_string(path)
         .ok()
@@ -530,6 +582,45 @@ fn launch_privileged(binary: &PathBuf, config: &PathBuf, state: &PathBuf, stop: 
             let _ = std::fs::write(&state, b"cancelled");
         }
     });
+    Ok(())
+}
+
+/// Windows без службы: ядро с правами администратора через окно UAC.
+#[cfg(target_os = "windows")]
+fn launch_privileged(binary: &PathBuf, config: &PathBuf, state: &PathBuf, stop: &PathBuf) -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::UI::Shell::{ShellExecuteExW, SEE_MASK_NOASYNC, SHELLEXECUTEINFOW};
+    use windows_sys::Win32::UI::WindowsAndMessaging::SW_HIDE;
+    let wide = |s: &std::ffi::OsStr| s.encode_wide().chain(std::iter::once(0)).collect::<Vec<u16>>();
+    let file = wide(binary.as_os_str());
+    let verb = wide(std::ffi::OsStr::new("runas"));
+    let params = wide(std::ffi::OsStr::new(&format!(
+        "\"{}\" \"{}\" \"{}\"",
+        config.display(),
+        state.display(),
+        stop.display()
+    )));
+    let state = state.clone();
+    std::thread::spawn(move || {
+        let mut info: SHELLEXECUTEINFOW = unsafe { std::mem::zeroed() };
+        info.cbSize = std::mem::size_of::<SHELLEXECUTEINFOW>() as u32;
+        info.fMask = SEE_MASK_NOASYNC;
+        info.lpVerb = verb.as_ptr();
+        info.lpFile = file.as_ptr();
+        info.lpParameters = params.as_ptr();
+        info.nShow = SW_HIDE;
+        // 0 — окно UAC закрыли или не дали прав.
+        if unsafe { ShellExecuteExW(&mut info) } == 0 {
+            let _ = std::fs::write(&state, b"cancelled");
+        }
+    });
+    Ok(())
+}
+
+/// Windows: правил файрвола нет (WFP живёт, пока работает ядро) — убираем только метку.
+#[cfg(target_os = "windows")]
+fn release_kill_switch(_installed: &PathBuf, _copy: &PathBuf, dir: &PathBuf) -> Result<(), String> {
+    let _ = std::fs::remove_file(dir.join("killswitch"));
     Ok(())
 }
 

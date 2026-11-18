@@ -22,6 +22,8 @@ mod subscription;
 
 #[cfg(desktop)]
 mod desktop;
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+mod helper;
 #[cfg(mobile)]
 mod mobile;
 

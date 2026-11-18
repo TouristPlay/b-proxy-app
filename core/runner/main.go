@@ -4,6 +4,8 @@
 //
 //	bproxy-core <config.json> <state-файл> <stop-файл>
 //	bproxy-core --killswitch-off <папка с core.state>   — снять kill switch после аварии
+//	bproxy-core --helper | --install-helper | --uninstall-helper
+//	    помощник с правами системы (служба Windows, LaunchDaemon macOS), см. helper.go
 //
 // В state-файл пишется «running», «error: …» или «stopped». Ядро работает,
 // пока не появится stop-файл, не придёт SIGTERM или не завершится приложение.
@@ -23,6 +25,24 @@ import (
 )
 
 func main() {
+	if len(os.Args) == 2 {
+		var err error
+		switch os.Args[1] {
+		case "--helper":
+			err = runHelper()
+		case "--install-helper":
+			err = installHelper()
+		case "--uninstall-helper":
+			err = uninstallHelper()
+		default:
+			err = fmt.Errorf("неизвестный ключ %s", os.Args[1])
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) == 3 && os.Args[1] == "--killswitch-off" {
 		raiseAmbientCaps()
 		if err := killSwitchOff(); err != nil {

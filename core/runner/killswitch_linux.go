@@ -37,8 +37,8 @@ func killSwitchOn(k killSwitchConfig) error {
 	b.WriteString("    oifname \"lo\" accept\n")
 	fmt.Fprintf(&b, "    oifname %q accept\n", tun)
 	fmt.Fprintf(&b, "    meta mark 0x%x accept\n", ksMark)
-	b.WriteString("    udp dport { 67, 68 } accept\n")      // DHCP — иначе сеть не продлит адрес
-	b.WriteString("    meta l4proto ipv6-icmp accept\n")    // соседи IPv6 (NDP)
+	b.WriteString("    udp dport { 67, 68 } accept\n")   // DHCP — иначе сеть не продлит адрес
+	b.WriteString("    meta l4proto ipv6-icmp accept\n") // соседи IPv6 (NDP)
 	if k.lan {
 		b.WriteString("    ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 224.0.0.0/4, 255.255.255.255 } accept\n")
 		b.WriteString("    ip6 daddr { fe80::/10, fc00::/7, ff00::/8 } accept\n")

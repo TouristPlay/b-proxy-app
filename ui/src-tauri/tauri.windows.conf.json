@@ -2,7 +2,14 @@
   "bundle": {
     "resources": {
       "resources/windows/libXray.dll": "libXray.dll",
-      "resources/windows/wintun.dll": "wintun.dll"
+      "resources/windows/wintun.dll": "wintun.dll",
+      "resources/windows/bproxy-core.exe": "bproxy-core.exe"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "installerHooks": "windows/hooks.nsh"
+      }
     }
   }
 }

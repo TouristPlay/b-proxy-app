@@ -32,7 +32,7 @@ ui/src/
 ui/src-tauri/
   src/lib.rs            приложение: плагины opener и bproxy
   plugins/bproxy/       плагин: команды invoke_core, fetch_subscription, prepare, start, stop, stats; событие состояния
-    src/desktop.rs      Windows — ядро в процессе (Wintun); Linux/macOS — процесс bproxy-core через pkexec/osascript
+    src/desktop.rs      Windows/macOS — помощник (helper.rs), иначе и на Linux — процесс bproxy-core (setcap/pkexec/osascript/UAC)
     src/mobile.rs       мост к android/ (Kotlin: BProxyPlugin, BProxyVpnService) и ios/ (Swift: BProxyPlugin)
   apple/PacketTunnel/   расширение iOS, в нём работает ядро; добавляется в проект scripts/tauri_ios_extension.py
   resources/<платформа>/  ядро из scripts/build_core.sh (не в git)
@@ -131,7 +131,13 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   Структура `BProxyActivityAttributes` объявлена и в плагине, и в расширении — поля должны совпадать.
   Если приложение выгружено, активность обновится при следующем открытии.
 - Идентификатор приложения `com.baobabproxy.bproxy`, расширения — `.PacketTunnel`, группа — `group.com.baobabproxy.bproxy`.
-- Windows: libXray.dll внутри приложения + Wintun, приложение просит права администратора.
+- Помощник с правами системы (`core/runner/helper*.go`, клиент `plugins/bproxy/src/helper.rs`): одна строка JSON
+  туда-обратно — `start` (конфиг без путей журнала), `stop`, `state`, `version` (sha256 файла).
+  Windows — служба `BProxyHelper` (`bproxy-core.exe --helper`, канал `\\.\pipe\bproxy-helper`), ставит и снимает
+  установщик NSIS (`windows/hooks.nsh`, режим perMachine); приложение работает без прав администратора
+  (asInvoker), без службы — запускает `bproxy-core.exe` через окно UAC. libXray.dll в приложении — только разбор и пинг.
+  macOS — LaunchDaemon `com.baobabproxy.bproxy.helper` (сокет `/var/run/bproxy-helper.sock`), ставит приложение
+  при первом подключении (`--install-helper`, пароль один раз) и после обновления (отпечаток ядра изменился).
 - Linux и macOS: процесс `bproxy-core` с правами на сеть. Linux из deb/rpm — без пароля: `linux/postinst.sh` делает
   `setcap cap_net_admin,cap_net_raw+ep` на `/usr/lib/B-Proxy/core/bproxy-core`, приложение видит это по xattr и
   запускает ядро прямо оттуда; ядро поднимает права в ambient, чтобы их получил `resolvectl` (собирается без cgo,
