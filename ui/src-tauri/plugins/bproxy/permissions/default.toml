@@ -18,4 +18,5 @@ permissions = [
   "allow-geo-info",
   "allow-download-geo",
   "allow-live-activity",
+  "allow-speed-test",
 ]

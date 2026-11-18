@@ -16,6 +16,7 @@ import {
   type SessionEnd,
   type Settings,
   type Snapshot,
+  type SpeedTest,
   type Subscription,
   type TunnelState,
 } from "./types";
@@ -154,6 +155,7 @@ export class TauriBackend implements Backend {
       version: { app: APP_VERSION, xray: "—" },
       autostart: null,
       appUpdate: null,
+      speedTest: null,
       device: null,
       geo: null,
       pendingLink: null,
@@ -352,6 +354,33 @@ export class TauriBackend implements Backend {
     this.emit({ settings: { ...this.s.settings, desktop } });
     this.persist();
     void invoke("set_close_to_tray", { enabled: desktop.closeToTray }).catch(() => undefined);
+  }
+
+  // ---------- Проверка скорости ----------
+
+  private probePort: number | null = null;
+
+  async runSpeedTest() {
+    const st = this.s.speedTest;
+    if (st && st.phase !== "done" && st.phase !== "error") return;
+    const server = this.s.current?.node.name ?? "";
+    if (this.s.state !== "connected" || !this.probePort) {
+      this.emit({ speedTest: { phase: "error", latencyMs: null, downloadMbps: null, uploadMbps: null, progress: 0, server, error: t("Подключитесь, чтобы проверить скорость сервера") } });
+      return;
+    }
+    const base = { latencyMs: null, downloadMbps: null, uploadMbps: null, progress: 0, server };
+    this.emit({ speedTest: { phase: "latency", ...base } });
+    type P = { phase: SpeedTest["phase"]; latencyMs: number | null; downloadMbps: number | null; uploadMbps: number | null; progress: number };
+    const unlisten = await listen<P>("bproxy://speed", (e) => this.emit({ speedTest: { ...e.payload, server } }));
+    try {
+      const r = await invoke<P>("plugin:bproxy|speed_test", { port: this.probePort });
+      this.emit({ speedTest: { ...r, phase: "done", server, at: Date.now() } });
+      this.writeLog("info", `Скорость через ${server}: ${r.latencyMs ?? "—"} мс, ↓ ${r.downloadMbps ?? "—"} ↑ ${r.uploadMbps ?? "—"} Мбит/с`);
+    } catch (e) {
+      this.emit({ speedTest: { ...(this.s.speedTest ?? base), phase: "error", server, error: t("Не удалось проверить скорость: {0}", [message(e)]) } });
+    } finally {
+      unlisten();
+    }
   }
 
   // ---------- Обновление приложения (компьютер) ----------
@@ -701,7 +730,9 @@ export class TauriBackend implements Backend {
       }
       // Свой DNS провайдера (если задан) вместо общего.
       const set = { ...this.s.settings, dnsServer: stored.prefs?.dns?.trim() || this.s.settings.dnsServer };
-      const config = buildConfig(node, set, this.platform, stored.fragment, coreLog, this.geoDir);
+      // Служебный вход для проверки скорости — свой порт на каждое подключение.
+      this.probePort = 20000 + Math.floor(Math.random() * 40000);
+      const config = buildConfig(node, set, this.platform, stored.fragment, coreLog, this.geoDir, this.probePort);
       this.writeLog(
         "info",
         `Подключение: ${target.node.name} [${target.node.tags.join("/")}], ` +

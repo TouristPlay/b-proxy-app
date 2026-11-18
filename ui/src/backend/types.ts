@@ -222,6 +222,20 @@ export interface DesktopSettings {
   autoUpdate: boolean;
 }
 
+/** Проверка скорости через выбранный сервер. */
+export interface SpeedTest {
+  phase: "latency" | "download" | "upload" | "done" | "error";
+  latencyMs: number | null;
+  downloadMbps: number | null;
+  uploadMbps: number | null;
+  /** 0…1 внутри этапа. */
+  progress: number;
+  /** Сервер, через который мерили. */
+  server: string;
+  error?: string;
+  at?: number;
+}
+
 /** Обновление самого приложения (компьютер). */
 export interface AppUpdate {
   state: "idle" | "checking" | "none" | "available" | "downloading" | "error";
@@ -296,6 +310,8 @@ export interface Snapshot {
   autostart: boolean | null;
   /** HWID и устройство — то, что уходит провайдеру; null — ещё не узнали. */
   device: DeviceInfo | null;
+  /** Последняя проверка скорости в этом сеансе; null — не проверяли. */
+  speedTest: SpeedTest | null;
   /** Обновление приложения; null — платформа не умеет (телефон, демо без компьютера). */
   appUpdate: AppUpdate | null;
   /** Ссылка bproxy:// ждёт подтверждения: добавить подписку или профиль маршрутизации. */
@@ -382,6 +398,8 @@ export interface Backend {
   openLogsFolder(): Promise<boolean>;
   /** Пример уведомления — проверить, что система их показывает. */
   testNotification(): Promise<void>;
+  /** Проверить скорость через выбранный сервер (только при включённом VPN). */
+  runSpeedTest(): Promise<void>;
   /** Проверить, вышла ли новая версия B-Proxy (компьютер). */
   checkAppUpdate(manual?: boolean): Promise<void>;
   /** Скачать и установить новую версию, затем перезапустить приложение. */

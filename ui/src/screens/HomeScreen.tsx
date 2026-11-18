@@ -16,6 +16,7 @@ import { ErrorBanner } from "@/components/ErrorBanner";
 import { Flag, SignalPing } from "@/components/bits";
 import { PowerOrb } from "@/components/PowerOrb";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
+import { SpeedTestSheet } from "@/components/SpeedTestSheet";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   daysLeft,
@@ -43,6 +44,7 @@ export function HomeScreen({
   const days = sub ? daysLeft(sub.expireAt) : null;
   const expired = days === 0;
   const [pasting, setPasting] = useState(false);
+  const [speed, setSpeed] = useState(false);
 
   /** «Вставить»: берём ссылку из буфера и сразу добавляем; если не вышло — открываем форму. */
   async function paste() {
@@ -148,6 +150,7 @@ export function HomeScreen({
               up={s.upSpeed ?? 0}
               downTotal={s.downTotal}
               upTotal={s.upTotal}
+              onClick={() => setSpeed(true)}
             />
           ) : (
             <Entrance
@@ -248,6 +251,7 @@ export function HomeScreen({
       {sub && (
         <SubscriptionCard sub={sub} className="mt-[clamp(10px,2dvh,16px)]" />
       )}
+      <SpeedTestSheet open={speed} onOpenChange={setSpeed} />
     </div>
   );
 }
@@ -263,7 +267,9 @@ function LiveBar({
   up,
   downTotal,
   upTotal,
+  onClick,
 }: {
+  onClick: () => void;
   time: string;
   down: number;
   up: number;
@@ -272,12 +278,15 @@ function LiveBar({
 }) {
   const rise = useEntrance("anim-rise");
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
+      title={t("Проверить скорость")}
       className={cn(
-        "glass grid w-full grid-cols-3 divide-x divide-edge rounded-[20px] border-good/25 py-2 text-center tabular-nums",
+        "glass grid w-full grid-cols-3 divide-x divide-edge rounded-[20px] border-good/25 py-2 text-center tabular-nums transition-colors hover:bg-glass-2",
         rise,
       )}
-      aria-label={t("Текущее подключение")}
+      aria-label={t("Текущее подключение. Нажмите, чтобы проверить скорость")}
     >
       <span className="px-2">
         <span className="flex items-center justify-center gap-1.5 text-[12px] text-good">
@@ -305,6 +314,6 @@ function LiveBar({
           {formatSpeed(up)}
         </span>
       </span>
-    </div>
+    </button>
   );
 }

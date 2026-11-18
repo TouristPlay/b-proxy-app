@@ -150,6 +150,8 @@ export function buildConfig(
   logFile?: string | null,
   /** Папка с geoip.dat / geosite.dat для профиля маршрутизации. */
   geoDir?: string | null,
+  /** Порт служебного SOCKS-входа для проверки скорости (только 127.0.0.1). */
+  probePort?: number | null,
 ): string {
   const core = s.core;
   const profile = activeProfile(s);
@@ -217,7 +219,11 @@ export function buildConfig(
       ...(profileDnsConfig ?? { servers: dnsServers(s.dnsServer) }),
       queryStrategy: s.ipv6 ? "UseIP" : "UseIPv4",
     },
-    inbounds: [tunInbound(s, platform), ...proxyInbounds(s, platform)],
+    inbounds: [
+      tunInbound(s, platform),
+      ...proxyInbounds(s, platform),
+      ...(probePort ? [{ tag: "probe-in", listen: "127.0.0.1", port: probePort, protocol: "socks", settings: { udp: false, auth: "noauth" } }] : []),
+    ],
     outbounds,
     ...(node.observatory ? { observatory: node.observatory } : {}),
     ...(node.burstObservatory ? { burstObservatory: node.burstObservatory } : {}),
@@ -225,6 +231,8 @@ export function buildConfig(
       domainStrategy: profile?.domainStrategy ?? "IPIfNonMatch",
       ...(node.balancers?.length ? { balancers: node.balancers } : {}),
       rules: [
+        // Проверка скорости всегда идёт через сервер, мимо правил «напрямую».
+        ...(probePort ? [probeRule(catchAll)] : []),
         { type: "field", inboundTag: ["tun-in"], port: "53", outboundTag: "dns-out" },
         ...(s.blockAds && !profile ? [{ type: "field", domain: AD_DOMAINS, outboundTag: "block" }] : []),
         ...(s.network.lanDirect ? [{ type: "field", ip: PRIVATE_CIDRS, outboundTag: "direct" }] : []),
@@ -245,6 +253,11 @@ export function buildConfig(
     },
   };
   return JSON.stringify(config);
+}
+
+function probeRule(catchAll: Record<string, unknown>) {
+  const target = catchAll.balancerTag ? { balancerTag: catchAll.balancerTag } : { outboundTag: catchAll.outboundTag ?? "proxy" };
+  return { type: "field", inboundTag: ["probe-in"], ...target };
 }
 
 /**

@@ -118,3 +118,17 @@ pub(crate) async fn tcp_ping(targets: Vec<crate::ping::Target>, timeout_ms: u64)
         .await
         .map_err(|e| e.to_string())
 }
+
+/// Проверка скорости через служебный SOCKS-вход ядра (порт из конфига этого подключения).
+#[command]
+pub(crate) async fn speed_test<R: Runtime>(app: AppHandle<R>, port: u16) -> Result<crate::speed::SpeedProgress, String> {
+    let res = crate::speed::run(app, port).await;
+    match &res {
+        Ok(r) => logs::info(
+            "speed",
+            &format!("задержка {:?} мс, скачивание {:?} Мбит/с, отдача {:?} Мбит/с", r.latency_ms, r.download_mbps, r.upload_mbps),
+        ),
+        Err(e) => logs::error("speed", e),
+    }
+    res
+}

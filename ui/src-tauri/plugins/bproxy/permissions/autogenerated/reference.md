@@ -19,6 +19,7 @@
 - `allow-geo-info`
 - `allow-download-geo`
 - `allow-live-activity`
+- `allow-speed-test`
 
 ## Permission Table
 
@@ -311,6 +312,32 @@ Enables the read_log command without any pre-configured scope.
 <td>
 
 Denies the read_log command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-speed-test`
+
+</td>
+<td>
+
+Enables the speed_test command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-speed-test`
+
+</td>
+<td>
+
+Denies the speed_test command without any pre-configured scope.
 
 </td>
 </tr>

@@ -152,6 +152,7 @@ export class DemoBackend implements Backend {
       version: { app: "0.1.0", xray: "26.11.9" },
       autostart: false,
       appUpdate: { state: "idle" },
+      speedTest: null,
       geo: { files: [], downloading: false },
       pendingLink: null,
       device: { hwid: "3F2A9C1E-7B4D-4E8A-9C21-5D6E7F8A9B0C", os: "Linux", osVersion: "Ubuntu 24.04 LTS", model: "Demo PC" },
@@ -521,6 +522,33 @@ export class DemoBackend implements Backend {
 
   updateDesktop(patch: Partial<DesktopSettings>) {
     this.emit({ settings: { ...this.s.settings, desktop: { ...this.s.settings.desktop, ...patch } } });
+  }
+
+  async runSpeedTest() {
+    const server = this.s.current?.node.name ?? "";
+    if (this.s.state !== "connected") {
+      this.emit({ speedTest: { phase: "error", latencyMs: null, downloadMbps: null, uploadMbps: null, progress: 0, server, error: t("Подключитесь, чтобы проверить скорость сервера") } });
+      return;
+    }
+    // Имитация: в демо нет ядра, числа случайные, но правдоподобные.
+    const st = { phase: "latency" as const, latencyMs: null as number | null, downloadMbps: null as number | null, uploadMbps: null as number | null, progress: 0, server };
+    for (let i = 1; i <= 5; i++) {
+      await wait(160);
+      this.emit({ speedTest: { ...st, progress: i / 5 } });
+    }
+    const latencyMs = 38 + Math.round(Math.random() * 30);
+    const down = 60 + Math.random() * 120;
+    const up = 25 + Math.random() * 40;
+    for (let i = 1; i <= 16; i++) {
+      await wait(120);
+      this.emit({ speedTest: { ...st, phase: "download", latencyMs, downloadMbps: Math.round(down * (0.7 + 0.3 * Math.random()) * 10) / 10, progress: i / 16 } });
+    }
+    const downloadMbps = Math.round(down * 10) / 10;
+    for (let i = 1; i <= 12; i++) {
+      await wait(120);
+      this.emit({ speedTest: { ...st, phase: "upload", latencyMs, downloadMbps, uploadMbps: Math.round(up * (0.7 + 0.3 * Math.random()) * 10) / 10, progress: i / 12 } });
+    }
+    this.emit({ speedTest: { ...st, phase: "done", latencyMs, downloadMbps, uploadMbps: Math.round(up * 10) / 10, progress: 1, at: Date.now() } });
   }
 
   async checkAppUpdate(manual = false) {

@@ -17,6 +17,7 @@ mod geo;
 mod ping;
 pub mod logs;
 mod models;
+mod speed;
 mod subscription;
 
 #[cfg(desktop)]
@@ -59,7 +60,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::device_info,
             commands::geo_info,
             commands::download_geo,
-            commands::live_activity
+            commands::live_activity,
+            commands::speed_test
         ])
         .setup(|app, api| {
             if let Ok(dir) = app.path().app_local_data_dir() {

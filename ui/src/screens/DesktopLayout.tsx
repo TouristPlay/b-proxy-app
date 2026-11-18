@@ -1,6 +1,6 @@
 import { demoTab } from "@/lib/demoHash";
 import { markScreenEnter } from "@/lib/motion";
-import { ArrowDown, ArrowUp, Globe2, LoaderCircle, Lock, Plus, Power, ShieldCheck } from "lucide-react";
+import { ArrowDown, ArrowUp, Gauge, Globe2, LoaderCircle, Lock, Plus, Power, ShieldCheck } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import logo from "@/assets/logo.png";
@@ -10,6 +10,7 @@ import { AllProvidersActions, ServerList } from "@/components/ServerList";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { SmoothChart } from "@/components/SmoothChart";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
+import { SpeedTestSheet } from "@/components/SpeedTestSheet";
 import { Button } from "@/components/ui/button";
 import { formatBytes, formatDuration, formatSpeed, splitFlag } from "@/lib/format";
 import { useNow } from "@/lib/useMedia";
@@ -111,6 +112,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
 
 function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
   const s = useSnapshot();
+  const [speed, setSpeed] = useState(false);
   const on = s.state === "connected";
   const busy = s.state === "connecting" || s.state === "disconnecting";
   const node = s.current?.node;
@@ -179,7 +181,19 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
         <p className="mt-3 text-[14px] text-ink-2 short:mt-2">{on ? t("Сеанс идёт") : t("VPN выключен")}</p>
       </Tile>
 
-      <Tile title={t("Скорость")}>
+      <Tile
+        title={t("Скорость")}
+        action={
+          <button
+            type="button"
+            onClick={() => setSpeed(true)}
+            className="-my-2 -mr-2 flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink"
+          >
+            <Gauge className="size-4" aria-hidden />
+            {t("Проверить скорость")}
+          </button>
+        }
+      >
         <div className="flex gap-6 text-[15px] tabular-nums">
           <span className="flex items-center gap-1.5">
             <ArrowDown className="size-4 text-good" aria-label={t("Загрузка")} />
@@ -211,14 +225,18 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
       </Tile>
 
       {sub && <SubscriptionCard sub={sub} />}
+      <SpeedTestSheet open={speed} onOpenChange={setSpeed} />
     </div>
   );
 }
 
-function Tile({ title, children }: { title: string; children: ReactNode }) {
+function Tile({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section className="glass rounded-[28px] p-5 short:px-5 short:py-4" aria-label={title}>
-      <h2 className="mb-4 text-[13px] font-medium text-ink-3 short:mb-2.5">{title}</h2>
+      <div className="mb-4 flex items-center justify-between gap-2 short:mb-2.5">
+        <h2 className="text-[13px] font-medium text-ink-3">{title}</h2>
+        {action}
+      </div>
       {children}
     </section>
   );
