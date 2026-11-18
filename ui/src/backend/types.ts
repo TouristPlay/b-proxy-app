@@ -218,6 +218,19 @@ export interface GeoState {
 export interface DesktopSettings {
   /** Крестик прячет окно в трей, а не закрывает приложение. */
   closeToTray: boolean;
+  /** Сам проверять новые версии B-Proxy (при запуске и раз в 12 часов). */
+  autoUpdate: boolean;
+}
+
+/** Обновление самого приложения (компьютер). */
+export interface AppUpdate {
+  state: "idle" | "checking" | "none" | "available" | "downloading" | "error";
+  /** Новая версия, когда она есть. */
+  version?: string;
+  notes?: string;
+  /** Загрузка, 0…1; null — размер неизвестен. */
+  progress?: number | null;
+  error?: string;
 }
 
 export interface DeviceInfo {
@@ -283,6 +296,8 @@ export interface Snapshot {
   autostart: boolean | null;
   /** HWID и устройство — то, что уходит провайдеру; null — ещё не узнали. */
   device: DeviceInfo | null;
+  /** Обновление приложения; null — платформа не умеет (телефон, демо без компьютера). */
+  appUpdate: AppUpdate | null;
   /** Ссылка bproxy:// ждёт подтверждения: добавить подписку или профиль маршрутизации. */
   pendingLink: PendingLink | null;
   /** Базы geoip/geosite; null — платформа не умеет (демо). */
@@ -312,7 +327,7 @@ export type ActivityEntry =
   | { kind: "subscription"; id: string; at: number; text: string };
 
 /** Действие в уведомлении: вернуть удалённое или применить настройки сразу. */
-export type ToastActionId = "undo" | "reconnect";
+export type ToastActionId = "undo" | "reconnect" | "app-update";
 
 export interface ToastMessage {
   text: string;
@@ -367,6 +382,10 @@ export interface Backend {
   openLogsFolder(): Promise<boolean>;
   /** Пример уведомления — проверить, что система их показывает. */
   testNotification(): Promise<void>;
+  /** Проверить, вышла ли новая версия B-Proxy (компьютер). */
+  checkAppUpdate(manual?: boolean): Promise<void>;
+  /** Скачать и установить новую версию, затем перезапустить приложение. */
+  installAppUpdate(): Promise<void>;
   /** Включить или выключить запуск при входе в систему (компьютер). */
   setAutostart(on: boolean): Promise<void>;
   updateDesktop(patch: Partial<DesktopSettings>): void;

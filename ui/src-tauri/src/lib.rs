@@ -19,7 +19,9 @@ pub fn run() {
         .plugin(tauri_plugin_bproxy::init());
 
     #[cfg(desktop)]
-    let builder = desktop::setup(builder);
+    let builder = desktop::setup(builder)
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init());
 
     #[cfg(mobile)]
     let builder = builder.setup(|app| {

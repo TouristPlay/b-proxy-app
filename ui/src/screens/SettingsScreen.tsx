@@ -1,4 +1,4 @@
-import { AppWindow, Check, Copy, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
+import { AppWindow, Check, Copy, Download, LoaderCircle, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import { detectPlatform } from "@/backend/xray";
@@ -13,6 +13,7 @@ import { LogsSheet } from "./LogsSheet";
 import { dnsPresets as dns, routes, RoutesSheet } from "./RoutesSheet";
 import { themeById } from "@/lib/theme";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd: () => void }) {
   const s = useSnapshot();
@@ -138,6 +139,7 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
 
         {s.autostart !== null && (
           <Group title={t("Компьютер")}>
+            <AppUpdateRows />
             <Row
               htmlFor="set-autostart"
               icon={<IconTile icon={Power} tone="green" />}
@@ -305,4 +307,76 @@ function ProxyDetails() {
 /** Адрес для других устройств: компьютер слушает все интерфейсы, свой IP в сети приложение не знает. */
 function lanHost() {
   return t("IP компьютера");
+}
+
+/** Версия приложения: проверить, скачать и установить обновление; автопроверка. */
+function AppUpdateRows() {
+  const { appUpdate: u, version, settings } = useSnapshot();
+  if (!u) return null;
+  const busy = u.state === "checking" || u.state === "downloading";
+  const hint =
+    u.state === "available"
+      ? (u.error ?? t("Вышла версия {0}. VPN отключится на время установки", [u.version ?? ""]))
+      : u.state === "downloading"
+        ? u.progress != null
+          ? t("Загружаем версию {0}: {1}%", [u.version ?? "", Math.round(u.progress * 100)])
+          : t("Загружаем версию {0}…", [u.version ?? ""])
+        : u.state === "checking"
+          ? t("Проверяем…")
+          : u.state === "none"
+            ? t("Версия {0} — последняя", [version.app])
+            : u.state === "error"
+              ? (u.error ?? "")
+              : t("Версия {0}", [version.app]);
+  return (
+    <>
+      <div>
+        <Row
+          icon={<IconTile icon={Download} tone={u.state === "available" ? "amber" : "gray"} />}
+          title={t("Обновление приложения")}
+          hint={<span aria-live="polite">{hint}</span>}
+          aside={
+            u.state === "downloading" ? null : u.state === "available" ? (
+              <Button variant="amber" size="sm" onClick={() => void backend.installAppUpdate()}>
+                {t("Обновить")}
+              </Button>
+            ) : (
+              <Button variant="glass" size="sm" disabled={busy} onClick={() => void backend.checkAppUpdate(true)}>
+                {busy && <LoaderCircle className="animate-spin" aria-hidden />}
+                {t("Проверить")}
+              </Button>
+            )
+          }
+        />
+        {u.state === "downloading" && (
+          <div
+            className="mx-4 mb-3.5 h-1.5 overflow-hidden rounded-full bg-glass-3 min-[460px]:ml-[70px]"
+            role="progressbar"
+            aria-label={t("Загрузка обновления")}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={u.progress != null ? Math.round(u.progress * 100) : undefined}
+          >
+            <div
+              className={cn("h-full rounded-full bg-amber transition-[width]", u.progress == null && "w-1/3 animate-pulse")}
+              style={u.progress != null ? { width: `${Math.round(u.progress * 100)}%` } : undefined}
+            />
+          </div>
+        )}
+      </div>
+      <Row
+        htmlFor="set-autoupdate"
+        icon={<IconTile icon={RotateCcw} tone="teal" />}
+        title={t("Проверять обновления сами")}
+        hint={t("После запуска и раз в 12 часов. Устанавливаем только по вашей кнопке")}
+        aside={
+          <Switch
+            id="set-autoupdate"
+            checked={settings.desktop.autoUpdate}
+            onCheckedChange={(v) => backend.updateDesktop({ autoUpdate: v })}
+          />
+        }
+      />
+    </>
+  );
 }

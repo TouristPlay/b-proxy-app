@@ -25,6 +25,8 @@ import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
 import { parseLink } from "./links";
 import { decodeProfile, needsGeo } from "./routing";
 import { Toaster } from "./toaster";
+import { check, type Update } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { activeProfile, buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
 import { t } from "@/lib/i18n";
 
@@ -151,6 +153,7 @@ export class TauriBackend implements Backend {
       toast: null,
       version: { app: APP_VERSION, xray: "—" },
       autostart: null,
+      appUpdate: null,
       device: null,
       geo: null,
       pendingLink: null,
@@ -228,7 +231,11 @@ export class TauriBackend implements Backend {
     if (!isMobile(this.platform)) {
       void invoke("set_close_to_tray", { enabled: this.s.settings.desktop.closeToTray }).catch(() => undefined);
       const auto = await invoke<boolean>("plugin:autostart|is_enabled").catch(() => null);
-      this.emit({ autostart: auto });
+      this.emit({ autostart: auto, appUpdate: { state: "idle" } });
+      // Новая версия приложения: через минуту после запуска (не мешать подключению) и раз в 12 часов.
+      const auto12 = () => this.s.settings.desktop.autoUpdate && void this.checkAppUpdate();
+      window.setTimeout(auto12, 60_000);
+      window.setInterval(auto12, 12 * 3600_000);
     }
 
     // Туннель мог остаться включённым с прошлого запуска (телефон, «Постоянная VPN»).
@@ -345,6 +352,61 @@ export class TauriBackend implements Backend {
     this.emit({ settings: { ...this.s.settings, desktop } });
     this.persist();
     void invoke("set_close_to_tray", { enabled: desktop.closeToTray }).catch(() => undefined);
+  }
+
+  // ---------- Обновление приложения (компьютер) ----------
+
+  private update: Update | null = null;
+
+  async checkAppUpdate(manual = false) {
+    if (isMobile(this.platform) || this.s.appUpdate?.state === "checking" || this.s.appUpdate?.state === "downloading") return;
+    this.emit({ appUpdate: { state: "checking" } });
+    try {
+      const update = await check({ timeout: 30_000 });
+      this.update = update;
+      if (!update) {
+        this.emit({ appUpdate: { state: "none" } });
+        if (manual) this.toast(t("У вас последняя версия B-Proxy"));
+        return;
+      }
+      this.writeLog("info", `Доступна версия ${update.version} (сейчас ${update.currentVersion})`);
+      this.emit({ appUpdate: { state: "available", version: update.version, notes: update.body ?? undefined } });
+      this.toaster.show(t("Вышла версия B-Proxy {0}", [update.version]), {
+        id: "app-update",
+        label: t("Обновить"),
+        run: () => void this.installAppUpdate(),
+      });
+    } catch (e) {
+      this.writeLog("warn", `Проверка обновлений: ${message(e)}`);
+      this.emit({ appUpdate: { state: "error", error: t("Не удалось проверить обновления — проверьте интернет") } });
+      if (manual) this.toast(t("Не удалось проверить обновления — проверьте интернет"));
+    }
+  }
+
+  async installAppUpdate() {
+    const update = this.update;
+    if (!update || this.s.appUpdate?.state === "downloading") return;
+    const version = update.version;
+    let total = 0;
+    let done = 0;
+    this.emit({ appUpdate: { state: "downloading", version, progress: null } });
+    try {
+      // Установщик заменит ядро — сначала выключаем VPN.
+      if (this.s.state !== "disconnected") await this.disconnect();
+      await update.downloadAndInstall((ev) => {
+        if (ev.event === "Started") total = ev.data.contentLength ?? 0;
+        else if (ev.event === "Progress") {
+          done += ev.data.chunkLength;
+          this.emit({ appUpdate: { state: "downloading", version, progress: total ? Math.min(1, done / total) : null } });
+        }
+      });
+      this.writeLog("info", `Установлена версия ${version}, перезапуск`);
+      await relaunch();
+    } catch (e) {
+      this.writeLog("error", `Обновление до ${version}: ${message(e)}`);
+      this.emit({ appUpdate: { state: "available", version, error: t("Не удалось установить обновление — подробности в журнале") } });
+      this.toast(t("Не удалось установить обновление — подробности в журнале"));
+    }
   }
 
   async testNotification() {

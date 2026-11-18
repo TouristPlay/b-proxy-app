@@ -147,6 +147,14 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   при повторном запуске, `tauri-plugin-autostart` запускает при входе с `--minimized` (окно создаётся скрытым).
   Выход из трея — `app.exit`, плагин bproxy на `RunEvent::Exit` останавливает VPN. Для сборки на Linux нужен
   `libayatana-appindicator3-dev`.
+- Обновление приложения на компьютере — `tauri-plugin-updater` (+ `tauri-plugin-process` для перезапуска).
+  Манифест — `latest.json` в последнем релизе GitHub, его собирает `scripts/updater_manifest.py` в job «Релиз»
+  по ключам `{os}-{arch}-{установщик}` (deb обновляется через deb, AppImage через AppImage, nsis, msi, app).
+  Подписи .sig делает сборка, если в секретах репозитория есть `TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`);
+  открытый ключ — в `plugins.updater.pubkey` в tauri.conf.json. Версия сборки берётся из тега (`scripts/tauri_build_conf.sh`).
+  Без ключа релиз выходит без автообновления. Проверка — через минуту после запуска и раз в 12 часов
+  (настройка `desktop.autoUpdate`), установка — только по кнопке; перед установкой VPN выключается.
+- Окно запоминает размер и место (`tauri-plugin-window-state`, без флага видимости); при первом запуске — по экрану.
 - Уведомления — `tauri-plugin-notification`: VPN отключился, срок подписки (3 дня, 1 день, закончилась),
   90% трафика, новое объявление провайдера. Что уже показано — `b-proxy.alerts` в localStorage.
   На телефонах «VPN отключился» шлёт сама служба VPN (`BProxyVpnService.alertDisconnected`, в iOS —

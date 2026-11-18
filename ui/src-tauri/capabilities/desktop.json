@@ -1,8 +1,19 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "desktop",
-  "description": "Права главного окна на компьютере: автозапуск при входе в систему, размер окна",
-  "platforms": ["linux", "windows", "macOS"],
-  "windows": ["main"],
-  "permissions": ["autostart:default", "window-state:default"]
+  "description": "Права главного окна на компьютере: автозапуск, размер окна, обновление приложения",
+  "platforms": [
+    "linux",
+    "windows",
+    "macOS"
+  ],
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "autostart:default",
+    "window-state:default",
+    "updater:default",
+    "process:allow-restart"
+  ]
 }

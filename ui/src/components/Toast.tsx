@@ -1,4 +1,4 @@
-import { CircleCheck, RotateCcw, Undo2, X } from "lucide-react";
+import { CircleCheck, RotateCcw, Undo2, X, Download } from "lucide-react";
 import { backend, useSnapshot } from "@/backend";
 import { t } from "@/lib/i18n";
 
@@ -24,7 +24,13 @@ export function Toast() {
               onClick={() => backend.toastAction()}
               className="flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[15px] font-semibold text-amber hover:bg-glass-2"
             >
-              {toast.action.id === "undo" ? <Undo2 className="size-4" aria-hidden /> : <RotateCcw className="size-4" aria-hidden />}
+              {toast.action.id === "undo" ? (
+                <Undo2 className="size-4" aria-hidden />
+              ) : toast.action.id === "app-update" ? (
+                <Download className="size-4" aria-hidden />
+              ) : (
+                <RotateCcw className="size-4" aria-hidden />
+              )}
               {toast.action.label}
             </button>
           ) : (
