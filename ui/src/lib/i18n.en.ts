@@ -622,4 +622,11 @@ export const en: Record<string, string> = {
   "Проверяем…": "Checking…",
   "Проверять обновления сами": "Check for updates automatically",
   "У вас последняя версия B-Proxy": "You have the latest version of B-Proxy",
+  "QR-код не найден. Возьмите картинку крупнее, без обрезанных углов": "No QR code found. Use a larger image with all corners visible",
+  "Нет доступа к камере. Разрешите его B-Proxy в настройках системы": "No camera access. Allow it for B-Proxy in system settings",
+  "Сканирование отменено": "Scanning cancelled",
+  "Не удалось открыть картинку. Подойдут PNG, JPG и снимки экрана": "Couldn't open the image. PNG, JPG and screenshots work",
+  "Сканировать QR": "Scan QR",
+  "QR с картинки": "QR from image",
+  "Или вставьте снимок экрана с QR-кодом: {0}": "Or paste a screenshot with the QR code: {0}",
 };

@@ -23,6 +23,10 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init());
 
+    // QR-код подписки камерой — только на телефонах.
+    #[cfg(mobile)]
+    let builder = builder.plugin(tauri_plugin_barcode_scanner::init());
+
     #[cfg(mobile)]
     let builder = builder.setup(|app| {
         use tauri::Manager;

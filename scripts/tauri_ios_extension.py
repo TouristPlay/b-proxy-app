@@ -60,14 +60,19 @@ def main() -> int:
     add_dependency(app, {"target": "PacketTunnel", "embed": True, "codeSign": True})
     add_dependency(app, {"target": "LiveActivity", "embed": True, "codeSign": True})
     # «Живая активность»: без этого ключа iOS не даст приложению её показать.
+    # Камера — для подписки по QR-коду.
+    app_keys = {
+        "NSSupportsLiveActivities": True,
+        "NSCameraUsageDescription": "Камера нужна, чтобы отсканировать QR-код подписки",
+    }
     info = app.setdefault("info", {})
-    info.setdefault("properties", {})["NSSupportsLiveActivities"] = True
+    info.setdefault("properties", {}).update(app_keys)
     plist_path = info.get("path")
     if plist_path and (GEN / plist_path).exists():
         import plistlib
 
         data = plistlib.loads((GEN / plist_path).read_bytes())
-        data["NSSupportsLiveActivities"] = True
+        data.update(app_keys)
         (GEN / plist_path).write_bytes(plistlib.dumps(data))
     base = app.setdefault("settings", {}).setdefault("base", {})
     base["OTHER_LDFLAGS"] = LINKER_FLAGS
