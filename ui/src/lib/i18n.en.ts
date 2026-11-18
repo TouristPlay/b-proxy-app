@@ -600,4 +600,7 @@ export const en: Record<string, string> = {
   "Для других устройств в вашей сети Wi-Fi": "For other devices on your Wi-Fi network",
   "IP компьютера": "computer IP",
   "Порт": "Port",
+  "Обновить все подписки": "Update all subscriptions",
+  "Проверить пинг всех провайдеров": "Check ping of all providers",
+  "Пинг меряется напрямую, без VPN: у одного провайдера или у всех сразу": "Ping is measured directly, without the VPN: for one provider or all at once",
 };

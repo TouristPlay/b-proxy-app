@@ -426,6 +426,11 @@ export class DemoBackend implements Backend {
     }));
   }
 
+  async pingAll() {
+    if (this.s.state !== "disconnected" || this.s.pinging) return;
+    for (const url of this.s.subscriptions.map((x) => x.url)) await this.ping(url);
+  }
+
   async ping(subUrl?: string, quiet = false, only?: string[]) {
     const url = subUrl ?? this.s.current?.sub.url ?? this.s.subscriptions[0]?.url;
     if (!url || this.s.state !== "disconnected" || this.s.pinging) return;

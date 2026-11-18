@@ -337,6 +337,8 @@ export interface Backend {
   removeSubscription(url: string): Promise<void>;
   /** Пинг серверов одного провайдера; без адреса — того, чей сервер выбран. */
   ping(subUrl?: string): Promise<void>;
+  /** Пинг всех провайдеров по очереди (только при выключенном VPN). */
+  pingAll(): Promise<void>;
   /** Пинг одного сервера. */
   pingNode(subUrl: string, nodeId: string): Promise<void>;
   /** Свои настройки провайдера (название, DNS, интервал…). */

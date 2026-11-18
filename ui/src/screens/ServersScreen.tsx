@@ -30,7 +30,7 @@ export function ServersScreen({ onPicked, onAdd }: { onPicked: () => void; onAdd
         </button>
       </header>
       <p className="mb-5 text-[14px] text-ink-2">
-        {canPing ? t("Пинг меряется у выбранного провайдера, напрямую без VPN") : t("Чтобы проверить пинг, отключите VPN")}
+        {canPing ? t("Пинг меряется напрямую, без VPN: у одного провайдера или у всех сразу") : t("Чтобы проверить пинг, отключите VPN")}
       </p>
       <ServerList onPicked={onPicked} />
     </div>

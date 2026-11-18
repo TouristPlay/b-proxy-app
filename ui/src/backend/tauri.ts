@@ -1125,6 +1125,11 @@ export class TauriBackend implements Backend {
     }));
   }
 
+  async pingAll() {
+    if (this.s.state !== "disconnected" || this.s.pinging) return;
+    for (const url of this.subs.map((x) => x.url)) await this.ping(url);
+  }
+
   async ping(subUrl?: string, quiet = false, only?: string[]) {
     const sub = this.subs.find((x) => x.url === (subUrl ?? this.s.current?.sub.url)) ?? this.subs[0];
     // Под VPN замер пошёл бы через туннель и показал неправду.
