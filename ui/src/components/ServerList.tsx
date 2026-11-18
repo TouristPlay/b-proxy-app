@@ -126,30 +126,8 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
         ))}
       </div>
 
-      <div className="flex items-center gap-1">
-        <div className="min-w-0 flex-1">
-          <SortMenu value={sort} />
-        </div>
-        <button
-          type="button"
-          onClick={() => void backend.refreshSubscriptions()}
-          disabled={s.refreshingSub !== null}
-          aria-label={t("Обновить все подписки")}
-          title={t("Обновить все подписки")}
-          className={toolBtn}
-        >
-          <RefreshCw className={cn("size-[17px]", s.refreshingSub === "*" && "animate-spin")} aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={() => void backend.pingAll()}
-          disabled={s.state !== "disconnected" || s.pinging}
-          aria-label={s.pinging ? t("Меряем пинг") : t("Проверить пинг всех провайдеров")}
-          title={s.state === "disconnected" ? t("Проверить пинг всех провайдеров") : t("Пинг проверяется при выключенном VPN")}
-          className={cn(toolBtn, s.pinging && "bg-amber/15 text-amber disabled:opacity-100")}
-        >
-          <Gauge className={cn("size-[18px]", s.pinging && "animate-pulse")} aria-hidden />
-        </button>
+      <div className="flex items-center justify-between gap-2">
+        <SortMenu value={sort} />
         {collapsible.length > 0 && (
           <button
             type="button"
@@ -159,7 +137,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
           >
             {allClosed ? <ChevronsUpDown className="size-4" aria-hidden /> : <ChevronsDownUp className="size-4" aria-hidden />}
             {/* На самых узких экранах остаётся только значок: подпись есть в aria-label. */}
-            <span className="hidden min-[440px]:inline" aria-hidden>
+            <span className="hidden min-[360px]:inline" aria-hidden>
               {allClosed ? t("Развернуть все") : t("Свернуть все")}
             </span>
           </button>
@@ -323,6 +301,36 @@ const menuBox =
   "z-50 min-w-56 rounded-[18px] border border-edge-2 bg-panel p-1.5 shadow-[0_18px_40px_-16px_rgb(0_0_0/0.7)] data-[state=open]:animate-[dialog-in_var(--dur-fast)_var(--ease-out)]";
 const menuItem =
   "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-[15px] outline-none data-[disabled]:cursor-default data-[disabled]:opacity-45 data-[highlighted]:bg-glass-2";
+
+/** Обновить все подписки и проверить пинг у всех провайдеров — в заголовке рядом с «+». */
+export function AllProvidersActions() {
+  const s = useSnapshot();
+  if (s.subscriptions.length === 0) return null;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void backend.refreshSubscriptions()}
+        disabled={s.refreshingSub !== null}
+        aria-label={t("Обновить все подписки")}
+        title={t("Обновить все подписки")}
+        className={toolBtn}
+      >
+        <RefreshCw className={cn("size-[17px]", s.refreshingSub === "*" && "animate-spin")} aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={() => void backend.pingAll()}
+        disabled={s.state !== "disconnected" || s.pinging}
+        aria-label={s.pinging ? t("Меряем пинг") : t("Проверить пинг всех провайдеров")}
+        title={s.state === "disconnected" ? t("Проверить пинг всех провайдеров") : t("Пинг проверяется при выключенном VPN")}
+        className={cn(toolBtn, s.pinging && "bg-amber/15 text-amber disabled:opacity-100")}
+      >
+        <Gauge className={cn("size-[18px]", s.pinging && "animate-pulse")} aria-hidden />
+      </button>
+    </>
+  );
+}
 
 const toolBtn =
   "flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent";

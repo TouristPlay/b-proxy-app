@@ -6,7 +6,7 @@ import { backend, useSnapshot } from "@/backend";
 import logo from "@/assets/logo.png";
 import { Flag, SignalPing, Tags } from "@/components/bits";
 import { PowerOrb } from "@/components/PowerOrb";
-import { ServerList } from "@/components/ServerList";
+import { AllProvidersActions, ServerList } from "@/components/ServerList";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { SmoothChart } from "@/components/SmoothChart";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
@@ -38,7 +38,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
         <div className="flex items-center gap-1 px-5 pt-5 pb-3">
           <img src={logo} alt="" width={32} height={32} className="mr-2 size-8 rounded-full" />
           <h2 className="flex-1 font-display text-[17px] font-semibold tracking-tight">{t("Серверы")}</h2>
-          {/* Пинг и обновление — у каждого провайдера в списке; здесь только новая подписка. */}
+          <AllProvidersActions />
           <button
             type="button"
             onClick={onAdd}

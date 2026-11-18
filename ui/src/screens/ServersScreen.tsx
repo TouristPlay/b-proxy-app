@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import { useSnapshot } from "@/backend";
-import { ServerList } from "@/components/ServerList";
+import { AllProvidersActions, ServerList } from "@/components/ServerList";
 import { t } from "@/lib/i18n";
 
 /**
@@ -14,11 +14,12 @@ export function ServersScreen({ onPicked, onAdd }: { onPicked: () => void; onAdd
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pt-[max(18px,env(safe-area-inset-top))] pb-32">
-      <header className="mb-1 flex items-center gap-3">
+      <header className="mb-1 flex items-center gap-1">
         <h1 className="min-w-0 flex-1 truncate font-display text-[26px] font-semibold tracking-[-0.02em]">
           
           {t("Серверы")}{" "}<span className="text-ink-3">{total}</span>
         </h1>
+        <AllProvidersActions />
         <button
           type="button"
           onClick={onAdd}
