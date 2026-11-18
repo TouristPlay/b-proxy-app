@@ -76,7 +76,7 @@ export function HomeScreen({
         : t("Не защищено");
   const hint =
     s.state === "connecting"
-      ? t("Если система спросит разрешение — подтвердите. Нажмите ещё раз, чтобы отменить")
+      ? t("Нажмите ещё раз, чтобы отменить")
       : hasServers
         ? t("Нажмите, чтобы подключиться")
         : t("Вставьте ссылку на подписку из личного кабинета или Telegram-бота");
@@ -140,7 +140,7 @@ export function HomeScreen({
           {hasServers ? title : t("Добавьте подписку")}
         </Entrance>
 
-        <div className="mt-[clamp(6px,1.2dvh,12px)] flex justify-center">
+        <div className={cn("mt-[clamp(6px,1.2dvh,12px)] flex justify-center", hasServers && "min-h-[62px] items-start")}>
           {on && s.current && s.connectedAt ? (
             <LiveBar
               time={formatDuration(now - s.connectedAt)}

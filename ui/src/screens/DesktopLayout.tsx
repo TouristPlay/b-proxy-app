@@ -118,7 +118,7 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
   const status = on ? t("Защищено") : s.state === "connecting" ? t("Подключаемся") : s.state === "disconnecting" ? t("Отключаемся") : t("Не защищено");
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 pb-6 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 pb-4 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
       <section className="flex items-center gap-8 xl:col-span-2">
         <div className="min-w-0 flex-1">
           <p className={cn("flex items-center gap-2 text-[14px] font-medium", on ? "text-good" : "text-ink-2")} aria-live="polite">
@@ -135,7 +135,7 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
               <SignalPing ms={node.pingMs} />
             </div>
           )}
-          <div className="mt-6 flex gap-3">
+          <div className="relative mt-6 flex gap-3">
             {node ? (
               <Button
                 variant={on || busy ? "glass" : "amber"}
@@ -153,10 +153,13 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
                 {t("Добавить подписку")}
               </Button>
             )}
+            {/* Подсказка поверх свободного места под кнопкой: блок не меняет высоту, прокрутка не появляется. */}
+            {s.state === "connecting" && (
+              <p className="absolute top-full left-0 mt-3 text-[14px] whitespace-nowrap text-ink-2">
+                {t("Если система спросит пароль или разрешение — подтвердите")}
+              </p>
+            )}
           </div>
-          {s.state === "connecting" && (
-            <p className="mt-3 text-[14px] text-ink-2">{t("Если система спросит пароль или разрешение — подтвердите")}</p>
-          )}
           <ErrorBanner className="mt-4 max-w-xl" />
         </div>
         <PowerOrb
