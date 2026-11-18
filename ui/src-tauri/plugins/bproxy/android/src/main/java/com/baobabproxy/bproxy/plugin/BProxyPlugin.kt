@@ -1,5 +1,7 @@
 package com.baobabproxy.bproxy.plugin
 
+import android.provider.Settings
+import android.annotation.SuppressLint
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
@@ -61,6 +63,22 @@ class BProxyPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     /** Разрешение на VPN: системный диалог при первом подключении. */
+    /** Сырой идентификатор устройства для HWID (хэширует Rust) и сведения о системе. */
+    @Command
+    fun deviceInfo(invoke: Invoke) {
+        @SuppressLint("HardwareIds")
+        val androidId = Settings.Secure.getString(activity.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
+        val model = if (Build.MODEL.startsWith(Build.MANUFACTURER, ignoreCase = true)) Build.MODEL
+        else "${Build.MANUFACTURER} ${Build.MODEL}"
+        val ret = JSObject()
+        // ANDROID_ID не меняется при переустановке (для того же ключа подписи) — HWID стабилен.
+        ret.put("id", "$androidId|${Build.MANUFACTURER}|${Build.MODEL}|${Build.BRAND}")
+        ret.put("os", "Android")
+        ret.put("osVersion", Build.VERSION.RELEASE ?: "")
+        ret.put("model", model.replaceFirstChar { it.uppercase() })
+        invoke.resolve(ret)
+    }
+
     @Command
     fun prepare(invoke: Invoke) {
         // Уведомление о работе VPN на Android 13+ требует отдельного разрешения.

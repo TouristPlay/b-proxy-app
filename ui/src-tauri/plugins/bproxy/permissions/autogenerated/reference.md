@@ -15,6 +15,7 @@
 - `allow-read-log`
 - `allow-open-logs-dir`
 - `allow-tcp-ping`
+- `allow-device-info`
 
 ## Permission Table
 
@@ -24,6 +25,32 @@
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`bproxy:allow-device-info`
+
+</td>
+<td>
+
+Enables the device_info command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-device-info`
+
+</td>
+<td>
+
+Denies the device_info command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>

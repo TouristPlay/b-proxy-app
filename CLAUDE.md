@@ -140,6 +140,10 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   ставятся в расписание системы (`planExpiry`, id в `b-proxy.planned`), их показывает система при закрытом приложении.
   Пушей с сервера нет.
 - В приложении и демо нет связи с конкретным VPN-сервисом: демо на вымышленном «Demo VPN», example.com.
+- HWID (лимит устройств Remnawave): `plugins/bproxy/src/device.rs`. При загрузке подписки уходят `x-hwid`,
+  `x-device-os`, `x-ver-os`, `x-device-model` (выключается настройкой «Отправлять HWID»). HWID — SHA-256 от
+  «bproxy_hwid_» + machine-id / MachineGuid / IOPlatformUUID / ANDROID_ID / identifierForVendor (iOS хранит в Keychain),
+  в виде UUID. Ответы `x-hwid-max-devices-reached`, `x-hwid-limit`, `x-hwid-not-supported` превращаются в понятные ошибки.
 - Подписки понимают те же заголовки, что INCY/Happ: `profile-title`, `subscription-userinfo`, `announce`,
   `support-url`, `profile-web-page-url`, `hide-url`, `sort-order`, `new-url`, `fragmentation-*`, метаданные `#key:` в теле.
 

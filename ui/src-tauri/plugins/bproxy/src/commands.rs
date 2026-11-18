@@ -1,3 +1,4 @@
+use crate::device::DeviceInfo;
 use crate::logs::{self, LogInfo};
 use crate::models::{FetchResult, PrepareResult, StartArgs, Stats};
 use crate::{subscription, VpnExt};
@@ -10,8 +11,20 @@ pub(crate) async fn invoke_core<R: Runtime>(app: AppHandle<R>, request: String) 
 }
 
 #[command]
-pub(crate) async fn fetch_subscription(url: String, user_agent: String) -> Result<FetchResult, String> {
-    subscription::fetch(&url, &user_agent).await
+pub(crate) async fn fetch_subscription<R: Runtime>(
+    app: AppHandle<R>,
+    url: String,
+    user_agent: String,
+    hwid: Option<bool>,
+) -> Result<FetchResult, String> {
+    let device = if hwid.unwrap_or(true) { app.vpn().device_info().await.ok() } else { None };
+    subscription::fetch(&url, &user_agent, device.as_ref()).await
+}
+
+/// HWID и сведения об устройстве — те же, что уходят провайдеру с подпиской.
+#[command]
+pub(crate) async fn device_info<R: Runtime>(app: AppHandle<R>) -> Result<DeviceInfo, String> {
+    app.vpn().device_info().await
 }
 
 /// Разрешение на VPN (Android спрашивает пользователя, остальные — сразу да).

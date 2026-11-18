@@ -111,12 +111,21 @@ export interface DesktopSettings {
   closeToTray: boolean;
 }
 
+export interface DeviceInfo {
+  hwid: string;
+  os: string;
+  osVersion: string;
+  model: string;
+}
+
 export interface Settings {
   russianSitesDirect: boolean;
   tlsFragment: boolean;
   blockAds: boolean;
   ipv6: boolean;
   dnsServer: string;
+  /** Отправлять провайдеру HWID и сведения об устройстве (лимит устройств в панели). */
+  sendHwid: boolean;
   ping: PingSettings;
   updates: UpdateSettings;
   notifications: NotificationSettings;
@@ -151,6 +160,8 @@ export interface Snapshot {
   version: { app: string; xray: string };
   /** Запуск при входе в систему: null — недоступно (телефон, демо в браузере). */
   autostart: boolean | null;
+  /** HWID и устройство — то, что уходит провайдеру; null — ещё не узнали. */
+  device: DeviceInfo | null;
   /** Журнал: сеансы VPN и события, новые сверху. Хранится только на устройстве. */
   activity: ActivityEntry[];
 }

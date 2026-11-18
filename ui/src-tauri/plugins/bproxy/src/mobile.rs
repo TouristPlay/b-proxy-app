@@ -52,6 +52,22 @@ impl<R: Runtime> Vpn<R> {
             .map_err(|e| e.to_string())
     }
 
+    pub async fn device_info(&self) -> Result<crate::device::DeviceInfo, String> {
+        static CACHE: std::sync::OnceLock<crate::device::DeviceInfo> = std::sync::OnceLock::new();
+        if let Some(d) = CACHE.get() {
+            return Ok(d.clone());
+        }
+        let raw = self
+            .0
+            .run_mobile_plugin_async::<crate::device::RawDevice>("deviceInfo", ())
+            .await
+            .map_err(|e| e.to_string())?;
+        if raw.id.is_empty() {
+            return Err("Не удалось определить идентификатор устройства".into());
+        }
+        Ok(CACHE.get_or_init(|| crate::device::DeviceInfo::from_raw(raw)).clone())
+    }
+
     pub async fn prepare(&self) -> Result<PrepareResult, String> {
         self.0
             .run_mobile_plugin_async::<PrepareResult>("prepare", ())

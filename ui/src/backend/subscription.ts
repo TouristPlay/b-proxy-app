@@ -60,6 +60,16 @@ export async function parseSubscription(
   convert: ConvertLinks,
   previous?: StoredSubscription,
 ): Promise<StoredSubscription> {
+  // Лимит устройств (HWID): панель сообщает заголовками, тело при этом пустое или заглушка.
+  const hw = res.headers;
+  if (hw["x-hwid-max-devices-reached"] === "true" || hw["x-hwid-limit"] === "true") {
+    throw new Error(
+      "Достигнут лимит устройств подписки. Отвяжите старое устройство у провайдера (в боте или личном кабинете) и обновите подписку",
+    );
+  }
+  if (hw["x-hwid-not-supported"] === "true" || (res.status === 404 && hw["x-hwid-active"] === "true")) {
+    throw new Error("Провайдер привязывает подписку к устройству. Включите «Отправлять HWID» в настройках и обновите подписку");
+  }
   if (res.status !== 200) {
     throw new Error(
       res.status === 404

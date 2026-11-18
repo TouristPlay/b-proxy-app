@@ -1,19 +1,23 @@
 //! Загрузка подписки с заголовком клиента: Remnawave отдаёт список серверов
 //! только приложениям, а браузеру — страницу подписки.
 
+use crate::device::DeviceInfo;
 use crate::models::FetchResult;
 use std::collections::HashMap;
 use std::time::Duration;
 
-pub async fn fetch(url: &str, user_agent: &str) -> Result<FetchResult, String> {
+/// `device` — заголовки HWID (если пользователь не выключил их отправку).
+pub async fn fetch(url: &str, user_agent: &str, device: Option<&DeviceInfo>) -> Result<FetchResult, String> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(20))
         .user_agent(user_agent)
         .build()
         .map_err(|e| e.to_string())?;
-    let response = client
-        .get(url)
-        .header("Accept", "*/*")
+    let mut request = client.get(url).header("Accept", "*/*");
+    for (name, value) in device.map(|d| d.headers()).unwrap_or_default() {
+        request = request.header(name, value);
+    }
+    let response = request
         .send()
         .await
         .map_err(|e| format!("Сервер подписки недоступен: {e}"))?;

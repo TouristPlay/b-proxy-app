@@ -85,6 +85,7 @@ export const defaultSettings: Settings = {
   blockAds: false,
   ipv6: false,
   dnsServer: "1.1.1.1",
+  sendHwid: true,
   ping: { method: "tcp", timeoutSec: 5, url: "https://www.gstatic.com/generate_204", onStart: true },
   updates: { interval: "provider", onStart: true },
   notifications: { enabled: true, disconnect: true, expiry: true, traffic: true, announce: true },
@@ -135,6 +136,7 @@ export class DemoBackend implements Backend {
       toast: null,
       version: { app: "0.1.0", xray: "26.11.9" },
       autostart: false,
+      device: { hwid: "3F2A9C1E-7B4D-4E8A-9C21-5D6E7F8A9B0C", os: "Linux", osVersion: "Ubuntu 24.04 LTS", model: "Demo PC" },
       activity: empty ? [] : demoActivity(),
     };
     this.recompute();

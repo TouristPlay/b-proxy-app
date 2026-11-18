@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import NetworkExtension
 import SwiftRs
 import Tauri
@@ -48,6 +49,45 @@ class BProxyPlugin: Plugin {
     }
 
     /// Разрешение система спросит сама при первом сохранении профиля VPN.
+    /// Сырой идентификатор устройства для HWID (хэширует Rust) и сведения о системе.
+    /// identifierForVendor сохраняем в Keychain: так HWID переживает переустановку приложения.
+    @objc public func deviceInfo(_ invoke: Invoke) {
+        var size = 0
+        sysctlbyname("hw.machine", nil, &size, nil, 0)
+        var machine = [CChar](repeating: 0, count: max(size, 1))
+        sysctlbyname("hw.machine", &machine, &size, nil, 0)
+        invoke.resolve([
+            "id": Self.stableDeviceId(),
+            "os": "iOS",
+            "osVersion": UIDevice.current.systemVersion,
+            "model": String(cString: machine),
+        ])
+    }
+
+    private static func stableDeviceId() -> String {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "com.baobabproxy.bproxy.hwid",
+            kSecAttrAccount as String: "device",
+            kSecReturnData as String: true,
+        ]
+        var item: CFTypeRef?
+        if SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+           let data = item as? Data, let saved = String(data: data, encoding: .utf8) {
+            return saved
+        }
+        let id = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        let add: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "com.baobabproxy.bproxy.hwid",
+            kSecAttrAccount as String: "device",
+            kSecValueData as String: Data(id.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        SecItemAdd(add as CFDictionary, nil)
+        return id
+    }
+
     @objc public func prepare(_ invoke: Invoke) {
         invoke.resolve(["granted": true])
     }

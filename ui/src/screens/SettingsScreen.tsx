@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { AppWindow, Ban, Bell, ChevronRight, FileText, Gauge, Power, Globe, Info, Network, Palette, Plus, RefreshCw, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
+import { AppWindow, Ban, Bell, ChevronRight, Copy, Fingerprint, FileText, Gauge, Power, Globe, Info, Network, Palette, Plus, RefreshCw, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot, type Settings } from "@/backend";
 import { Group, IconTile, Row, type Tone } from "@/components/bits";
@@ -44,6 +44,17 @@ const dns = [
 
 export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd: () => void }) {
   const s = useSnapshot();
+  // Подсказка под HWID: «скопирован» на пару секунд вместо самого идентификатора.
+  const [hwidNote, setHwidNote] = useState<string | null>(null);
+  async function copyHwid(hwid: string) {
+    try {
+      await navigator.clipboard.writeText(hwid);
+      setHwidNote("Скопирован — отправьте его в поддержку провайдера");
+    } catch {
+      setHwidNote(hwid);
+    }
+    window.setTimeout(() => setHwidNote(null), 3000);
+  }
   const [core, setCore] = useState(false);
   const [ping, setPing] = useState(false);
   const [updates, setUpdates] = useState(false);
@@ -95,6 +106,26 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
             hint={intervalTitle(s.settings.updates.interval) + (s.settings.updates.onStart ? ", при запуске" : "")}
             aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
           />
+          <Row
+            htmlFor="set-hwid"
+            icon={<IconTile icon={Fingerprint} tone="violet" />}
+            title="Отправлять HWID"
+            hint={
+              s.settings.sendHwid
+                ? "Провайдер видит устройство и считает лимит устройств подписки"
+                : "Подписки с лимитом устройств не обновятся"
+            }
+            aside={<Switch id="set-hwid" checked={s.settings.sendHwid} onCheckedChange={(v) => void backend.updateSettings({ sendHwid: v })} />}
+          />
+          {s.device && (
+            <Row
+              onClick={() => void copyHwid(s.device!.hwid)}
+              icon={<IconTile icon={Copy} tone="gray" />}
+              title="HWID устройства"
+              hint={hwidNote ?? `${s.device.hwid.slice(0, 8)}… · ${[s.device.os, s.device.model].filter(Boolean).join(", ")}`}
+              aside={<span className="text-[14px] text-ink-2">Скопировать</span>}
+            />
+          )}
         </Group>
 
         <Group title="Производительность">

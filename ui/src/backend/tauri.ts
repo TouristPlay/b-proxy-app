@@ -6,6 +6,7 @@ import { checkUrl, mainOutbound, parseSubscription, type FetchResult, type NodeC
 import {
   type ActivityEntry,
   type DesktopSettings,
+  type DeviceInfo,
   type Appearance,
   type Backend,
   type CoreSettings,
@@ -130,6 +131,7 @@ export class TauriBackend implements Backend {
       toast: null,
       version: { app: APP_VERSION, xray: "—" },
       autostart: null,
+      device: null,
       activity: loadActivity(),
     };
     this.recompute();
@@ -169,6 +171,16 @@ export class TauriBackend implements Backend {
       await addPluginListener("bproxy", "state", onState).catch(() => undefined);
     } else {
       await listen<{ state: string; error: string | null }>("bproxy://state", (e) => onState(e.payload));
+    }
+
+    // HWID — показать в настройках и записать в журнал (для поддержки провайдера).
+    const device = await invoke<DeviceInfo>("plugin:bproxy|device_info").catch((e) => {
+      this.writeLog("warn", `HWID не определён: ${message(e)}`);
+      return null;
+    });
+    if (device) {
+      this.emit({ device });
+      this.writeLog("info", `Устройство: ${device.os} ${device.osVersion}, ${device.model}, HWID ${device.hwid}`);
     }
 
     // Компьютер: крестик в трей (настройка) и состояние автозапуска из системы.
@@ -731,6 +743,7 @@ export class TauriBackend implements Backend {
     const res = await invoke<FetchResult>("plugin:bproxy|fetch_subscription", {
       url,
       userAgent: USER_AGENT,
+      hwid: this.s.settings.sendHwid,
     });
     return parseSubscription(url, res, (text) => this.convertLinks(text), previous);
   }

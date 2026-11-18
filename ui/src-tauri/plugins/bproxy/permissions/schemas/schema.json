@@ -295,6 +295,18 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the device_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-device-info",
+          "markdownDescription": "Enables the device_info command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the device_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-device-info",
+          "markdownDescription": "Denies the device_info command without any pre-configured scope."
+        },
+        {
           "description": "Enables the fetch_subscription command without any pre-configured scope.",
           "type": "string",
           "const": "allow-fetch-subscription",
@@ -427,10 +439,10 @@
           "markdownDescription": "Denies the tcp_ping command without any pre-configured scope."
         },
         {
-          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`",
+          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`"
+          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`"
         }
       ]
     }
