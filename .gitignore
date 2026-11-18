@@ -17,3 +17,15 @@ app/pubspec.lock
 .DS_Store
 dist/
 app/packages/b_proxy_apple/darwin/LibXray.xcframework/
+
+# Скиллы для агентов: в git — .claude/skills и .agents/skills (кроме тяжёлого taste-skill, ~40 МБ картинок;
+# ставится заново: npx skills add https://github.com/Leonxlnx/taste-skill --skill design-taste-frontend).
+.agents/skills/design-taste-frontend/
+.claude/skills/design-taste-frontend
+.taste-skill/
+# Локальные хуки impeccable и копии для других ассистентов (Copilot, Codex) — не нужны в репозитории.
+.claude/settings.local.json
+.codex/
+.github/agents/
+.github/hooks/
+.github/skills/
