@@ -40,3 +40,16 @@ pub struct StateEvent {
     pub state: String,
     pub error: Option<String>,
 }
+
+/// Приложение для «VPN по приложениям»: Android — пакет, компьютер — имя процесса.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppEntry {
+    pub id: String,
+    pub name: String,
+    /// data:-адрес значка (только Android).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    /// Полный путь к программе (компьютер) — подсказка, какая это программа.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+}

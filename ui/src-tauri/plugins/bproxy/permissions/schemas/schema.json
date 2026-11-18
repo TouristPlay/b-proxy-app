@@ -355,6 +355,18 @@
           "markdownDescription": "Denies the invoke_core command without any pre-configured scope."
         },
         {
+          "description": "Enables the list_apps command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-list-apps",
+          "markdownDescription": "Enables the list_apps command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the list_apps command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-list-apps",
+          "markdownDescription": "Denies the list_apps command without any pre-configured scope."
+        },
+        {
           "description": "Enables the live_activity command without any pre-configured scope.",
           "type": "string",
           "const": "allow-live-activity",
@@ -499,10 +511,10 @@
           "markdownDescription": "Denies the tcp_ping command without any pre-configured scope."
         },
         {
-          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`",
+          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`\n- `allow-list-apps`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`"
+          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`\n- `allow-list-apps`"
         }
       ]
     }

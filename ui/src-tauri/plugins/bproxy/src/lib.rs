@@ -62,7 +62,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::download_geo,
             commands::live_activity,
             commands::speed_test,
-            commands::open_vpn_settings
+            commands::open_vpn_settings,
+            commands::list_apps
         ])
         .setup(|app, api| {
             if let Ok(dir) = app.path().app_local_data_dir() {

@@ -20,4 +20,5 @@ permissions = [
   "allow-live-activity",
   "allow-speed-test",
   "allow-open-vpn-settings",
+  "allow-list-apps",
 ]

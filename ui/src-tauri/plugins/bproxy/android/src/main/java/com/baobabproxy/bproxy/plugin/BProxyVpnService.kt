@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
@@ -136,8 +137,26 @@ class BProxyVpnService : VpnService() {
             if (ipv6) {
                 builder.addAddress(TUN_ADDRESS6, 126).addRoute("::", 0)
             }
-            // Трафик самого приложения (то есть ядра Xray) идёт мимо туннеля.
-            builder.addDisallowedApplication(packageName)
+            // VPN по приложениям: список приходит в env конфига (backend/xray.ts).
+            // Трафик самого приложения (то есть ядра Xray) всегда идёт мимо туннеля:
+            // в режиме «только выбранные» его просто нет в списке.
+            val env0 = config.optJSONObject("env")
+            val appsMode = env0?.optString("BPROXY_APPS_MODE") ?: ""
+            val apps = (env0?.optString("BPROXY_APPS") ?: "").split(',').map { it.trim() }.filter { it.isNotEmpty() && it != packageName }
+            if (appsMode == "only" && apps.isNotEmpty()) {
+                var added = 0
+                for (pkg in apps) {
+                    try { builder.addAllowedApplication(pkg); added++ } catch (_: PackageManager.NameNotFoundException) {}
+                }
+                if (added == 0) builder.addDisallowedApplication(packageName)
+            } else {
+                builder.addDisallowedApplication(packageName)
+                if (appsMode == "except") {
+                    for (pkg in apps) {
+                        try { builder.addDisallowedApplication(pkg) } catch (_: PackageManager.NameNotFoundException) {}
+                    }
+                }
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) builder.setMetered(false)
             builder.setConfigureIntent(openAppIntent())
 

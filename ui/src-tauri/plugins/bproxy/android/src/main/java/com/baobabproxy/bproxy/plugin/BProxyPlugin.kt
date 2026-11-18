@@ -63,6 +63,44 @@ class BProxyPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     /** Разрешение на VPN: системный диалог при первом подключении. */
+    /** Приложения с рабочего стола: название, пакет и маленький значок (PNG base64) — для «VPN по приложениям». */
+    @Command
+    fun listApps(invoke: Invoke) {
+        Thread {
+            try {
+                val pm = activity.packageManager
+                val launcher = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+                val seen = HashSet<String>()
+                val apps = app.tauri.plugin.JSArray()
+                for (info in pm.queryIntentActivities(launcher, 0)) {
+                    val pkg = info.activityInfo.packageName
+                    if (pkg == activity.packageName || !seen.add(pkg)) continue
+                    val item = JSObject()
+                    item.put("id", pkg)
+                    item.put("name", info.loadLabel(pm).toString())
+                    try {
+                        val icon = info.loadIcon(pm)
+                        val size = 72
+                        val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+                        val canvas = android.graphics.Canvas(bmp)
+                        icon.setBounds(0, 0, size, size)
+                        icon.draw(canvas)
+                        val out = java.io.ByteArrayOutputStream()
+                        bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                        item.put("icon", "data:image/png;base64," + android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP))
+                    } catch (_: Throwable) {
+                    }
+                    apps.put(item)
+                }
+                val ret = JSObject()
+                ret.put("apps", apps)
+                invoke.resolve(ret)
+            } catch (e: Throwable) {
+                invoke.reject(e.message ?: "Не удалось получить список приложений")
+            }
+        }.start()
+    }
+
     /**
      * Системные настройки VPN: там «Постоянная VPN» и «Блокировать соединения без VPN» —
      * настоящий kill switch Android, приложение включить его само не может.

@@ -21,6 +21,7 @@
 - `allow-live-activity`
 - `allow-speed-test`
 - `allow-open-vpn-settings`
+- `allow-list-apps`
 
 ## Permission Table
 
@@ -157,6 +158,32 @@ Enables the invoke_core command without any pre-configured scope.
 <td>
 
 Denies the invoke_core command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-list-apps`
+
+</td>
+<td>
+
+Enables the list_apps command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-list-apps`
+
+</td>
+<td>
+
+Denies the list_apps command without any pre-configured scope.
 
 </td>
 </tr>

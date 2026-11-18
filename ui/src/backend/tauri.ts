@@ -17,6 +17,7 @@ import {
   type Settings,
   type Snapshot,
   type SpeedTest,
+  type AppEntry,
   type Subscription,
   type TunnelState,
 } from "./types";
@@ -372,6 +373,10 @@ export class TauriBackend implements Backend {
 
   async requestNotifications() {
     return this.ensureNotifyPermission(true);
+  }
+
+  async listApps() {
+    return invoke<AppEntry[]>("plugin:bproxy|list_apps");
   }
 
   async openVpnSettings() {

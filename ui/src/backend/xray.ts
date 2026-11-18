@@ -169,6 +169,12 @@ export function buildConfig(
   if (core.noLimitMode) env.BPROXY_AGGRESSIVE_GC = "1";
   // Базы geoip/geosite профиля маршрутизации ядро ищет в этой папке.
   if (profile && geoDir) env["xray.location.asset"] = geoDir;
+  // VPN по приложениям на Android настраивает служба VPN (BProxyVpnService) по этим переменным.
+  const perApp = s.perApp?.mode !== "off" && (s.perApp?.apps.length ?? 0) > 0 ? s.perApp : null;
+  if (perApp && platform === "android") {
+    env.BPROXY_APPS_MODE = perApp.mode;
+    env.BPROXY_APPS = perApp.apps.join(",");
+  }
   // Kill switch на Linux и macOS ставит само ядро (core/runner/killswitch_*.go).
   if (s.killSwitch && (platform === "linux" || platform === "macos")) {
     env.BPROXY_KILL_SWITCH = "1";
@@ -240,6 +246,8 @@ export function buildConfig(
         // Проверка скорости всегда идёт через сервер, мимо правил «напрямую».
         ...(probePort ? [probeRule(catchAll)] : []),
         { type: "field", inboundTag: ["tun-in"], port: "53", outboundTag: "dns-out" },
+        // VPN по приложениям на компьютере — правило Xray по имени программы.
+        ...(perApp && !isMobile(platform) ? appRules(perApp, catchAll) : []),
         ...(s.blockAds && !profile ? [{ type: "field", domain: AD_DOMAINS, outboundTag: "block" }] : []),
         ...(s.network.lanDirect ? [{ type: "field", ip: PRIVATE_CIDRS, outboundTag: "direct" }] : []),
         ...exclusionRules(s.network.exclusions),
@@ -259,6 +267,16 @@ export function buildConfig(
     },
   };
   return JSON.stringify(config);
+}
+
+function appRules(p: { mode: string; apps: string[] }, catchAll: Record<string, unknown>) {
+  if (p.mode === "except") return [{ type: "field", inboundTag: ["tun-in"], process: p.apps, outboundTag: "direct" }];
+  // «Только выбранные»: они — через сервер, остальное из туннеля — напрямую.
+  const target = catchAll.balancerTag ? { balancerTag: catchAll.balancerTag } : { outboundTag: catchAll.outboundTag ?? "proxy" };
+  return [
+    { type: "field", inboundTag: ["tun-in"], process: p.apps, ...target },
+    { type: "field", inboundTag: ["tun-in"], network: "tcp,udp", outboundTag: "direct" },
+  ];
 }
 
 function probeRule(catchAll: Record<string, unknown>) {

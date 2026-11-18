@@ -1,4 +1,4 @@
-import { AppWindow, Check, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
+import { AppWindow, Check, LayoutGrid, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import { detectPlatform } from "@/backend/xray";
@@ -11,12 +11,14 @@ import { CoreSettingsSheet } from "./CoreSettingsSheet";
 import { intervalTitle, NotificationsSheet, PingSheet, ProvidersSheet } from "./PingUpdateSheets";
 import { LogsSheet } from "./LogsSheet";
 import { dnsPresets as dns, routes, RoutesSheet } from "./RoutesSheet";
+import { AppsSheet, perAppHint } from "./AppsSheet";
 import { themeById } from "@/lib/theme";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd: () => void }) {
   const s = useSnapshot();
+  const [appsOpen, setAppsOpen] = useState(false);
   const [core, setCore] = useState(false);
   const [ping, setPing] = useState(false);
   const [updates, setUpdates] = useState(false);
@@ -103,6 +105,15 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
                   : t("Закрывать интернет, если VPN оборвался")
               }
               aside={<Switch id="set-kill" checked={s.settings.killSwitch} onCheckedChange={(v) => void backend.updateSettings({ killSwitch: v })} />}
+            />
+          )}
+          {detectPlatform() !== "ios" && (
+            <Row
+              onClick={() => setAppsOpen(true)}
+              icon={<IconTile icon={LayoutGrid} tone="violet" />}
+              title={t("VPN по приложениям")}
+              hint={perAppHint(s.settings.perApp ?? { mode: "off", apps: [] })}
+              aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
             />
           )}
           {detectPlatform() === "ios" && (
@@ -235,6 +246,7 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
       <LogsSheet open={logs} onOpenChange={setLogs} />
       <AppearanceSheet open={look} onOpenChange={setLook} />
       <RoutesSheet open={routing} onOpenChange={setRouting} />
+      <AppsSheet open={appsOpen} onOpenChange={setAppsOpen} />
       <Sheet open={about} onOpenChange={setAbout} title={t("О приложении")} icon={<IconTile icon={Info} tone="gray" />}>
         <Group>
           <Row title={t("Версия приложения")} aside={<span className="text-ink-2 tabular-nums">{s.version.app}</span>} />

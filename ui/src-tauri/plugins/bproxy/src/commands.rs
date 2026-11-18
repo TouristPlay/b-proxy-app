@@ -143,3 +143,9 @@ pub(crate) async fn speed_test<R: Runtime>(app: AppHandle<R>, port: u16) -> Resu
 pub(crate) async fn open_vpn_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     app.vpn().open_vpn_settings().await
 }
+
+/// «VPN по приложениям»: Android — приложения с рабочего стола, компьютер — запущенные программы.
+#[command]
+pub(crate) async fn list_apps<R: Runtime>(app: AppHandle<R>) -> Result<Vec<crate::AppEntry>, String> {
+    app.vpn().list_apps().await
+}

@@ -72,6 +72,11 @@ class BProxyPlugin: Plugin {
     }
 
     /// Папка баз geoip/geosite в общем контейнере App Group: её читает расширение PacketTunnel.
+    /// VPN по приложениям в iOS доступен только устройствам под управлением MDM.
+    @objc public func listApps(_ invoke: Invoke) {
+        invoke.reject("В iOS недоступно")
+    }
+
     /// Системные настройки VPN есть только на Android.
     @objc public func openVpnSettings(_ invoke: Invoke) {
         invoke.reject("Есть только на Android")

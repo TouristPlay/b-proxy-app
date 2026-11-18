@@ -10,7 +10,7 @@
 //!   и завершается, когда появляется файл `core.stop`.
 
 use crate::logs;
-use crate::models::{PrepareResult, StartArgs, StateEvent, Stats};
+use crate::models::{AppEntry, PrepareResult, StartArgs, StateEvent, Stats};
 use serde::de::DeserializeOwned;
 use std::ffi::{c_char, CStr, CString};
 use std::path::PathBuf;
@@ -125,6 +125,42 @@ impl<R: Runtime> Vpn<R> {
 
     pub async fn geo_dir(&self) -> Result<PathBuf, String> {
         Ok(self.data_dir()?.join("geo"))
+    }
+
+    /// Запущенные программы пользователя (по имени процесса — так их понимает правило Xray «process»).
+    pub async fn list_apps(&self) -> Result<Vec<AppEntry>, String> {
+        tauri::async_runtime::spawn_blocking(|| {
+            use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
+            let mut sys = System::new();
+            sys.refresh_processes_specifics(
+                ProcessesToUpdate::All,
+                true,
+                ProcessRefreshKind::nothing().with_exe(UpdateKind::Always),
+            );
+            let mut seen = std::collections::BTreeMap::new();
+            for p in sys.processes().values() {
+                // Без пути к программе — потоки ядра и системные процессы, их не показываем.
+                let Some(exe) = p.exe() else { continue };
+                // Имя файла программы, как его видит правило Xray (а не обрезанное имя процесса).
+                let name = exe
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default()
+                    .trim_end_matches(".exe")
+                    .to_string();
+                if name.is_empty() || name.starts_with("bproxy") || name.eq_ignore_ascii_case("b-proxy") {
+                    continue;
+                }
+                let path = exe.to_string_lossy().to_string();
+                if is_system_path(&path) {
+                    continue;
+                }
+                seen.entry(name.to_lowercase()).or_insert(AppEntry { id: name.clone(), name, icon: None, path: Some(path) });
+            }
+            seen.into_values().collect()
+        })
+        .await
+        .map_err(|e| e.to_string())
     }
 
     pub async fn open_vpn_settings(&self) -> Result<(), String> {
@@ -553,4 +589,12 @@ fn interface_stats() -> Option<Stats> {
         FreeMibTable(table as *const _);
         result
     }
+}
+
+/// Службы системы — в списке приложений только мешают.
+fn is_system_path(path: &str) -> bool {
+    let p = path.to_lowercase().replace('\\', "/");
+    ["c:/windows/", "/usr/libexec/", "/usr/lib/systemd/", "/lib/systemd/", "/system/library/", "/usr/sbin/", "/sbin/"]
+        .iter()
+        .any(|prefix| p.starts_with(prefix))
 }

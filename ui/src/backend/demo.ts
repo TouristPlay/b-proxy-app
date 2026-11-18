@@ -7,6 +7,7 @@ import { Toaster } from "./toaster";
 import {
   nodeKey,
   type ActivityEntry,
+  type AppEntry,
   type DesktopSettings,
   type Appearance,
   type Backend,
@@ -103,6 +104,7 @@ export const defaultSettings: Settings = {
   updates: { interval: "provider", onStart: true, pingAfter: false },
   autoConnect: false,
   killSwitch: false,
+  perApp: { mode: "off", apps: [] },
   liveActivity: true,
   serverSort: "provider",
   notifications: { enabled: true, disconnect: true, expiry: true, traffic: true, announce: true },
@@ -536,6 +538,16 @@ export class DemoBackend implements Backend {
   async requestNotifications() {
     await wait(400);
     return true;
+  }
+
+  async listApps(): Promise<AppEntry[]> {
+    await wait(300);
+    // В демо — вымышленный список, как на компьютере.
+    return ["Telegram", "firefox", "chrome", "Discord", "steam", "code", "spotify", "zoom"].map((id) => ({
+      id,
+      name: id,
+      path: `/usr/bin/${id.toLowerCase()}`,
+    }));
   }
 
   async openVpnSettings() {

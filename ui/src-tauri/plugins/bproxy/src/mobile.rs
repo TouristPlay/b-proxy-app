@@ -1,7 +1,7 @@
 //! Android и iOS: команды уходят в нативный код плагина
 //! (android/ — Kotlin, ios/ — Swift).
 
-use crate::models::{PrepareResult, StartArgs, Stats};
+use crate::models::{AppEntry, PrepareResult, StartArgs, Stats};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tauri::{
     plugin::{PluginApi, PluginHandle},
@@ -65,6 +65,18 @@ impl<R: Runtime> Vpn<R> {
             let _ = args;
             Ok(())
         }
+    }
+
+    pub async fn list_apps(&self) -> Result<Vec<AppEntry>, String> {
+        #[derive(Deserialize)]
+        struct Apps {
+            apps: Vec<AppEntry>,
+        }
+        self.0
+            .run_mobile_plugin_async::<Apps>("listApps", ())
+            .await
+            .map(|a| a.apps)
+            .map_err(|e| e.to_string())
     }
 
     pub async fn open_vpn_settings(&self) -> Result<(), String> {

@@ -161,6 +161,10 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   данных, приложение снимает их при отключении (`bproxy-core --killswitch-off <папка>`). Windows — WFP
   `autoSystemWfpBlockLeak: all / allexceptlan` (пока работает ядро). iOS — `includeAllNetworks`.
   Android — только системная «Блокировать соединения без VPN» (кнопка открывает настройки VPN).
+- VPN по приложениям (`perApp`: off / only / except): на компьютере — правила Xray `process` по имени файла
+  программы (список запущенных — команда `list_apps`, sysinfo), на Android — `addAllowedApplication` /
+  `addDisallowedApplication` в `BProxyVpnService` по env `BPROXY_APPS_MODE`, `BPROXY_APPS` (список — `listApps`,
+  приложения с рабочего стола, `<queries>` в манифесте). В iOS недоступно (только MDM).
 - Окно запоминает размер и место (`tauri-plugin-window-state`, без флага видимости); при первом запуске — по экрану.
 - Уведомления — `tauri-plugin-notification`: VPN отключился, срок подписки (3 дня, 1 день, закончилась),
   90% трафика, новое объявление провайдера. Что уже показано — `b-proxy.alerts` в localStorage.

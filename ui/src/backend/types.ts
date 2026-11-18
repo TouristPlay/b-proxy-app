@@ -162,6 +162,22 @@ export interface NetworkSettings {
   preferIpv6: boolean;
 }
 
+/** VPN по приложениям (Android и компьютер; в iOS недоступно без MDM). */
+export interface PerAppSettings {
+  /** off — все через VPN; only — только выбранные; except — все, кроме выбранных. */
+  mode: "off" | "only" | "except";
+  /** Android — пакеты, компьютер — имена программ (firefox, Telegram). */
+  apps: string[];
+}
+
+/** Приложение в списке выбора. */
+export interface AppEntry {
+  id: string;
+  name: string;
+  icon?: string;
+  path?: string;
+}
+
 /** Локальный прокси (компьютер): SOCKS5 и HTTP для программ, которым не нужен весь VPN. */
 export interface LocalProxySettings {
   enabled: boolean;
@@ -276,6 +292,8 @@ export interface Settings {
    * Android — туннель остаётся поднятым без ядра (плюс системная «Блокировать без VPN»).
    */
   killSwitch: boolean;
+  /** VPN по приложениям. */
+  perApp: PerAppSettings;
   /** iOS: «Живая активность» — статус VPN на экране блокировки и в Dynamic Island. */
   liveActivity: boolean;
   /** Порядок серверов в списке. */
@@ -410,6 +428,8 @@ export interface Backend {
   requestVpnPermission(): Promise<boolean>;
   /** Разрешение на уведомления. */
   requestNotifications(): Promise<boolean>;
+  /** Приложения для выбора в «VPN по приложениям». */
+  listApps(): Promise<AppEntry[]>;
   /** Android: системные настройки VPN (там «Блокировать соединения без VPN»). */
   openVpnSettings(): Promise<void>;
   /** Знакомство пройдено — больше не показывать. */
