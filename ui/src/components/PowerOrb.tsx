@@ -2,6 +2,7 @@ import { Power, ShieldCheck } from "lucide-react";
 import type { TunnelState } from "@/backend";
 import { Entrance } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 /**
  * Главная кнопка «Янтарное стекло»: стеклянный шар, который наполняется светом цвета темы.
@@ -33,7 +34,7 @@ export function PowerOrb({
   // Во время подключения кнопка не блокируется: повторное нажатие его отменяет.
   const label =
     customLabel ??
-    (on ? "Отключить VPN" : state === "connecting" ? "Отменить подключение" : state === "disconnecting" ? "Идёт отключение" : "Подключить VPN");
+    (on ? t("Отключить VPN") : state === "connecting" ? t("Отменить подключение") : state === "disconnecting" ? t("Идёт отключение") : t("Подключить VPN"));
 
   // Уровень поверхности света в координатах шара (0 — верх, 100 — низ).
   // При трафике уровень приподнимается на несколько пунктов: 1 МБ/с ≈ 3, потолок 8.

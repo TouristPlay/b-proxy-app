@@ -1,5 +1,6 @@
 import type { RoutingProfile } from "./types";
 import type { Rule } from "./subscription";
+import { t } from "@/lib/i18n";
 
 /**
  * Профили маршрутизации в формате Happ/INCY (RoscomVPN и подобные).
@@ -14,16 +15,16 @@ export function decodeProfile(input: string, source: string | null = null): Rout
     else if (text.startsWith("{")) json = JSON.parse(text);
     else json = JSON.parse(fromBase64(text));
   } catch {
-    throw new Error("Это не профиль маршрутизации. Вставьте ссылку happ://routing/…, incy://routing/… или JSON профиля");
+    throw new Error(t("Это не профиль маршрутизации. Вставьте ссылку happ://routing/…, incy://routing/… или JSON профиля"));
   }
-  if (!json || typeof json !== "object") throw new Error("Профиль пустой");
+  if (!json || typeof json !== "object") throw new Error(t("Профиль пустой"));
   const p = json as Record<string, unknown>;
   const list = (k: string) => (Array.isArray(p[k]) ? (p[k] as unknown[]).filter((x): x is string => typeof x === "string" && x.trim() !== "") : []);
   const str = (k: string) => (typeof p[k] === "string" ? (p[k] as string).trim() : "");
   const dns = (kind: string, domain: string, ip: string) => (/doh/i.test(kind) && domain ? domain : ip || domain);
   const profile: RoutingProfile = {
     id: `rp-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
-    name: str("Name") || "Профиль маршрутизации",
+    name: str("Name") || t("Профиль маршрутизации"),
     source,
     directSites: list("DirectSites"),
     directIp: list("DirectIp"),
@@ -42,7 +43,7 @@ export function decodeProfile(input: string, source: string | null = null): Rout
     addedAt: Date.now(),
   };
   const rules = profile.directSites.length + profile.directIp.length + profile.proxySites.length + profile.proxyIp.length + profile.blockSites.length + profile.blockIp.length;
-  if (rules === 0 && profile.globalProxy) throw new Error("В профиле нет ни одного правила");
+  if (rules === 0 && profile.globalProxy) throw new Error(t("В профиле нет ни одного правила"));
   return profile;
 }
 

@@ -16,6 +16,7 @@ import {
   type Snapshot,
   type Subscription,
 } from "./types";
+import { t } from "@/lib/i18n";
 
 
 /**
@@ -30,33 +31,33 @@ const v = (id: string, name: string, net: string, sec = "REALITY"): ServerNode =
 });
 
 const demoNodes: ServerNode[] = [
-  v("auto-all", "🇪🇺 Auto | Все серверы", "GRPC"),
-  v("de", "🇩🇪 Германия", "TCP"),
-  v("nl", "🇳🇱 Нидерланды", "TCP"),
-  v("fi", "🇫🇮 Финляндия", "GRPC"),
-  v("pl", "🇵🇱 Польша", "GRPC"),
-  v("fr", "🇫🇷 Франция", "GRPC"),
-  v("se", "🇸🇪 Швеция", "XHTTP", "TLS"),
-  v("ch", "🇨🇭 Швейцария", "TCP"),
-  v("us", "🇺🇸 США", "TCP"),
-  v("jp", "🇯🇵 Япония", "XHTTP", "TLS"),
-  { id: "div-mobile", name: "⬇️ Для мобильного интернета ⬇️", tags: [], pingMs: null, divider: true },
-  v("m-auto", "🌐 Auto | Мобильная сеть", "GRPC"),
-  v("m-de", "🇩🇪 Германия | Мобильная сеть", "TCP"),
-  v("m-fi", "🇫🇮 Финляндия | Мобильная сеть", "XHTTP", "TLS"),
-  v("m-nl", "🇳🇱 Нидерланды | Мобильная сеть", "XHTTP", "TLS"),
+  v("auto-all", t("🇪🇺 Auto | Все серверы"), "GRPC"),
+  v("de", t("🇩🇪 Германия"), "TCP"),
+  v("nl", t("🇳🇱 Нидерланды"), "TCP"),
+  v("fi", t("🇫🇮 Финляндия"), "GRPC"),
+  v("pl", t("🇵🇱 Польша"), "GRPC"),
+  v("fr", t("🇫🇷 Франция"), "GRPC"),
+  v("se", t("🇸🇪 Швеция"), "XHTTP", "TLS"),
+  v("ch", t("🇨🇭 Швейцария"), "TCP"),
+  v("us", t("🇺🇸 США"), "TCP"),
+  v("jp", t("🇯🇵 Япония"), "XHTTP", "TLS"),
+  { id: "div-mobile", name: t("⬇️ Для мобильного интернета ⬇️"), tags: [], pingMs: null, divider: true },
+  v("m-auto", t("🌐 Auto | Мобильная сеть"), "GRPC"),
+  v("m-de", t("🇩🇪 Германия | Мобильная сеть"), "TCP"),
+  v("m-fi", t("🇫🇮 Финляндия | Мобильная сеть"), "XHTTP", "TLS"),
+  v("m-nl", t("🇳🇱 Нидерланды | Мобильная сеть"), "XHTTP", "TLS"),
 ];
 
 const demoSub: Subscription = applyPrefs({
   url: "https://example.com/sub/demo",
   providerTitle: "Demo VPN",
-  plan: "Безлимит",
+  plan: t("Безлимит"),
   nodes: demoNodes,
   usedBytes: 128_402_113_536,
   totalBytes: 0,
   expireAt: Date.now() + 184 * 86_400_000,
   announce:
-    "Добро пожаловать! Это пример объявления провайдера: новости, сроки подписки и советы.\n\nЕсли сервер не отвечает, обновите подписку или выберите другой.",
+    t("Добро пожаловать! Это пример объявления провайдера: новости, сроки подписки и советы.\n\nЕсли сервер не отвечает, обновите подписку или выберите другой."),
   supportUrl: "https://example.com/support",
   webPageUrl: "https://example.com/account",
   updatedAt: Date.now() - 3 * 3600_000,
@@ -83,6 +84,7 @@ export const defaultAppearance: Appearance = {
   mode: "dark",
   glassBlur: 22,
   motion: true,
+  language: "system",
 };
 
 export const defaultSettings: Settings = {
@@ -180,9 +182,9 @@ export class DemoBackend implements Backend {
   /** Настройки меняются при включённом VPN — предлагаем применить сразу. */
   private offerReconnect() {
     if (this.s.state !== "connected") return;
-    this.toaster.show("Изменения вступят в силу после переподключения", {
+    this.toaster.show(t("Изменения вступят в силу после переподключения"), {
       id: "reconnect",
-      label: "Переподключить",
+      label: t("Переподключить"),
       run: () => void this.reconnect(),
     });
   }
@@ -218,7 +220,7 @@ export class DemoBackend implements Backend {
       return;
     }
     if (!this.s.current) {
-      this.emit({ error: "Сначала добавьте подписку" });
+      this.emit({ error: t("Сначала добавьте подписку") });
       return;
     }
     this.emit({ state: "connecting", error: null });
@@ -267,7 +269,7 @@ export class DemoBackend implements Backend {
   async select(target: { subUrl: string; nodeId: string } | null) {
     this.emit({ selected: target });
     if (this.s.state === "connected" && this.s.current) {
-      this.toast(`Переключаемся: ${this.s.current.node.name}`);
+      this.toast(t("Переключаемся: {0}", [this.s.current.node.name]));
       await this.reconnect();
     }
   }
@@ -288,12 +290,12 @@ export class DemoBackend implements Backend {
       return this.addRoutingProfile(url);
     }
     if (!/^https?:\/\//.test(url.trim())) {
-      throw new Error("Ссылка должна начинаться с https://");
+      throw new Error(t("Ссылка должна начинаться с https://"));
     }
     await wait(900);
     const sub = { ...structuredClone(demoSub), url: url.trim(), updatedAt: Date.now() };
     this.emit({ subscriptions: [sub, ...this.s.subscriptions.filter((x) => x.url !== sub.url)] });
-    this.toast("Подписка добавлена");
+    this.toast(t("Подписка добавлена"));
     // Сразу меряем пинг, чтобы автовыбор знал лучший сервер.
     void this.ping(sub.url, true);
   }
@@ -302,7 +304,7 @@ export class DemoBackend implements Backend {
     this.emit({ refreshingSub: "*" });
     await wait(700);
     this.emit({ subscriptions: this.s.subscriptions.map((x) => ({ ...x, updatedAt: Date.now() })), refreshingSub: null });
-    this.toast("Подписки обновлены");
+    this.toast(t("Подписки обновлены"));
   }
 
   async refreshSubscription(url: string) {
@@ -313,7 +315,7 @@ export class DemoBackend implements Backend {
       subscriptions: this.s.subscriptions.map((x) => (x.url === url ? { ...x, updatedAt: Date.now() } : x)),
       refreshingSub: null,
     });
-    this.toast(`Подписка «${sub?.title ?? ""}» обновлена`);
+    this.toast(t("Подписка «{0}» обновлена", [sub?.title ?? ""]));
   }
 
   async removeSubscription(url: string) {
@@ -323,9 +325,9 @@ export class DemoBackend implements Backend {
       subscriptions: before.subscriptions.filter((x) => x.url !== url),
       selected: before.selected?.subUrl === url ? null : before.selected,
     });
-    this.toaster.show(`Подписка «${sub?.title ?? "без названия"}» удалена`, {
+    this.toaster.show(t("Подписка «{0}» удалена", [sub?.title ?? t("без названия")]), {
       id: "undo",
-      label: "Вернуть",
+      label: t("Вернуть"),
       run: () => this.emit(before),
     });
   }
@@ -337,7 +339,7 @@ export class DemoBackend implements Backend {
     else if (action.kind === "connect" && this.s.state === "disconnected") await this.toggle();
     else if (action.kind === "disconnect" && this.s.state === "connected") await this.toggle();
     else if (action.kind === "toggle") await this.toggle();
-    else if (action.kind === "unknown") this.toast("Ссылка bproxy:// не распознана — проверьте её у провайдера");
+    else if (action.kind === "unknown") this.toast(t("Ссылка bproxy:// не распознана — проверьте её у провайдера"));
   }
 
   async confirmLink(accept: boolean) {
@@ -355,11 +357,11 @@ export class DemoBackend implements Backend {
   // В демо профиль разбирается по-настоящему, а базы «скачиваются» понарошку.
   async addRoutingProfile(input: string) {
     const text = input.trim();
-    if (/^https:\/\//i.test(text)) throw new Error("В демо профиль по ссылке не загрузить — вставьте диплинк или JSON");
+    if (/^https:\/\//i.test(text)) throw new Error(t("В демо профиль по ссылке не загрузить — вставьте диплинк или JSON"));
     const profile = decodeProfile(text);
     const r = this.s.settings.routing;
     this.emit({ settings: { ...this.s.settings, routing: { enabled: true, activeId: profile.id, profiles: [...r.profiles, profile] } } });
-    this.toast(`Профиль «${profile.name}» включён`);
+    this.toast(t("Профиль «{0}» включён", [profile.name]));
     await this.updateGeo();
   }
 
@@ -389,13 +391,13 @@ export class DemoBackend implements Backend {
         ],
       },
     });
-    this.toast("Базы маршрутизации обновлены");
+    this.toast(t("Базы маршрутизации обновлены"));
   }
 
   async pingNode(subUrl: string, nodeId: string) {
     await this.ping(subUrl, true, [nodeId]);
     const node = this.s.subscriptions.find((x) => x.url === subUrl)?.nodes.find((n) => n.id === nodeId);
-    if (node) this.toast(node.pingMs && node.pingMs > 0 ? `${node.name}: ${node.pingMs} мс` : `${node.name}: нет связи`);
+    if (node) this.toast(node.pingMs && node.pingMs > 0 ? t("{0}: {1} мс", [node.name, node.pingMs]) : t("{0}: нет связи", [node.name]));
   }
 
   private patchPrefs(subUrl: string, fn: (p: SubPrefs) => Partial<SubPrefs>) {
@@ -441,7 +443,7 @@ export class DemoBackend implements Backend {
           },
     );
     this.emit({ subscriptions, pinging: false, pingingSub: null });
-    if (!quiet) this.toast("Пинг обновлён");
+    if (!quiet) this.toast(t("Пинг обновлён"));
   }
 
   async updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>) {
@@ -472,9 +474,9 @@ export class DemoBackend implements Backend {
     const before = this.s.settings;
     this.emit({ settings: structuredClone(defaultSettings) });
     this.updateAppearance({});
-    this.toaster.show("Настройки сброшены", {
+    this.toaster.show(t("Настройки сброшены"), {
       id: "undo",
-      label: "Вернуть",
+      label: t("Вернуть"),
       run: () => {
         this.emit({ settings: before });
         this.updateAppearance({});
@@ -488,10 +490,10 @@ export class DemoBackend implements Backend {
 
   async readLog(which: "app" | "core") {
     // В демо журналов нет: показываем, как они выглядят в приложении.
-    const t = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const at = new Date().toISOString().slice(0, 19).replace("T", " ");
     return which === "app"
-      ? `${t}Z INFO  [plugin] B-Proxy 0.1.0 запущен: windows x86_64\n${t}Z INFO  [ui] Подключение: 🇩🇪 Германия [VLESS/REALITY/GRPC]\n${t}Z INFO  [vpn] VPN подключён за 1840 мс`
-      : `${t} [Info] Xray 26.11.9 started\n${t} [Info] [tun] interface B-Proxy created`;
+      ? `${at}Z INFO  [plugin] B-Proxy 0.1.0 запущен: windows x86_64\n${at}Z INFO  [ui] Подключение: 🇩🇪 Германия [VLESS/REALITY/GRPC]\n${at}Z INFO  [vpn] VPN подключён за 1840 мс`
+      : `${at} [Info] Xray 26.11.9 started\n${at} [Info] [tun] interface B-Proxy created`;
   }
 
   async openLogsFolder() {
@@ -501,7 +503,7 @@ export class DemoBackend implements Backend {
   clearActivity() {
     const before = this.s.activity;
     this.emit({ activity: before.filter((e) => e.kind === "session" && e.id === this.sessionId) });
-    this.toaster.show("Журнал очищен", { id: "undo", label: "Вернуть", run: () => this.emit({ activity: before }) });
+    this.toaster.show(t("Журнал очищен"), { id: "undo", label: t("Вернуть"), run: () => this.emit({ activity: before }) });
   }
 
   /** В демо системных уведомлений нет — показываем, как бы оно выглядело. */
@@ -515,7 +517,7 @@ export class DemoBackend implements Backend {
   }
 
   async testNotification() {
-    this.toast("Уведомление: «B-Proxy — уведомления работают»");
+    this.toast(t("Уведомление: «B-Proxy — уведомления работают»"));
   }
 
   toastAction() {
@@ -534,7 +536,7 @@ function demoActivity(): ActivityEntry[] {
   const H = 3_600_000;
   const now = Date.now();
   const list: ActivityEntry[] = [];
-  const servers = ["🇪🇺 Auto | Все серверы", "🇩🇪 Германия", "🇳🇱 Нидерланды", "🇫🇮 Финляндия"];
+  const servers = [t("🇪🇺 Auto | Все серверы"), t("🇩🇪 Германия"), t("🇳🇱 Нидерланды"), t("🇫🇮 Финляндия")];
   // Детерминированно, чтобы скриншоты демо не прыгали.
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -557,7 +559,7 @@ function demoActivity(): ActivityEntry[] {
       });
     }
   }
-  list.push({ kind: "subscription", id: newId(), at: now - 26 * H, text: "Подписки обновлены автоматически" });
-  list.push({ kind: "error", id: newId(), at: now - 50 * H, server: "🇯🇵 Япония", text: "Сервер не ответил за 8 секунд. Попробуйте другой сервер" });
+  list.push({ kind: "subscription", id: newId(), at: now - 26 * H, text: t("Подписки обновлены автоматически") });
+  list.push({ kind: "error", id: newId(), at: now - 50 * H, server: t("🇯🇵 Япония"), text: t("Сервер не ответил за 8 секунд. Попробуйте другой сервер") });
   return list.sort((a, b) => (b.kind === "session" ? b.startedAt : b.at) - (a.kind === "session" ? a.startedAt : a.at));
 }

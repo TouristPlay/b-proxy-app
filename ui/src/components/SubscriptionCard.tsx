@@ -4,6 +4,7 @@ import { backend, type Subscription } from "@/backend";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { daysLeft, formatBytes, formatDate, plural } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 /** Карточка подписки: крупно — сколько дней осталось, ниже трафик и «Продлить». */
 export function SubscriptionCard({ sub, className }: { sub: Subscription; className?: string }) {
@@ -20,18 +21,18 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
         "bg-[radial-gradient(120%_90%_at_100%_0%,color-mix(in_srgb,var(--color-amber)_13%,transparent),transparent_60%)]",
         className,
       )}
-      aria-label="Подписка"
+      aria-label={t("Подписка")}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-amber/90">{sub.plan ?? "Подписка"}</p>
+          <p className="text-[13px] font-medium text-amber/90">{sub.plan ?? t("Подписка")}</p>
           <p className="mt-0.5 truncate font-display text-lg font-semibold">{sub.title}</p>
         </div>
         <Button
           variant="glass"
           size="icon"
-          aria-label="Обновить подписку"
-          title="Обновить подписку"
+          aria-label={t("Обновить подписку")}
+          title={t("Обновить подписку")}
           disabled={busy}
           onClick={async () => {
             setBusy(true);
@@ -45,7 +46,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
       {/* Подпись «дней осталось / до …» — по центру высоты числа. */}
       <div className="mt-2 flex items-center gap-3">
         {days == null ? (
-          <span className="font-display text-[34px] font-semibold">Бессрочно</span>
+          <span className="font-display text-[34px] font-semibold">{t("Бессрочно")}</span>
         ) : (
           <>
             <span
@@ -57,8 +58,8 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
               {days}
             </span>
             <span className="text-[15px] text-ink-2">
-              {plural(days, "день остался", "дня осталось", "дней осталось")}
-              {sub.expireAt && <span className="block text-[13px] text-ink-3">до {formatDate(sub.expireAt)}</span>}
+              {plural(days, t("день остался"), t("дня осталось"), t("дней осталось"))}
+              {sub.expireAt && <span className="block text-[13px] text-ink-3">{t("до")}{" "}{formatDate(sub.expireAt)}</span>}
             </span>
           </>
         )}
@@ -66,15 +67,15 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
 
       <div className="mt-3">
         <div className="flex items-baseline justify-between text-[13.5px]">
-          <span className="text-ink-2">Трафик</span>
+          <span className="text-ink-2">{t("Трафик")}</span>
           <span className="tabular-nums">
             {unlimited ? (
               <>
-                {formatBytes(sub.usedBytes)} <span className="text-ink-3">· не ограничен</span>
+                {formatBytes(sub.usedBytes)} <span className="text-ink-3">{t("· не ограничен")}</span>
               </>
             ) : (
               <>
-                {formatBytes(sub.usedBytes)} <span className="text-ink-3">из {formatBytes(sub.totalBytes)}</span>
+                {formatBytes(sub.usedBytes)} <span className="text-ink-3">{t("из")}{" "}{formatBytes(sub.totalBytes)}</span>
               </>
             )}
           </span>
@@ -82,7 +83,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
         <div
           className="mt-2 h-1.5 overflow-hidden rounded-full bg-glass-3"
           role="progressbar"
-          aria-label="Использованный трафик"
+          aria-label={t("Использованный трафик")}
           aria-valuenow={Math.round(used * 100)}
           aria-valuemin={0}
           aria-valuemax={100}
@@ -98,7 +99,8 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
         {sub.webPageUrl && (
           <a href={sub.webPageUrl} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "amber", className: "flex-1" })}>
             <ExternalLink />
-            Продлить
+            
+            {t("Продлить")}
           </a>
         )}
         {sub.supportUrl && (
@@ -109,7 +111,8 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
             className={buttonVariants({ variant: "glass", className: sub.webPageUrl ? "" : "flex-1" })}
           >
             <MessageCircle />
-            Поддержка
+            
+            {t("Поддержка")}
           </a>
         )}
       </div>

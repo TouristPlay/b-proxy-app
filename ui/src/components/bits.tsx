@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { splitFlag } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 /** Флаг страны в скруглённой плитке; без флага — точки. */
 export function Flag({ name, size = "md", className }: { name: string; size?: "sm" | "md" | "lg"; className?: string }) {
@@ -81,7 +82,7 @@ export function SignalPing({
   const delay = `${Math.min(order, 14) * 45}ms`;
   if (measuring) {
     return (
-      <span className={cn("flex items-center gap-2", className)} aria-label="Меряем пинг">
+      <span className={cn("flex items-center gap-2", className)} aria-label={t("Меряем пинг")}>
         <span className="flex h-3.5 items-end gap-[2px]" aria-hidden>
           {[0, 1, 2].map((b) => (
             <span
@@ -99,7 +100,8 @@ export function SignalPing({
   if (ms < 0)
     return (
       <Entrance as="span" anim="anim-pop" key="fail" className={cn("text-sm font-medium text-bad", className)} style={{ animationDelay: delay }}>
-        нет связи
+        
+        {t("нет связи")}
       </Entrance>
     );
   const bars = ms < 80 ? 3 : ms < 160 ? 2 : 1;
@@ -123,7 +125,7 @@ export function SignalPing({
         style={{ animationDelay: delay }}
       >
         {ms}
-        <span className="ml-0.5 text-xs font-normal text-ink-3"> мс</span>
+        <span className="ml-0.5 text-xs font-normal text-ink-3"> {" "}{t("мс")}</span>
       </Entrance>
     </span>
   );

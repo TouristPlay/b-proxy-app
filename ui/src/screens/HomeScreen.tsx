@@ -26,6 +26,7 @@ import {
 } from "@/lib/format";
 import { useNow } from "@/lib/useMedia";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 export function HomeScreen({
   onOpenServers,
@@ -67,18 +68,18 @@ export function HomeScreen({
   }
 
   const title = on
-    ? "Защищено"
+    ? t("Защищено")
     : s.state === "connecting"
-      ? "Подключаемся"
+      ? t("Подключаемся")
       : s.state === "disconnecting"
-        ? "Отключаемся"
-        : "Не защищено";
+        ? t("Отключаемся")
+        : t("Не защищено");
   const hint =
     s.state === "connecting"
-      ? "Если система спросит разрешение — подтвердите. Нажмите ещё раз, чтобы отменить"
+      ? t("Если система спросит разрешение — подтвердите. Нажмите ещё раз, чтобы отменить")
       : hasServers
-        ? "Нажмите, чтобы подключиться"
-        : "Вставьте ссылку на подписку из личного кабинета или Telegram-бота";
+        ? t("Нажмите, чтобы подключиться")
+        : t("Вставьте ссылку на подписку из личного кабинета или Telegram-бота");
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pt-[max(18px,env(safe-area-inset-top))] pb-[calc(max(14px,env(safe-area-inset-bottom))+86px)]">
@@ -100,8 +101,8 @@ export function HomeScreen({
             <button
               type="button"
               onClick={onAdd}
-              aria-label="Добавить подписку"
-              title="Добавить подписку"
+              aria-label={t("Добавить подписку")}
+              title={t("Добавить подписку")}
               className="glass flex size-11 items-center justify-center rounded-full text-ink-2 transition-colors hover:text-amber"
             >
               <Plus className="size-5" />
@@ -120,7 +121,7 @@ export function HomeScreen({
             state={s.state}
             speed={s.downSpeed}
             onToggle={hasServers ? () => void backend.toggle() : onAdd}
-            label={hasServers ? undefined : "Добавить подписку"}
+            label={hasServers ? undefined : t("Добавить подписку")}
             size={`clamp(140px, min(72vw, 100dvh - ${hasServers ? 674 : 460}px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 320px)`}
           />
         </div>
@@ -136,7 +137,7 @@ export function HomeScreen({
               "bg-gradient-to-b from-amber-2 to-amber bg-clip-text text-transparent",
           )}
         >
-          {hasServers ? title : "Добавьте подписку"}
+          {hasServers ? title : t("Добавьте подписку")}
         </Entrance>
 
         <div className="mt-[clamp(6px,1.2dvh,12px)] flex justify-center">
@@ -174,7 +175,8 @@ export function HomeScreen({
               className="mt-0.5 size-5 shrink-0 text-warn"
               aria-hidden
             />
-            Подписка закончилась. Продлите её, чтобы серверы снова работали
+            
+            {t("Подписка закончилась. Продлите её, чтобы серверы снова работали")}
           </p>
           {sub.webPageUrl && (
             <a
@@ -188,7 +190,8 @@ export function HomeScreen({
               })}
             >
               <ExternalLink />
-              Продлить
+              
+              {t("Продлить")}
             </a>
           )}
         </div>
@@ -206,11 +209,12 @@ export function HomeScreen({
             ) : (
               <ClipboardPaste />
             )}
-            {pasting ? "Загружаем…" : "Вставить ссылку"}
+            {pasting ? t("Загружаем…") : t("Вставить ссылку")}
           </Button>
           <Button variant="ghost" onClick={onAdd} disabled={pasting}>
             <Plus />
-            Ввести вручную
+            
+            {t("Ввести вручную")}
           </Button>
         </div>
       )}
@@ -229,10 +233,10 @@ export function HomeScreen({
               </span>
               <span className="block text-[13px] text-ink-2">
                 {s.selected
-                  ? "Выбран вручную · сменить"
+                  ? t("Выбран вручную · сменить")
                   : s.pinging
-                    ? "Ищем быстрый сервер…"
-                    : "Автовыбор по пингу · сменить"}
+                    ? t("Ищем быстрый сервер…")
+                    : t("Автовыбор по пингу · сменить")}
               </span>
             </span>
             <SignalPing ms={s.current.node.pingMs} />
@@ -273,12 +277,13 @@ function LiveBar({
         "glass grid w-full grid-cols-3 divide-x divide-edge rounded-[20px] border-good/25 py-2 text-center tabular-nums",
         rise,
       )}
-      aria-label="Текущее подключение"
+      aria-label={t("Текущее подключение")}
     >
       <span className="px-2">
         <span className="flex items-center justify-center gap-1.5 text-[12px] text-good">
           <span className="size-1.5 rounded-full bg-good" aria-hidden />
-          Время
+          
+          {t("Время")}
         </span>
         <span className="mt-0.5 block font-display text-[16px] font-semibold">{time}</span>
       </span>
@@ -287,7 +292,7 @@ function LiveBar({
           <ArrowDown className="size-3.5 text-good" aria-hidden />
           {formatBytes(downTotal)}
         </span>
-        <span className="mt-0.5 block font-display text-[16px] font-semibold" aria-label={`Загрузка ${formatSpeed(down)}`}>
+        <span className="mt-0.5 block font-display text-[16px] font-semibold" aria-label={t("Загрузка {0}", [formatSpeed(down)])}>
           {formatSpeed(down)}
         </span>
       </span>
@@ -296,7 +301,7 @@ function LiveBar({
           <ArrowUp className="size-3.5 text-tag-tls" aria-hidden />
           {formatBytes(upTotal)}
         </span>
-        <span className="mt-0.5 block font-display text-[16px] font-semibold" aria-label={`Отдача ${formatSpeed(up)}`}>
+        <span className="mt-0.5 block font-display text-[16px] font-semibold" aria-label={t("Отдача {0}", [formatSpeed(up)])}>
           {formatSpeed(up)}
         </span>
       </span>

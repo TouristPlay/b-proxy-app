@@ -5,6 +5,7 @@ import { IconTile } from "@/components/bits";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 export function AddSubscriptionSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [url, setUrl] = useState("");
@@ -28,14 +29,14 @@ export function AddSubscriptionSheet({ open, onOpenChange }: { open: boolean; on
         setError(null);
       }
     } catch {
-      setError("Нет доступа к буферу обмена. Вставьте ссылку вручную.");
+      setError(t("Нет доступа к буферу обмена. Вставьте ссылку вручную."));
     }
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!url.trim()) {
-      setError("Вставьте ссылку на подписку");
+      setError(t("Вставьте ссылку на подписку"));
       return;
     }
     setLoading(true);
@@ -55,13 +56,14 @@ export function AddSubscriptionSheet({ open, onOpenChange }: { open: boolean; on
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title="Новая подписка"
-      description="Ссылку выдаёт ваш VPN-провайдер: в личном кабинете или в Telegram-боте"
+      title={t("Новая подписка")}
+      description={t("Ссылку выдаёт ваш VPN-провайдер: в личном кабинете или в Telegram-боте")}
       icon={<IconTile icon={Link2} tone="amber" />}
     >
       <form onSubmit={submit} noValidate>
         <label htmlFor={inputId} className="mb-2 block px-1 text-sm font-medium text-ink-2">
-          Ссылка на подписку
+          
+          {t("Ссылка на подписку")}
         </label>
         <div
           className={cn(
@@ -90,19 +92,19 @@ export function AddSubscriptionSheet({ open, onOpenChange }: { open: boolean; on
             type="button"
             onClick={paste}
             className="mr-1.5 flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-glass-2 hover:text-ink"
-            aria-label="Вставить из буфера обмена"
-            title="Вставить из буфера обмена"
+            aria-label={t("Вставить из буфера обмена")}
+            title={t("Вставить из буфера обмена")}
           >
             <ClipboardPaste className="size-5" />
           </button>
         </div>
         <p id={hintId} role={error ? "alert" : undefined} className={cn("mt-2 px-1 text-[13.5px]", error ? "text-bad" : "text-ink-3")}>
-          {error ?? "Подойдёт ссылка Remnawave, Marzban и любые vless://, trojan://, hysteria2://"}
+          {error ?? t("Подойдёт ссылка Remnawave, Marzban и любые vless://, trojan://, hysteria2://")}
         </p>
 
         <Button type="submit" variant="amber" className="mt-6 w-full" disabled={loading}>
           {loading && <LoaderCircle className="animate-spin" />}
-          {loading ? "Загружаем серверы" : "Добавить подписку"}
+          {loading ? t("Загружаем серверы") : t("Добавить подписку")}
         </Button>
       </form>
     </Sheet>

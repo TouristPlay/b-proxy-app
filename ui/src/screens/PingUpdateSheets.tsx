@@ -13,22 +13,23 @@ import { Group, IconTile, Row } from "@/components/bits";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { t } from "@/lib/i18n";
 
 const methods: { value: PingMethod; title: string; hint: string }[] = [
   {
     value: "tcp",
     title: "TCP",
-    hint: "Время соединения с адресом сервера. Быстро и без ядра, но не проверяет, работает ли сам прокси",
+    hint: t("Время соединения с адресом сервера. Быстро и без ядра, но не проверяет, работает ли сам прокси"),
   },
   {
     value: "head",
     title: "HTTP HEAD",
-    hint: "Реальная задержка: запрос заголовков через сервер к проверочному адресу. Проверяет, что прокси работает",
+    hint: t("Реальная задержка: запрос заголовков через сервер к проверочному адресу. Проверяет, что прокси работает"),
   },
   {
     value: "get",
     title: "HTTP GET",
-    hint: "Как HEAD, но с загрузкой ответа (до 64 КБ). Ближе всего к открытию сайта, тратит чуть больше трафика",
+    hint: t("Как HEAD, но с загрузкой ответа (до 64 КБ). Ближе всего к открытию сайта, тратит чуть больше трафика"),
   },
 ];
 
@@ -41,10 +42,10 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
   const set = (patch: Partial<PingSettings>) => void backend.updateSettings({ ping: { ...p, ...patch } });
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Пинг" description="Как проверять скорость отклика серверов" icon={<IconTile icon={Gauge} tone="amber" />}>
+    <Sheet open={open} onOpenChange={onOpenChange} title={t("Пинг")} description={t("Как проверять скорость отклика серверов")} icon={<IconTile icon={Gauge} tone="amber" />}>
       <div className="flex flex-col gap-6">
-        <Group title="Способ">
-          <RadioGroup value={p.method} onValueChange={(v) => set({ method: v as PingMethod })} className="divide-y divide-edge" aria-label="Способ пинга">
+        <Group title={t("Способ")}>
+          <RadioGroup value={p.method} onValueChange={(v) => set({ method: v as PingMethod })} className="divide-y divide-edge" aria-label={t("Способ пинга")}>
             {methods.map((m) => (
               <label key={m.value} className="flex cursor-pointer items-start gap-3.5 px-4 py-3.5">
                 <RadioGroupItem value={m.value} aria-label={m.title} className="mt-0.5" />
@@ -57,21 +58,21 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
           </RadioGroup>
         </Group>
 
-        <Group title="Ожидание ответа">
+        <Group title={t("Ожидание ответа")}>
           <div className="flex items-center gap-3 px-4 py-3.5">
-            <span className="flex-1 font-medium">Не отвечает дольше</span>
+            <span className="flex-1 font-medium">{t("Не отвечает дольше")}</span>
             <Stepper
               value={p.timeoutSec}
               options={timeouts}
-              format={(v) => `${v} с`}
+              format={(v) => t("{0} с", [v])}
               onChange={(timeoutSec) => set({ timeoutSec })}
-              label="Время ожидания пинга, секунд"
+              label={t("Время ожидания пинга, секунд")}
             />
           </div>
         </Group>
 
         {p.method !== "tcp" && (
-          <Group title="Проверочный адрес">
+          <Group title={t("Проверочный адрес")}>
             <label className="block px-4 py-3.5">
               <input
                 type="url"
@@ -81,12 +82,12 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
                 value={p.url}
                 onChange={(e) => set({ url: e.target.value.trim() })}
                 className="w-full bg-transparent text-[15px] text-ink focus:outline-none"
-                aria-label="Проверочный адрес для реальной задержки"
+                aria-label={t("Проверочный адрес для реальной задержки")}
               />
               <span className="mt-1 block text-[13px] text-ink-3">
                 {p.method === "get"
-                  ? "Для GET подойдёт небольшая страница — например, cp.cloudflare.com или generate_204 от Google"
-                  : "Отвечает пустой страницей и быстро — например, generate_204 от Google"}
+                  ? t("Для GET подойдёт небольшая страница — например, cp.cloudflare.com или generate_204 от Google")
+                  : t("Отвечает пустой страницей и быстро — например, generate_204 от Google")}
               </span>
             </label>
           </Group>
@@ -96,8 +97,8 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
           <Row
             htmlFor="ping-start"
             icon={<IconTile icon={Power} tone="green" />}
-            title="Мерить при запуске"
-            hint="Пинг выбранного провайдера — чтобы автовыбор сразу взял быстрый сервер"
+            title={t("Мерить при запуске")}
+            hint={t("Пинг выбранного провайдера — чтобы автовыбор сразу взял быстрый сервер")}
             aside={<Switch id="ping-start" checked={p.onStart} onCheckedChange={(onStart) => set({ onStart })} />}
           />
         </Group>
@@ -107,13 +108,13 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
 }
 
 export const intervals: { value: UpdateInterval; title: string }[] = [
-  { value: "provider", title: "Как просит провайдер" },
-  { value: 1, title: "Каждый час" },
-  { value: 3, title: "Каждые 3 часа" },
-  { value: 6, title: "Каждые 6 часов" },
-  { value: 12, title: "Каждые 12 часов" },
-  { value: 24, title: "Раз в сутки" },
-  { value: "off", title: "Только вручную" },
+  { value: "provider", title: t("Как просит провайдер") },
+  { value: 1, title: t("Каждый час") },
+  { value: 3, title: t("Каждые 3 часа") },
+  { value: 6, title: t("Каждые 6 часов") },
+  { value: 12, title: t("Каждые 12 часов") },
+  { value: 24, title: t("Раз в сутки") },
+  { value: "off", title: t("Только вручную") },
 ];
 
 export const intervalTitle = (v: UpdateInterval) => intervals.find((i) => i.value === v)?.title ?? "";
@@ -128,23 +129,23 @@ export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title="Обновление подписок"
-      description="Списки серверов, трафик и сроки от провайдеров"
+      title={t("Обновление подписок")}
+      description={t("Списки серверов, трафик и сроки от провайдеров")}
       icon={<IconTile icon={RefreshCw} tone="teal" />}
     >
       <div className="flex flex-col gap-6">
-        <Group title="Обновлять автоматически">
+        <Group title={t("Обновлять автоматически")}>
           <RadioGroup
             value={String(u.interval)}
             onValueChange={(v) => set({ interval: (/^\d+$/.test(v) ? Number(v) : v) as UpdateInterval })}
             className="divide-y divide-edge"
-            aria-label="Как часто обновлять подписки"
+            aria-label={t("Как часто обновлять подписки")}
           >
             {intervals.map((i) => (
               <label key={String(i.value)} className="flex cursor-pointer items-center gap-3.5 px-4 py-3.5">
                 <RadioGroupItem value={String(i.value)} aria-label={i.title} />
                 <span className="flex-1 font-medium">{i.title}</span>
-                {i.value === "provider" && <span className="text-[13px] text-ink-3">обычно 12 ч</span>}
+                {i.value === "provider" && <span className="text-[13px] text-ink-3">{t("обычно 12 ч")}</span>}
               </label>
             ))}
           </RadioGroup>
@@ -153,15 +154,15 @@ export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
           <Row
             htmlFor="upd-start"
             icon={<IconTile icon={Power} tone="green" />}
-            title="Обновлять при запуске"
-            hint="Свежие серверы сразу после открытия приложения"
+            title={t("Обновлять при запуске")}
+            hint={t("Свежие серверы сразу после открытия приложения")}
             aside={<Switch id="upd-start" checked={u.onStart} onCheckedChange={(onStart) => set({ onStart })} />}
           />
           <Row
             htmlFor="upd-ping"
             icon={<IconTile icon={Gauge} tone="amber" />}
-            title="Пинг после обновления"
-            hint="Сразу проверить серверы провайдера, когда пришёл свежий список"
+            title={t("Пинг после обновления")}
+            hint={t("Сразу проверить серверы провайдера, когда пришёл свежий список")}
             aside={<Switch id="upd-ping" checked={u.pingAfter} onCheckedChange={(pingAfter) => set({ pingAfter })} />}
           />
         </Group>
@@ -172,19 +173,21 @@ export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
               key={settings.userAgent}
               onBlur={(e) => void backend.updateSettings({ userAgent: e.target.value.trim() })}
               onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-              placeholder="Стандартный"
+              placeholder={t("Стандартный")}
               autoComplete="off"
               spellCheck={false}
-              aria-label="Свой User-Agent для загрузки подписок"
+              aria-label={t("Свой User-Agent для загрузки подписок")}
               className="w-full bg-transparent font-mono text-[14px] text-ink placeholder:font-sans placeholder:text-ink-3 focus:outline-none"
             />
             <span className="mt-1 block text-[13px] text-ink-3">
-              Меняйте, только если провайдер просит. Пусто — стандартный: панель отдаёт полный конфиг серверов
+              
+              {t("Меняйте, только если провайдер просит. Пусто — стандартный: панель отдаёт полный конфиг серверов")}
             </span>
           </label>
         </Group>
         <p className="px-2 text-[13px] text-ink-3">
-          Обновить одного провайдера вручную — кнопкой рядом с его названием в «Серверах».
+          
+          {t("Обновить одного провайдера вручную — кнопкой рядом с его названием в «Серверах».")}
         </p>
       </div>
     </Sheet>
@@ -212,7 +215,7 @@ function Stepper({
         className="flex size-10 items-center justify-center rounded-full border border-edge-2 text-ink-2 hover:text-ink disabled:opacity-40"
         onClick={() => onChange(options[i - 1])}
         disabled={i === 0}
-        aria-label="Меньше"
+        aria-label={t("Меньше")}
       >
         <Minus className="size-4" />
       </button>
@@ -224,7 +227,7 @@ function Stepper({
         className="flex size-10 items-center justify-center rounded-full border border-edge-2 text-ink-2 hover:text-ink disabled:opacity-40"
         onClick={() => onChange(options[i + 1])}
         disabled={i === options.length - 1}
-        aria-label="Больше"
+        aria-label={t("Больше")}
       >
         <Plus className="size-4" />
       </button>
@@ -233,10 +236,10 @@ function Stepper({
 }
 
 const notifyTypes: { key: Exclude<keyof NotificationSettings, "enabled">; title: string; hint: string }[] = [
-  { key: "disconnect", title: "VPN отключился", hint: "Обрыв сети, сервер не отвечает или туннель закрыла система" },
-  { key: "expiry", title: "Срок подписки", hint: "За 3 дня, за день и когда подписка закончилась" },
-  { key: "traffic", title: "Трафик заканчивается", hint: "Израсходовано 90% лимита — для подписок с лимитом" },
-  { key: "announce", title: "Объявления провайдера", hint: "Провайдер обновил текст в подписке" },
+  { key: "disconnect", title: t("VPN отключился"), hint: t("Обрыв сети, сервер не отвечает или туннель закрыла система") },
+  { key: "expiry", title: t("Срок подписки"), hint: t("За 3 дня, за день и когда подписка закончилась") },
+  { key: "traffic", title: t("Трафик заканчивается"), hint: t("Израсходовано 90% лимита — для подписок с лимитом") },
+  { key: "announce", title: t("Объявления провайдера"), hint: t("Провайдер обновил текст в подписке") },
 ];
 
 /** Системные уведомления: общий выключатель, типы и проверка. */
@@ -249,8 +252,8 @@ export function NotificationsSheet({ open, onOpenChange }: { open: boolean; onOp
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title="Уведомления"
-      description="Системные уведомления — даже когда B-Proxy свёрнут"
+      title={t("Уведомления")}
+      description={t("Системные уведомления — даже когда B-Proxy свёрнут")}
       icon={<IconTile icon={Bell} tone="amber" />}
     >
       <div className="flex flex-col gap-6">
@@ -258,11 +261,11 @@ export function NotificationsSheet({ open, onOpenChange }: { open: boolean; onOp
           <Row
             htmlFor="notify-all"
             icon={<IconTile icon={Bell} tone="amber" />}
-            title="Показывать уведомления"
+            title={t("Показывать уведомления")}
             aside={<Switch id="notify-all" checked={n.enabled} onCheckedChange={(enabled) => set({ enabled })} />}
           />
         </Group>
-        <Group title="О чём сообщать">
+        <Group title={t("О чём сообщать")}>
           {notifyTypes.map((t) => (
             <Row
               key={t.key}
@@ -277,10 +280,12 @@ export function NotificationsSheet({ open, onOpenChange }: { open: boolean; onOp
         </Group>
         <Button variant="glass" onClick={() => void backend.testNotification()}>
           <BellRing />
-          Показать пример
+          
+          {t("Показать пример")}
         </Button>
         <p className="px-2 text-[13px] text-ink-3">
-          Если пример не появился, разрешите уведомления для B-Proxy в настройках системы.
+          
+          {t("Если пример не появился, разрешите уведомления для B-Proxy в настройках системы.")}
         </p>
       </div>
     </Sheet>

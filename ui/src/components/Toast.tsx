@@ -1,5 +1,6 @@
 import { CircleCheck, RotateCcw, Undo2, X } from "lucide-react";
 import { backend, useSnapshot } from "@/backend";
+import { t } from "@/lib/i18n";
 
 /**
  * Короткое уведомление сверху: «Подписка добавлена», «Подписка удалена · Вернуть».
@@ -30,7 +31,7 @@ export function Toast() {
             <button
               type="button"
               onClick={() => backend.dismissToast()}
-              aria-label="Закрыть уведомление"
+              aria-label={t("Закрыть уведомление")}
               className="flex size-11 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-glass-2 hover:text-ink"
             >
               <X className="size-4" />

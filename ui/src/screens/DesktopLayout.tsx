@@ -16,6 +16,7 @@ import { useNow } from "@/lib/useMedia";
 import { cn } from "@/lib/utils";
 import { ActivityScreen } from "./ActivityScreen";
 import { SettingsScreen } from "./SettingsScreen";
+import { t } from "@/lib/i18n";
 
 type Tab = "home" | "activity" | "settings";
 
@@ -33,16 +34,16 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
 
   return (
     <div className="grid h-dvh grid-cols-[clamp(380px,36vw,500px)_minmax(0,1fr)] gap-5 p-5">
-      <aside className="glass flex min-h-0 flex-col rounded-[28px]" aria-label="Серверы">
+      <aside className="glass flex min-h-0 flex-col rounded-[28px]" aria-label={t("Серверы")}>
         <div className="flex items-center gap-1 px-5 pt-5 pb-3">
           <img src={logo} alt="" width={32} height={32} className="mr-2 size-8 rounded-full" />
-          <h2 className="flex-1 font-display text-[17px] font-semibold tracking-tight">Серверы</h2>
+          <h2 className="flex-1 font-display text-[17px] font-semibold tracking-tight">{t("Серверы")}</h2>
           {/* Пинг и обновление — у каждого провайдера в списке; здесь только новая подписка. */}
           <button
             type="button"
             onClick={onAdd}
-            aria-label="Добавить подписку"
-            title="Добавить подписку"
+            aria-label={t("Добавить подписку")}
+            title={t("Добавить подписку")}
             className="flex size-11 shrink-0 items-center justify-center rounded-full border border-amber/35 bg-amber/14 text-amber transition-colors hover:bg-amber/22"
           >
             <Plus className="size-5" strokeWidth={2.2} />
@@ -56,12 +57,12 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
       <main className="min-w-0 flex min-h-0 flex-col">
         <header className="flex items-center justify-between gap-4">
           <span className="w-40" />
-          <nav className="glass flex gap-1 rounded-full p-1" aria-label="Разделы">
+          <nav className="glass flex gap-1 rounded-full p-1" aria-label={t("Разделы")}>
             {(
               [
-                ["home", "Главная"],
-                ["activity", "Активность"],
-                ["settings", "Настройки"],
+                ["home", t("Главная")],
+                ["activity", t("Активность")],
+                ["settings", t("Настройки")],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -114,7 +115,7 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
   const busy = s.state === "connecting" || s.state === "disconnecting";
   const node = s.current?.node;
   const sub = s.current?.sub ?? s.subscriptions[0] ?? null;
-  const status = on ? "Защищено" : s.state === "connecting" ? "Подключаемся" : s.state === "disconnecting" ? "Отключаемся" : "Не защищено";
+  const status = on ? t("Защищено") : s.state === "connecting" ? t("Подключаемся") : s.state === "disconnecting" ? t("Отключаемся") : t("Не защищено");
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5 pb-6 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
@@ -125,11 +126,11 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
             {status}
           </p>
           <h1 className="mt-2 truncate font-display text-[clamp(36px,4.6vw,60px)] leading-[1.05] font-semibold tracking-[-0.03em]">
-            {node ? splitFlag(node.name).name.split(" · ")[0] : "Добавьте подписку"}
+            {node ? splitFlag(node.name).name.split(" · ")[0] : t("Добавьте подписку")}
           </h1>
           {node && (
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px] text-ink-2">
-              <span>{splitFlag(node.name).name.split(" · ")[1] ?? (s.selected ? "Выбран вручную" : "Автовыбор")}</span>
+              <span>{splitFlag(node.name).name.split(" · ")[1] ?? (s.selected ? t("Выбран вручную") : t("Автовыбор"))}</span>
               <Tags tags={node.tags} />
               <SignalPing ms={node.pingMs} />
             </div>
@@ -143,17 +144,18 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
                 onClick={() => void backend.toggle()}
               >
                 {busy ? <LoaderCircle className="animate-spin" /> : <Power />}
-                {on ? "Отключиться" : s.state === "connecting" ? "Отменить" : busy ? "Отключаемся…" : "Подключиться"}
+                {on ? t("Отключиться") : s.state === "connecting" ? t("Отменить") : busy ? t("Отключаемся…") : t("Подключиться")}
               </Button>
             ) : (
               <Button variant="amber" onClick={onAdd}>
                 <Plus />
-                Добавить подписку
+                
+                {t("Добавить подписку")}
               </Button>
             )}
           </div>
           {s.state === "connecting" && (
-            <p className="mt-3 text-[14px] text-ink-2">Если система спросит пароль или разрешение — подтвердите</p>
+            <p className="mt-3 text-[14px] text-ink-2">{t("Если система спросит пароль или разрешение — подтвердите")}</p>
           )}
           <ErrorBanner className="mt-4 max-w-xl" />
         </div>
@@ -161,47 +163,47 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
           state={s.state}
           speed={s.downSpeed}
           onToggle={node ? () => void backend.toggle() : onAdd}
-          label={node ? undefined : "Добавить подписку"}
+          label={node ? undefined : t("Добавить подписку")}
           size="clamp(160px, 17vw, 240px)"
           className="shrink-0"
         />
       </section>
 
-      <Tile title="Время">
+      <Tile title={t("Время")}>
         <p className="font-display text-[44px] leading-none font-semibold tracking-[-0.02em] tabular-nums">
           {s.connectedAt ? formatDuration(now - s.connectedAt) : "00:00:00"}
         </p>
-        <p className="mt-3 text-[14px] text-ink-2">{on ? "Сеанс идёт" : "VPN выключен"}</p>
+        <p className="mt-3 text-[14px] text-ink-2">{on ? t("Сеанс идёт") : t("VPN выключен")}</p>
       </Tile>
 
-      <Tile title="Скорость">
+      <Tile title={t("Скорость")}>
         <div className="flex gap-6 text-[15px] tabular-nums">
           <span className="flex items-center gap-1.5">
-            <ArrowDown className="size-4 text-good" aria-label="Загрузка" />
+            <ArrowDown className="size-4 text-good" aria-label={t("Загрузка")} />
             {formatSpeed(s.downSpeed ?? 0)}
           </span>
           <span className="flex items-center gap-1.5">
-            <ArrowUp className="size-4 text-tag-tls" aria-label="Отдача" />
+            <ArrowUp className="size-4 text-tag-tls" aria-label={t("Отдача")} />
             {formatSpeed(s.upSpeed ?? 0)}
           </span>
         </div>
         <Sparkline values={s.speedHistory} />
       </Tile>
 
-      <Tile title="Сеть">
+      <Tile title={t("Сеть")}>
         <div className="flex items-center gap-2">
           <span className={cn("rounded-full px-3 py-1 text-[13px] font-medium", on ? "bg-good/12 text-good" : "bg-glass-2 text-ink-2")}>
-            {on ? "Защищено" : "Напрямую"}
+            {on ? t("Защищено") : t("Напрямую")}
           </span>
           {node && <Tags tags={node.tags} />}
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
-          <Chip icon={<Lock className="size-3.5" />} text={s.settings.ipv6 ? "IPv6 через VPN" : "IPv6 закрыт"} />
-          <Chip icon={<Globe2 className="size-3.5" />} text="DNS в туннеле" />
-          {s.settings.tlsFragment && <Chip icon={<ShieldCheck className="size-3.5" />} text="Обход DPI" />}
+          <Chip icon={<Lock className="size-3.5" />} text={s.settings.ipv6 ? t("IPv6 через VPN") : t("IPv6 закрыт")} />
+          <Chip icon={<Globe2 className="size-3.5" />} text={t("DNS в туннеле")} />
+          {s.settings.tlsFragment && <Chip icon={<ShieldCheck className="size-3.5" />} text={t("Обход DPI")} />}
         </div>
         <p className="mt-4 text-[14px] text-ink-2 tabular-nums">
-          ↓ {formatBytes(s.downTotal)} ↑ {formatBytes(s.upTotal)} за сеанс
+          ↓ {formatBytes(s.downTotal)} ↑ {formatBytes(s.upTotal)} {" "}{t("за сеанс")}
         </p>
       </Tile>
 

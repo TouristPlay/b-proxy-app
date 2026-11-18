@@ -1,4 +1,5 @@
 import type { ServerNode, SubPrefs, Subscription } from "./types";
+import { t } from "@/lib/i18n";
 
 /**
  * Разбор подписки Remnawave. Понимает те же заголовки, что INCY и Happ:
@@ -52,7 +53,7 @@ export type ConvertLinks = (text: string) => Promise<Outbound[]>;
 
 export function checkUrl(raw: string): string {
   const url = raw.trim();
-  if (!/^https?:\/\/\S+$/i.test(url)) throw new Error("Ссылка должна начинаться с https://");
+  if (!/^https?:\/\/\S+$/i.test(url)) throw new Error(t("Ссылка должна начинаться с https://"));
   return url;
 }
 
@@ -66,23 +67,23 @@ export async function parseSubscription(
   const hw = res.headers;
   if (hw["x-hwid-max-devices-reached"] === "true" || hw["x-hwid-limit"] === "true") {
     throw new Error(
-      "Достигнут лимит устройств подписки. Отвяжите старое устройство у провайдера (в боте или личном кабинете) и обновите подписку",
+      t("Достигнут лимит устройств подписки. Отвяжите старое устройство у провайдера (в боте или личном кабинете) и обновите подписку"),
     );
   }
   if (hw["x-hwid-not-supported"] === "true" || (res.status === 404 && hw["x-hwid-active"] === "true")) {
-    throw new Error("Провайдер привязывает подписку к устройству. Включите «Отправлять HWID» в настройках и обновите подписку");
+    throw new Error(t("Провайдер привязывает подписку к устройству. Включите «Отправлять HWID» в настройках и обновите подписку"));
   }
   if (res.status !== 200) {
     throw new Error(
       res.status === 404
-        ? "Подписка не найдена. Проверьте ссылку в личном кабинете"
-        : `Сервер подписки ответил кодом ${res.status}. Попробуйте позже`,
+        ? t("Подписка не найдена. Проверьте ссылку в личном кабинете")
+        : t("Сервер подписки ответил кодом {0}. Попробуйте позже", [res.status]),
     );
   }
   const meta: Record<string, string> = {};
   const body = extractBodyMeta(res.body.trim(), meta);
   if (/^\s*<(!doctype|html)/i.test(body)) {
-    throw new Error("По ссылке открылась страница, а не подписка. Скопируйте ссылку на подписку");
+    throw new Error(t("По ссылке открылась страница, а не подписка. Скопируйте ссылку на подписку"));
   }
 
   const h = (name: string): string | null => {
@@ -91,7 +92,7 @@ export async function parseSubscription(
   };
 
   const parsed = await parseNodes(body, convert);
-  if (parsed.length === 0) throw new Error("В подписке нет ни одного сервера");
+  if (parsed.length === 0) throw new Error(t("В подписке нет ни одного сервера"));
 
   // Провайдер может перенести подписку на новый адрес.
   const newUrl = h("new-url");
@@ -177,7 +178,7 @@ async function parseNodes(body: string, convert: ConvertLinks) {
         burstObservatory: cfg.burstObservatory as Rule | undefined,
       };
       const name = String(cfg.remarks ?? "").replace(/\s+/g, " ").trim();
-      result.push({ name: name || `Сервер ${result.length + 1}`, node });
+      result.push({ name: name || t("Сервер {0}", [result.length + 1]), node });
     }
     return result;
   }
@@ -186,7 +187,7 @@ async function parseNodes(body: string, convert: ConvertLinks) {
   for (const o of outbounds) {
     if (SERVICE.has(String(o.protocol))) continue;
     const name = String(o.tag ?? "").replace(/\s+/g, " ").trim();
-    result.push({ name: name || `Сервер ${result.length + 1}`, node: { outbounds: [{ ...o, tag: "proxy" }] } });
+    result.push({ name: name || t("Сервер {0}", [result.length + 1]), node: { outbounds: [{ ...o, tag: "proxy" }] } });
   }
   return result;
 }
@@ -305,6 +306,6 @@ function hostOf(url: string) {
   try {
     return new URL(url).host;
   } catch {
-    return "Подписка";
+    return t("Подписка");
   }
 }

@@ -15,14 +15,15 @@ import { DesktopLayout } from "@/screens/DesktopLayout";
 import { HomeScreen } from "@/screens/HomeScreen";
 import { ServersScreen } from "@/screens/ServersScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
+import { t } from "@/lib/i18n";
 
 type Tab = "home" | "servers" | "activity" | "settings";
 
 const tabs = [
-  { id: "home", label: "Главная", icon: House },
-  { id: "servers", label: "Серверы", icon: Server },
-  { id: "activity", label: "Активность", icon: Activity },
-  { id: "settings", label: "Настройки", icon: Settings2 },
+  { id: "home", label: t("Главная"), icon: House },
+  { id: "servers", label: t("Серверы"), icon: Server },
+  { id: "activity", label: t("Активность"), icon: Activity },
+  { id: "settings", label: t("Настройки"), icon: Settings2 },
 ] as const;
 
 export default function App() {
@@ -59,7 +60,7 @@ export default function App() {
 
           {/* Плавающее меню-«пилюля». */}
           <nav
-            aria-label="Разделы"
+            aria-label={t("Разделы")}
             className="glass fixed inset-x-4 bottom-[max(14px,env(safe-area-inset-bottom))] z-30 mx-auto grid isolate max-w-md grid-cols-4 gap-1 rounded-[30px] bg-panel/75 p-1.5 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.8)]"
           >
             {/* Подсветка активного раздела переезжает, а не перескакивает. */}

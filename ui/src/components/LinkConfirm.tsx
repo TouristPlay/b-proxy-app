@@ -3,6 +3,7 @@ import { backend, useSnapshot } from "@/backend";
 import { IconTile } from "@/components/bits";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { t } from "@/lib/i18n";
 
 /**
  * Подтверждение ссылки bproxy://: её может открыть любой сайт, поэтому подписку
@@ -15,20 +16,21 @@ export function LinkConfirm() {
     <Sheet
       open={link != null}
       onOpenChange={(o) => !o && void backend.confirmLink(false)}
-      title={link?.kind === "routing" ? "Включить профиль маршрутизации?" : "Добавить подписку?"}
+      title={link?.kind === "routing" ? t("Включить профиль маршрутизации?") : t("Добавить подписку?")}
       description={
         link?.kind === "routing"
-          ? `«${link.name}»: правила, какие сайты идут напрямую, а какие через VPN`
-          : `Ссылка ведёт на ${host}. Добавляйте, только если её дал ваш провайдер`
+          ? t("«{0}»: правила, какие сайты идут напрямую, а какие через VPN", [link.name])
+          : t("Ссылка ведёт на {0}. Добавляйте, только если её дал ваш провайдер", [host])
       }
       icon={<IconTile icon={Link2} tone="amber" />}
     >
       <div className="flex flex-col gap-3">
         <Button variant="amber" className="min-h-12 w-full" onClick={() => void backend.confirmLink(true)}>
-          {link?.kind === "routing" ? "Включить профиль" : "Добавить подписку"}
+          {link?.kind === "routing" ? t("Включить профиль") : t("Добавить подписку")}
         </Button>
         <Button variant="ghost" className="min-h-12 w-full" onClick={() => void backend.confirmLink(false)}>
-          Отмена
+          
+          {t("Отмена")}
         </Button>
       </div>
     </Sheet>
@@ -39,6 +41,6 @@ function safeHost(url: string) {
   try {
     return new URL(url).host;
   } catch {
-    return "неизвестный адрес";
+    return t("неизвестный адрес");
   }
 }

@@ -26,6 +26,7 @@ import { parseLink } from "./links";
 import { decodeProfile, needsGeo } from "./routing";
 import { Toaster } from "./toaster";
 import { activeProfile, buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
+import { t } from "@/lib/i18n";
 
 const APP_VERSION = "0.1.0";
 /** Remnawave отдаёт список серверов только приложениям; с этим заголовком приходят ссылки. */
@@ -78,7 +79,7 @@ function readJson<T>(key: string): T | null {
 function message(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
-  return "Что-то пошло не так. Попробуйте ещё раз";
+  return t("Что-то пошло не так. Попробуйте ещё раз");
 }
 
 /**
@@ -306,7 +307,7 @@ export class TauriBackend implements Backend {
       let granted = await isPermissionGranted();
       if (!granted) granted = (await requestPermission()) === "granted";
       if (!granted) {
-        if (kind === "test") this.emit({ error: "Система не разрешила уведомления. Включите их для B-Proxy в настройках системы" });
+        if (kind === "test") this.emit({ error: t("Система не разрешила уведомления. Включите их для B-Proxy в настройках системы") });
         return;
       }
       sendNotification({ title, body });
@@ -323,7 +324,7 @@ export class TauriBackend implements Backend {
       this.writeLog("info", `Автозапуск ${on ? "включён" : "выключен"}`);
     } catch (e) {
       this.writeLog("warn", `Автозапуск: ${String(e)}`);
-      this.toast("Не удалось изменить автозапуск — подробности в журнале");
+      this.toast(t("Не удалось изменить автозапуск — подробности в журнале"));
     }
   }
 
@@ -335,7 +336,7 @@ export class TauriBackend implements Backend {
   }
 
   async testNotification() {
-    await this.notify("test", "B-Proxy", "Уведомления работают: так придёт сообщение, если VPN отключится или подписка закончится");
+    await this.notify("test", "B-Proxy", t("Уведомления работают: так придёт сообщение, если VPN отключится или подписка закончится"));
   }
 
   /**
@@ -363,10 +364,10 @@ export class TauriBackend implements Backend {
           m.expiry = level;
           void this.notify(
             "expiry",
-            level === 0 ? `Подписка «${sub.title}» закончилась` : `Подписка «${sub.title}» заканчивается`,
+            level === 0 ? t("Подписка «{0}» закончилась", [sub.title]) : t("Подписка «{0}» заканчивается", [sub.title]),
             level === 0
-              ? "Серверы перестанут работать. Продлите подписку у провайдера"
-              : `Осталось ${days} ${plural(days, "день", "дня", "дней")}. Продлите, чтобы VPN не отключился`,
+              ? t("Серверы перестанут работать. Продлите подписку у провайдера")
+              : t("Осталось {0} {1}. Продлите, чтобы VPN не отключился", [days, plural(days, t("день"), t("дня"), t("дней"))]),
           );
         }
       }
@@ -374,7 +375,7 @@ export class TauriBackend implements Backend {
         const used = sub.usedBytes / sub.totalBytes;
         if (used >= 0.9 && !m.traffic) {
           m.traffic = true;
-          void this.notify("traffic", `Трафик «${sub.title}» почти закончился`, `Израсходовано ${Math.round(used * 100)}% от лимита`);
+          void this.notify("traffic", t("Трафик «{0}» почти закончился", [sub.title]), t("Израсходовано {0}% от лимита", [Math.round(used * 100)]));
         } else if (used < 0.5) m.traffic = false;
       }
       const announce = sub.announce ?? "";
@@ -420,11 +421,11 @@ export class TauriBackend implements Backend {
           const id = 7000 + i * 10 + level;
           sendNotification({
             id,
-            title: level === 0 ? `Подписка «${sub.title}» закончилась` : `Подписка «${sub.title}» заканчивается`,
+            title: level === 0 ? t("Подписка «{0}» закончилась", [sub.title]) : t("Подписка «{0}» заканчивается", [sub.title]),
             body:
               level === 0
-                ? "Серверы перестанут работать. Продлите подписку у провайдера"
-                : `Осталось ${level} ${plural(level, "день", "дня", "дней")}. Продлите, чтобы VPN не отключился`,
+                ? t("Серверы перестанут работать. Продлите подписку у провайдера")
+                : t("Осталось {0} {1}. Продлите, чтобы VPN не отключился", [level, plural(level, t("день"), t("дня"), t("дней"))]),
             schedule: Schedule.at(at, false, true),
           });
           m.planned[level] = at.getTime();
@@ -473,7 +474,7 @@ export class TauriBackend implements Backend {
     const request = JSON.stringify({ apiVersion: 3, method, ...(payload ? { payload } : {}) });
     const raw = await invoke<string>("plugin:bproxy|invoke_core", { request });
     const res = JSON.parse(raw) as CoreResponse<T>;
-    if (!res.success) throw new Error(res.error || "Ошибка ядра Xray");
+    if (!res.success) throw new Error(res.error || t("Ошибка ядра Xray"));
     return res.data;
   }
 
@@ -506,7 +507,7 @@ export class TauriBackend implements Backend {
 
   private logError(text: string) {
     // Ссылка на подписку — это ключ доступа: в журнал (и в отчёт для поддержки) она не попадает.
-    const clean = text.replace(/[a-z0-9+]+:\/\/\S+/gi, "‹ссылка›");
+    const clean = text.replace(/[a-z0-9+]+:\/\/\S+/gi, t("‹ссылка›"));
     this.writeLog("error", clean);
     this.log({ kind: "error", id: newId(), at: Date.now(), server: this.s.current?.node.name ?? null, text: clean });
   }
@@ -547,7 +548,7 @@ export class TauriBackend implements Backend {
     const before = this.s.activity;
     // Идущий сеанс оставляем: он ещё допишется.
     this.setActivity(before.filter((e) => e.kind === "session" && e.id === this.sessionId));
-    this.toaster.show("Журнал очищен", { id: "undo", label: "Вернуть", run: () => this.setActivity(before) });
+    this.toaster.show(t("Журнал очищен"), { id: "undo", label: t("Вернуть"), run: () => this.setActivity(before) });
   }
 
   // ---------- VPN ----------
@@ -586,16 +587,16 @@ export class TauriBackend implements Backend {
   /** Настройки меняются при включённом VPN — предлагаем применить сразу. */
   private offerReconnect() {
     if (this.s.state !== "connected") return;
-    this.toaster.show("Изменения вступят в силу после переподключения", {
+    this.toaster.show(t("Изменения вступят в силу после переподключения"), {
       id: "reconnect",
-      label: "Переподключить",
+      label: t("Переподключить"),
       run: () => void this.reconnect(),
     });
   }
 
   private async connect() {
     if (!this.s.current) {
-      this.emit({ error: "Сначала добавьте подписку" });
+      this.emit({ error: t("Сначала добавьте подписку") });
       return;
     }
     this.busy = true;
@@ -606,13 +607,13 @@ export class TauriBackend implements Backend {
       if (!this.s.selected && !this.hasPings()) await this.ping(undefined, true);
 
       const target = this.s.current;
-      if (!target) throw new Error("Сначала добавьте подписку");
+      if (!target) throw new Error(t("Сначала добавьте подписку"));
       const stored = this.subs.find((x) => x.url === target.sub.url);
       const node = stored?.outbounds[target.node.id];
-      if (!stored || !node) throw new Error("Сервер не найден. Обновите подписку");
+      if (!stored || !node) throw new Error(t("Сервер не найден. Обновите подписку"));
 
       const permission = await invoke<{ granted: boolean }>("plugin:bproxy|prepare");
-      if (!permission.granted) throw new Error("Разрешите B-Proxy создать VPN, чтобы подключиться");
+      if (!permission.granted) throw new Error(t("Разрешите B-Proxy создать VPN, чтобы подключиться"));
 
       const coreLog = this.platform === "ios" ? null : (this.logPaths?.coreLog ?? null);
       // Профиль маршрутизации с geosite/geoip не запустится без баз — докачиваем перед подключением.
@@ -621,7 +622,7 @@ export class TauriBackend implements Backend {
         const need = needsGeo(profile);
         if ((need.geoip && !this.geoFile("geoip.dat")) || (need.geosite && !this.geoFile("geosite.dat"))) await this.updateGeo(true);
         if ((need.geoip && !this.geoFile("geoip.dat")) || (need.geosite && !this.geoFile("geosite.dat"))) {
-          throw new Error(`Для профиля «${profile.name}» нужны базы geoip и geosite, а скачать их не получилось. Проверьте интернет или выключите профиль в «Маршрутах и DNS»`);
+          throw new Error(t("Для профиля «{0}» нужны базы geoip и geosite, а скачать их не получилось. Проверьте интернет или выключите профиль в «Маршрутах и DNS»", [profile.name]));
         }
       }
       // Свой DNS провайдера (если задан) вместо общего.
@@ -700,8 +701,8 @@ export class TauriBackend implements Backend {
       // На телефоне об обрыве сообщает сама служба VPN (работает и при закрытом приложении).
       if (!isMobile(this.platform)) void this.notify(
         "disconnect",
-        "VPN отключился",
-        error ?? `Соединение${server ? ` с «${server.replace(/^\p{RI}{2}\s*/u, "")}»` : ""} прервано. Откройте B-Proxy, чтобы подключиться снова`,
+        t("VPN отключился"),
+        error ?? t("Соединение{0} прервано. Откройте B-Proxy, чтобы подключиться снова", [server ? t(" с «{0}»", [server.replace(/^\p{RI}{2}\s*/u, "")]) : ""]),
       );
       this.closeSession(error ? "error" : "system", error ?? undefined);
       if (error) this.logError(error);
@@ -731,7 +732,7 @@ export class TauriBackend implements Backend {
       // Интерфейса туннеля нет 5 секунд подряд — ядро упало или его закрыли снаружи.
       if (++this.missedStats >= 5 && this.s.state === "connected" && !this.busy) {
         this.missedStats = 0;
-        this.onTunnelState("disconnected", "Ядро VPN перестало работать. Подключитесь снова");
+        this.onTunnelState("disconnected", t("Ядро VPN перестало работать. Подключитесь снова"));
       }
       return;
     }
@@ -764,7 +765,7 @@ export class TauriBackend implements Backend {
     // Подключены — сразу переключаемся на новый сервер.
     const after = this.s.current;
     if (this.s.state === "connected" && after && (after.node.id !== before?.node.id || after.sub.url !== before?.sub.url)) {
-      this.toast(`Переключаемся: ${after.node.name}`);
+      this.toast(t("Переключаемся: {0}", [after.node.name]));
       await this.reconnect();
     }
   }
@@ -804,8 +805,8 @@ export class TauriBackend implements Backend {
     });
     this.setSubs([sub, ...this.subs.filter((x) => x.url !== sub.url && x.url !== url)]);
     const count = sub.nodes.filter((n) => !n.divider).length;
-    this.log({ kind: "subscription", id: newId(), at: Date.now(), text: `Добавлена подписка «${sub.title}»` });
-    this.toast(`Подписка «${sub.title}» добавлена: ${count} ${plural(count, "сервер", "сервера", "серверов")}`);
+    this.log({ kind: "subscription", id: newId(), at: Date.now(), text: t("Добавлена подписка «{0}»", [sub.title]) });
+    this.toast(t("Подписка «{0}» добавлена: {1} {2}", [sub.title, count, plural(count, t("сервер"), t("сервера"), t("серверов"))]));
     // Сразу меряем пинг новой подписки, чтобы автовыбор знал лучший сервер.
     if (this.s.state === "disconnected") void this.ping(sub.url, true);
   }
@@ -836,11 +837,11 @@ export class TauriBackend implements Backend {
       const fresh = await this.load(sub.url, sub);
       this.setSubs(this.subs.map((x) => (x.url === url ? fresh : x)));
       this.writeLog("info", `Подписка «${fresh.title}» обновлена${silent ? " (авто)" : ""}: ${fresh.nodes.filter((n) => !n.divider).length} серв.`);
-      if (!silent) this.toast(`Подписка «${fresh.title}» обновлена`);
+      if (!silent) this.toast(t("Подписка «{0}» обновлена", [fresh.title]));
       this.pingAfterUpdate([url]);
     } catch (e) {
-      this.logError(`Подписка не обновилась — ${sub.title}: ${message(e)}`);
-      if (!silent) this.emit({ error: `Не удалось обновить «${sub.title}»: ${message(e)}` });
+      this.logError(t("Подписка не обновилась — {0}: {1}", [sub.title, message(e)]));
+      if (!silent) this.emit({ error: t("Не удалось обновить «{0}»: {1}", [sub.title, message(e)]) });
     } finally {
       this.emit({ refreshingSub: null });
     }
@@ -861,19 +862,19 @@ export class TauriBackend implements Backend {
       }),
     );
     this.setSubs(next);
-    for (const e of errors) this.logError(`Подписка не обновилась — ${e}`);
+    for (const e of errors) this.logError(t("Подписка не обновилась — {0}", [e]));
     this.writeLog(
       "info",
       `Обновление подписок${silent ? " (авто)" : ""}: ` +
-        next.map((x) => `«${x.title}» ${x.nodes.filter((n) => !n.divider).length} серв.`).join(", "),
+        next.map((x) => t("«{0}» {1} серв.", [x.title, x.nodes.filter((n) => !n.divider).length])).join(", "),
     );
     if (errors.length < this.subs.length) {
-      this.log({ kind: "subscription", id: newId(), at: Date.now(), text: silent ? "Подписки обновлены автоматически" : "Подписки обновлены" });
+      this.log({ kind: "subscription", id: newId(), at: Date.now(), text: silent ? t("Подписки обновлены автоматически") : t("Подписки обновлены") });
     }
     this.emit({ refreshingSub: null });
     this.pingAfterUpdate(next.map((x) => x.url));
     if (errors.length && !silent) this.emit({ error: errors.join("\n") });
-    else if (!silent) this.toast("Подписки обновлены");
+    else if (!silent) this.toast(t("Подписки обновлены"));
   }
 
   async removeSubscription(url: string) {
@@ -883,9 +884,9 @@ export class TauriBackend implements Backend {
     const selectedBefore = this.s.selected;
     this.emit({ selected: selectedBefore?.subUrl === url ? null : selectedBefore });
     this.setSubs(this.subs.filter((x) => x.url !== url));
-    this.toaster.show(`Подписка «${removed.title}» удалена`, {
+    this.toaster.show(t("Подписка «{0}» удалена", [removed.title]), {
       id: "undo",
-      label: "Вернуть",
+      label: t("Вернуть"),
       run: () => {
         const subs = [...this.subs];
         subs.splice(Math.min(index, subs.length), 0, removed);
@@ -920,12 +921,12 @@ export class TauriBackend implements Backend {
 
   async pingNode(subUrl: string, nodeId: string) {
     if (this.s.state !== "disconnected") {
-      this.toast("Пинг проверяется при выключенном VPN");
+      this.toast(t("Пинг проверяется при выключенном VPN"));
       return;
     }
     await this.ping(subUrl, true, [nodeId]);
     const node = this.s.subscriptions.find((x) => x.url === subUrl)?.nodes.find((n) => n.id === nodeId);
-    if (node) this.toast(node.pingMs && node.pingMs > 0 ? `${node.name}: ${node.pingMs} мс` : `${node.name}: нет связи`);
+    if (node) this.toast(node.pingMs && node.pingMs > 0 ? t("{0}: {1} мс", [node.name, node.pingMs]) : t("{0}: нет связи", [node.name]));
   }
 
   async openLink(url: string) {
@@ -935,7 +936,7 @@ export class TauriBackend implements Backend {
     else if (action.kind === "connect" && this.s.state === "disconnected") await this.toggle();
     else if (action.kind === "disconnect" && this.s.state === "connected") await this.toggle();
     else if (action.kind === "toggle") await this.toggle();
-    else if (action.kind === "unknown") this.toast("Ссылка bproxy:// не распознана — проверьте её у провайдера");
+    else if (action.kind === "unknown") this.toast(t("Ссылка bproxy:// не распознана — проверьте её у провайдера"));
   }
 
   async confirmLink(accept: boolean) {
@@ -975,7 +976,7 @@ export class TauriBackend implements Backend {
     let source: string | null = null;
     if (/^https:\/\//i.test(text)) {
       const res = await invoke<FetchResult>("plugin:bproxy|fetch_subscription", { url: text, userAgent: "B-Proxy", hwid: false });
-      if (res.status !== 200) throw new Error(`Не удалось загрузить профиль: сервер ответил ${res.status}`);
+      if (res.status !== 200) throw new Error(t("Не удалось загрузить профиль: сервер ответил {0}", [res.status]));
       body = res.body;
       source = text;
     }
@@ -990,7 +991,7 @@ export class TauriBackend implements Backend {
       profiles: same ? r.profiles.map((p) => (p.id === same.id ? next : p)) : [...r.profiles, next],
     });
     this.writeLog("info", `Профиль маршрутизации «${next.name}» ${same ? "обновлён" : "добавлен"}`);
-    this.toast(`Профиль «${next.name}» включён`);
+    this.toast(t("Профиль «{0}» включён", [next.name]));
     const need = needsGeo(next);
     if (need.geoip || need.geosite) await this.updateGeo();
   }
@@ -1002,7 +1003,7 @@ export class TauriBackend implements Backend {
     const before = r;
     const profiles = r.profiles.filter((p) => p.id !== id);
     this.setRoutingSettings({ ...r, profiles, activeId: r.activeId === id ? (profiles[0]?.id ?? null) : r.activeId, enabled: r.enabled && profiles.length > 0 });
-    this.toaster.show(`Профиль «${removed.name}» удалён`, { id: "undo", label: "Вернуть", run: () => this.setRoutingSettings(before) });
+    this.toaster.show(t("Профиль «{0}» удалён", [removed.name]), { id: "undo", label: t("Вернуть"), run: () => this.setRoutingSettings(before) });
   }
 
   setRouting(patch: Partial<Pick<Settings["routing"], "enabled" | "activeId">>) {
@@ -1041,7 +1042,7 @@ export class TauriBackend implements Backend {
       if (need.geosite || p.geositeUrl) jobs.push(["geosite.dat", p.geositeUrl]);
       for (const [name, url] of jobs) {
         if (!url) {
-          errors.push(`в профиле нет ссылки на ${name}`);
+          errors.push(t("в профиле нет ссылки на {0}", [name]));
           continue;
         }
         try {
@@ -1056,9 +1057,9 @@ export class TauriBackend implements Backend {
     }
     if (errors.length) {
       this.writeLog("warn", `Базы маршрутизации: ${errors.join("; ")}`);
-      if (!quiet) this.emit({ error: `Базы маршрутизации не обновились: ${errors.join("; ")}` });
+      if (!quiet) this.emit({ error: t("Базы маршрутизации не обновились: {0}", [errors.join("; ")]) });
     } else if (!quiet) {
-      this.toast("Базы маршрутизации обновлены");
+      this.toast(t("Базы маршрутизации обновлены"));
       this.offerReconnect();
     }
   }
@@ -1155,7 +1156,7 @@ export class TauriBackend implements Backend {
           x.url !== sub.url ? x : { ...x, nodes: x.nodes.map((n) => (n.divider ? n : { ...n, pingMs: results.get(n.id) ?? n.pingMs })) },
         ),
       );
-      if (!quiet) this.toast(`Пинг «${sub.title}» обновлён`);
+      if (!quiet) this.toast(t("Пинг «{0}» обновлён", [sub.title]));
     } finally {
       this.emit({ pinging: false, pingingSub: null });
     }
@@ -1203,9 +1204,9 @@ export class TauriBackend implements Backend {
     if (!isMobile(this.platform)) void invoke("set_close_to_tray", { enabled: defaultSettings.desktop.closeToTray }).catch(() => undefined);
     this.updateAppearance({});
     this.persist();
-    this.toaster.show("Настройки сброшены", {
+    this.toaster.show(t("Настройки сброшены"), {
       id: "undo",
-      label: "Вернуть",
+      label: t("Вернуть"),
       run: () => {
         this.emit({ settings: before });
         this.updateAppearance({});

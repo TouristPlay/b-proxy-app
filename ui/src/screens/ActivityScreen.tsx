@@ -25,6 +25,7 @@ import { formatBytes, formatDuration, formatSpeed, plural, splitFlag } from "@/l
 import { useNow } from "@/lib/useMedia";
 import { cn } from "@/lib/utils";
 import { LogsSheet } from "./LogsSheet";
+import { LOCALE, t } from "@/lib/i18n";
 
 type Period = "today" | "week" | "month";
 type Metric = "traffic" | "time";
@@ -32,9 +33,9 @@ type Kind = "all" | "session" | "error";
 type Session = Extract<ActivityEntry, { kind: "session" }>;
 
 const periods: { id: Period; label: string; days: number }[] = [
-  { id: "today", label: "Сегодня", days: 1 },
-  { id: "week", label: "7 дней", days: 7 },
-  { id: "month", label: "30 дней", days: 30 },
+  { id: "today", label: t("Сегодня"), days: 1 },
+  { id: "week", label: t("7 дней"), days: 7 },
+  { id: "month", label: t("30 дней"), days: 30 },
 ];
 
 const platformName = { android: "Android", ios: "iOS", windows: "Windows", macos: "macOS", linux: "Linux" };
@@ -113,9 +114,9 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
     const text = supportReport(s.activity, { ...s.version, platform: platformName[detectPlatform()] });
     try {
       await navigator.clipboard.writeText(text);
-      flash("Журнал скопирован — вставьте его в чат поддержки");
+      flash(t("Журнал скопирован — вставьте его в чат поддержки"));
     } catch {
-      flash("Нет доступа к буферу обмена. Разрешите его приложению и попробуйте снова");
+      flash(t("Нет доступа к буферу обмена. Разрешите его приложению и попробуйте снова"));
     }
   }
 
@@ -129,7 +130,7 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
 
   return (
     <div className={embedded ? "w-full" : "mx-auto w-full max-w-md px-5 pt-[max(18px,env(safe-area-inset-top))] pb-32"}>
-      {!embedded && <h1 className="mb-5 font-display text-[28px] font-semibold tracking-[-0.02em]">Активность</h1>}
+      {!embedded && <h1 className="mb-5 font-display text-[28px] font-semibold tracking-[-0.02em]">{t("Активность")}</h1>}
 
       {live && s.state === "connected" && <LiveCard session={live} s={s} now={now} />}
 
@@ -138,48 +139,50 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
           <span className="flex size-14 items-center justify-center rounded-[18px] border border-amber/25 bg-amber/12 text-amber" aria-hidden>
             <ShieldCheck className="size-7" />
           </span>
-          <p className="mt-4 font-display text-lg font-semibold">Здесь появятся ваши подключения</p>
+          <p className="mt-4 font-display text-lg font-semibold">{t("Здесь появятся ваши подключения")}</p>
           <p className="mt-2 max-w-[32ch] text-[15px] text-balance text-ink-2">
-            Сколько времени вы были под защитой, сколько трафика прошло через VPN и какими серверами вы пользуетесь чаще
+            
+            {t("Сколько времени вы были под защитой, сколько трафика прошло через VPN и какими серверами вы пользуетесь чаще")}
           </p>
           {s.current && s.state === "disconnected" && (
             <Button variant="amber" className="mt-6" onClick={() => void backend.toggle()}>
-              Подключиться
+              
+              {t("Подключиться")}
             </Button>
           )}
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <Segmented label="Период" value={period} onChange={changePeriod} options={periods.map((p) => ({ id: p.id, label: p.label }))} />
+          <Segmented label={t("Период")} value={period} onChange={changePeriod} options={periods.map((p) => ({ id: p.id, label: p.label }))} />
 
           <div className="grid grid-cols-2 gap-3">
-            <section className="glass rounded-[22px] px-4 py-3.5" aria-label="Под защитой">
-              <p className="text-[13px] text-ink-2">Под защитой</p>
+            <section className="glass rounded-[22px] px-4 py-3.5" aria-label={t("Под защитой")}>
+              <p className="text-[13px] text-ink-2">{t("Под защитой")}</p>
               <p className="mt-1 font-display text-[24px] leading-tight font-semibold tracking-tight whitespace-nowrap tabular-nums">
                 <DurationValue ms={sum.protectedMs} />
               </p>
               <p className="mt-0.5 text-[13px] text-ink-3 tabular-nums">
-                {sum.sessions.length} {plural(sum.sessions.length, "сеанс", "сеанса", "сеансов")}
+                {sum.sessions.length} {plural(sum.sessions.length, t("сеанс"), t("сеанса"), t("сеансов"))}
                 {sum.errors > 0 && (
                   <span className="text-bad">
                     {" "}
-                    · {sum.errors} {plural(sum.errors, "ошибка", "ошибки", "ошибок")}
+                    · {sum.errors} {plural(sum.errors, t("ошибка"), t("ошибки"), t("ошибок"))}
                   </span>
                 )}
               </p>
             </section>
-            <section className="glass rounded-[22px] px-4 py-3.5" aria-label="Трафик через VPN">
-              <p className="text-[13px] text-ink-2">Через VPN</p>
+            <section className="glass rounded-[22px] px-4 py-3.5" aria-label={t("Трафик через VPN")}>
+              <p className="text-[13px] text-ink-2">{t("Через VPN")}</p>
               <p className="mt-1 font-display text-[24px] leading-tight font-semibold tracking-tight tabular-nums">
                 {formatBytes(sum.down + sum.up)}
               </p>
               <p className="mt-0.5 flex gap-2 text-[12.5px] whitespace-nowrap text-ink-3 tabular-nums">
                 <span className="flex items-center gap-0.5">
-                  <ArrowDown className="size-3.5" aria-label="получено" />
+                  <ArrowDown className="size-3.5" aria-label={t("получено")} />
                   {formatBytes(sum.down)}
                 </span>
                 <span className="flex items-center gap-0.5">
-                  <ArrowUp className="size-3.5" aria-label="отправлено" />
+                  <ArrowUp className="size-3.5" aria-label={t("отправлено")} />
                   {formatBytes(sum.up)}
                 </span>
               </p>
@@ -191,7 +194,8 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
           {sum.top.length > 0 && (
             <section className="glass rounded-[24px] p-2" aria-labelledby="top-servers">
               <h2 id="top-servers" className="px-2 pt-2 pb-1 text-[13px] font-medium text-ink-2">
-                Чаще всего
+                
+                {t("Чаще всего")}
               </h2>
               <ul className="flex flex-col">
                 {sum.top.map(([name, ms]) => {
@@ -202,7 +206,7 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
                       <button
                         type="button"
                         aria-pressed={active}
-                        aria-label={`${splitFlag(name).name}: ${humanDuration(ms)}. Показать в журнале`}
+                        aria-label={t("{0}: {1}. Показать в журнале", [splitFlag(name).name, humanDuration(ms)])}
                         onClick={() => setServer(active ? null : name)}
                         className={cn(
                           "flex w-full items-center gap-3 rounded-[16px] px-2 py-2.5 text-left transition-colors duration-[var(--dur)]",
@@ -235,7 +239,8 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
           <section aria-labelledby="journal" className="mt-1">
             <div className="mb-2 flex items-center justify-between gap-2 px-1">
               <h2 id="journal" className="text-[13px] font-medium text-ink-2">
-                Журнал
+                
+                {t("Журнал")}
               </h2>
               {filtered && (
                 <button
@@ -247,7 +252,8 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
                   }}
                   className="min-h-9 text-[13px] font-medium text-amber hover:text-amber-2"
                 >
-                  Сбросить фильтры
+                  
+                  {t("Сбросить фильтры")}
                 </button>
               )}
             </div>
@@ -255,9 +261,9 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
             <div className="mb-3 flex flex-wrap gap-2">
               {(
                 [
-                  ["all", "Всё"],
-                  ["session", "Подключения"],
-                  ["error", "Ошибки"],
+                  ["all", t("Всё")],
+                  ["session", t("Подключения")],
+                  ["error", t("Ошибки")],
                 ] as const
               ).map(([id, text]) => (
                 <Chip key={id} active={kind === id} onClick={() => setKind(id)}>
@@ -278,7 +284,7 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
 
             {journal.length === 0 && (
               <p className="glass rounded-[20px] px-4 py-4 text-[15px] text-ink-2">
-                {filtered ? "Под эти условия ничего не попало" : "За этот период подключений не было"}
+                {filtered ? t("Под эти условия ничего не попало") : t("За этот период подключений не было")}
               </p>
             )}
             <div className="flex flex-col gap-4">
@@ -295,29 +301,30 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
             </div>
 
             {pages > 1 && (
-              <nav aria-label="Страницы журнала" className="mt-3 flex items-center gap-2">
+              <nav aria-label={t("Страницы журнала")} className="mt-3 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => turn(current - 1)}
                   disabled={current === 0}
-                  aria-label="Предыдущая страница"
+                  aria-label={t("Предыдущая страница")}
                   className="glass flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
                 >
                   <ChevronLeft className="size-5" />
                 </button>
                 <div className="flex min-w-0 flex-1 flex-col items-center">
                   <span className="text-[14px] font-medium tabular-nums">
-                    {current + 1} из {pages}
+                    {current + 1} {" "}{t("из")}{" "}{pages}
                   </span>
                   <span className="text-[12px] text-ink-3 tabular-nums">
-                    записи {current * JOURNAL_PAGE + 1}–{Math.min((current + 1) * JOURNAL_PAGE, journalAll.length)} из {journalAll.length}
+                    
+                    {t("записи")}{" "}{current * JOURNAL_PAGE + 1}–{Math.min((current + 1) * JOURNAL_PAGE, journalAll.length)} {" "}{t("из")}{" "}{journalAll.length}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => turn(current + 1)}
                   disabled={current >= pages - 1}
-                  aria-label="Следующая страница"
+                  aria-label={t("Следующая страница")}
                   className="glass flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
                 >
                   <ChevronRight className="size-5" />
@@ -330,11 +337,13 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
             <div className="grid grid-cols-2 gap-2">
               <Button variant="glass" className="px-3" onClick={() => void copyReport()}>
                 <ClipboardCopy />
-                Для поддержки
+                
+                {t("Для поддержки")}
               </Button>
               <Button variant="glass" className="px-3" onClick={() => setLogs(true)}>
                 <FileText />
-                Тех. журналы
+                
+                {t("Тех. журналы")}
               </Button>
             </div>
             <p aria-live="polite" className="min-h-5 text-center text-[13px] text-good">
@@ -342,10 +351,12 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
             </p>
             <Button variant="ghost" className="text-bad hover:text-bad" onClick={() => backend.clearActivity()}>
               <Trash2 />
-              Очистить журнал
+              
+              {t("Очистить журнал")}
             </Button>
             <p className="px-2 text-center text-[13px] text-ink-3">
-              Журнал хранится только на этом устройстве. В отчёт для поддержки не попадают ссылки и ключи
+              
+              {t("Журнал хранится только на этом устройстве. В отчёт для поддержки не попадают ссылки и ключи")}
             </p>
           </div>
         </div>
@@ -360,23 +371,24 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
 function LiveCard({ session, s, now }: { session: Session; s: Snapshot; now: number }) {
   const rise = useEntrance("anim-rise");
   return (
-    <section className={cn("glass mb-4 rounded-[24px] border-good/30 p-4", rise)} aria-label="Текущее подключение">
+    <section className={cn("glass mb-4 rounded-[24px] border-good/30 p-4", rise)} aria-label={t("Текущее подключение")}>
       <div className="flex items-center gap-3">
         <Flag name={session.server} size="sm" />
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{splitFlag(session.server).name}</span>
           <span className="flex items-center gap-1.5 text-[13px] text-good tabular-nums">
             <span className="size-1.5 animate-pulse rounded-full bg-good" aria-hidden />
-            Сейчас · {formatDuration(now - session.startedAt)}
+            
+            {t("Сейчас ·")}{" "}{formatDuration(now - session.startedAt)}
           </span>
         </span>
         <span className="text-right text-[13px] text-ink-2 tabular-nums">
           <span className="flex items-center justify-end gap-1">
-            <ArrowDown className="size-3.5 text-good" aria-label="загрузка" />
+            <ArrowDown className="size-3.5 text-good" aria-label={t("загрузка")} />
             {formatSpeed(s.downSpeed ?? 0)}
           </span>
           <span className="flex items-center justify-end gap-1">
-            <ArrowUp className="size-3.5" aria-label="отдача" />
+            <ArrowUp className="size-3.5" aria-label={t("отдача")} />
             {formatSpeed(s.upSpeed ?? 0)}
           </span>
         </span>
@@ -401,9 +413,9 @@ function JournalRow({ entry: e, now, open, onToggle, s }: { entry: ActivityEntry
           <span className="min-w-0 flex-1">
             <span className="block truncate font-medium">{splitFlag(e.server).name}</span>
             <span className={cn("block text-[13px] tabular-nums", live ? "text-good" : e.end === "error" ? "text-bad" : "text-ink-2")}>
-              {live ? `Подключено с ${time(e.startedAt)}` : `${time(e.startedAt)}–${time(end)}`} · {humanDuration(dur)}
-              {e.end === "system" && " · прервано системой"}
-              {e.end === "error" && " · обрыв"}
+              {live ? t("Подключено с {0}", [time(e.startedAt)]) : `${time(e.startedAt)}–${time(end)}`} · {humanDuration(dur)}
+              {e.end === "system" && t(" · прервано системой")}
+              {e.end === "error" && t(" · обрыв")}
             </span>
           </span>
           <span className="shrink-0 text-right text-[13px] text-ink-2 tabular-nums">{formatBytes(e.down + e.up)}</span>
@@ -412,17 +424,17 @@ function JournalRow({ entry: e, now, open, onToggle, s }: { entry: ActivityEntry
         {open && (
           <div className="anim-status border-t border-edge px-4 py-3">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
-              <Detail term="Начало" value={`${dateFmt.format(e.startedAt)}, ${time(e.startedAt)}`} />
-              <Detail term="Длительность" value={humanDuration(dur)} />
-              <Detail term="Получено" value={formatBytes(e.down)} />
-              <Detail term="Отправлено" value={formatBytes(e.up)} />
-              <Detail term="Средняя скорость" value={formatSpeed(dur > 0 ? (e.down / dur) * 1000 : 0)} />
+              <Detail term={t("Начало")} value={`${dateFmt.format(e.startedAt)}, ${time(e.startedAt)}`} />
+              <Detail term={t("Длительность")} value={humanDuration(dur)} />
+              <Detail term={t("Получено")} value={formatBytes(e.down)} />
+              <Detail term={t("Отправлено")} value={formatBytes(e.up)} />
+              <Detail term={t("Средняя скорость")} value={formatSpeed(dur > 0 ? (e.down / dur) * 1000 : 0)} />
               <Detail
-                term="Чем закончилось"
-                value={live ? "Идёт сейчас" : e.end === "manual" ? "Отключили вы" : e.end === "system" ? "Прервала система" : "Обрыв связи"}
+                term={t("Чем закончилось")}
+                value={live ? t("Идёт сейчас") : e.end === "manual" ? t("Отключили вы") : e.end === "system" ? t("Прервала система") : t("Обрыв связи")}
               />
-              {e.subscription && <Detail term="Подписка" value={e.subscription} />}
-              {e.error && <Detail term="Ошибка" value={e.error} wide />}
+              {e.subscription && <Detail term={t("Подписка")} value={e.subscription} />}
+              {e.error && <Detail term={t("Ошибка")} value={e.error} wide />}
             </dl>
             {canReconnect && (
               <Button
@@ -435,7 +447,8 @@ function JournalRow({ entry: e, now, open, onToggle, s }: { entry: ActivityEntry
                 }}
               >
                 <Plug />
-                Подключиться к нему
+                
+                {t("Подключиться к нему")}
               </Button>
             )}
           </div>
@@ -455,7 +468,7 @@ function JournalRow({ entry: e, now, open, onToggle, s }: { entry: ActivityEntry
       </span>
       <span className="min-w-0 flex-1 pt-0.5">
         <span className="block text-[15px] leading-snug break-words">
-          {error && <span className="sr-only">Ошибка: </span>}
+          {error && <span className="sr-only">{t("Ошибка:")}{" "}</span>}
           {e.text}
         </span>
         <span className="block text-[13px] text-ink-3 tabular-nums">
@@ -507,13 +520,14 @@ function DayBars({
     <section className="glass rounded-[24px] p-4" aria-labelledby="by-day">
       <div className="mb-2 flex items-center justify-between gap-2">
         <h2 id="by-day" className="text-[13px] font-medium text-ink-2">
-          По дням
+          
+          {t("По дням")}
         </h2>
-        <div className="glass flex rounded-full p-0.5" role="group" aria-label="Что показать на графике">
+        <div className="glass flex rounded-full p-0.5" role="group" aria-label={t("Что показать на графике")}>
           {(
             [
-              ["traffic", "Трафик"],
-              ["time", "Время"],
+              ["traffic", t("Трафик")],
+              ["time", t("Время")],
             ] as const
           ).map(([id, text]) => (
             <button
@@ -538,12 +552,13 @@ function DayBars({
             <span className="font-medium text-amber">{dayTitle(picked.day, now)}:</span> {show(value(picked))}
             <span className="text-ink-3">
               {" "}
-              · {picked.sessions} {plural(picked.sessions, "сеанс", "сеанса", "сеансов")}
+              · {picked.sessions} {plural(picked.sessions, t("сеанс"), t("сеанса"), t("сеансов"))}
             </span>
           </>
         ) : (
           <span className="text-ink-2">
-            Всего {show(total)} <span className="text-ink-3">· выберите день</span>
+            
+            {t("Всего")}{" "}{show(total)} <span className="text-ink-3">{t("· выберите день")}</span>
           </span>
         )}
       </Entrance>
@@ -637,7 +652,7 @@ function Chip({ active, onClick, removable, children }: { active: boolean; onCli
       )}
     >
       {children}
-      {removable && <X className="size-3.5" aria-label="убрать" />}
+      {removable && <X className="size-3.5" aria-label={t("убрать")} />}
     </button>
   );
 }
@@ -651,15 +666,15 @@ function findServer(s: Snapshot, name: string) {
   return null;
 }
 
-const weekday = new Intl.DateTimeFormat("ru-RU", { weekday: "short" });
-const timeFmt = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" });
-const dateFmt = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
+const weekday = new Intl.DateTimeFormat(LOCALE, { weekday: "short" });
+const timeFmt = new Intl.DateTimeFormat(LOCALE, { hour: "2-digit", minute: "2-digit" });
+const dateFmt = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "long" });
 const time = (t: number) => timeFmt.format(t);
 
 function dayTitle(day: number, now: number) {
   const d = startOfDay(day);
-  if (d === startOfDay(now)) return "Сегодня";
-  if (d === startOfDay(now - 86_400_000)) return "Вчера";
+  if (d === startOfDay(now)) return t("Сегодня");
+  if (d === startOfDay(now - 86_400_000)) return t("Вчера");
   return dateFmt.format(day);
 }
 
@@ -669,19 +684,19 @@ function DurationValue({ ms }: { ms: number }) {
   const h = Math.floor(min / 60);
   const m = min % 60;
   const unit = "ml-0.5 mr-1.5 font-sans text-[14px] font-medium text-ink-2";
-  if (min < 1) return <span className="text-[18px]">меньше минуты</span>;
+  if (min < 1) return <span className="text-[18px]">{t("меньше минуты")}</span>;
   return (
     <>
       {h > 0 && (
         <>
           {h}
-          <span className={unit}>ч</span>
+          <span className={unit}>{t("ч")}</span>
         </>
       )}
       {(m > 0 || h === 0) && (
         <>
           {m}
-          <span className={unit}>мин</span>
+          <span className={unit}>{t("мин")}</span>
         </>
       )}
     </>
@@ -691,11 +706,11 @@ function DurationValue({ ms }: { ms: number }) {
 /** «2 ч 15 мин», «45 мин», «меньше минуты». */
 function humanDuration(ms: number) {
   const min = Math.floor(ms / 60_000);
-  if (min < 1) return "меньше минуты";
+  if (min < 1) return t("меньше минуты");
   const h = Math.floor(min / 60);
   const m = min % 60;
-  if (h === 0) return `${m} мин`;
-  return m ? `${h} ч ${m} мин` : `${h} ч`;
+  if (h === 0) return t("{0} мин", [m]);
+  return m ? t("{0} ч {1} мин", [h, m]) : t("{0} ч", [h]);
 }
 
 /** Сколько записей журнала на одной странице. */

@@ -6,6 +6,7 @@ import { IconTile } from "@/components/bits";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 type Which = "app" | "core";
 
@@ -42,15 +43,15 @@ export function LogsSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
       open={open}
       onOpenChange={onOpenChange}
       wide
-      title="Технические журналы"
-      description="Что делали приложение и ядро. Пригодится поддержке, если что-то не работает"
+      title={t("Технические журналы")}
+      description={t("Что делали приложение и ядро. Пригодится поддержке, если что-то не работает")}
       icon={<IconTile icon={FileText} tone="gray" />}
     >
-      <div className="glass mb-3 grid grid-cols-2 gap-1 rounded-2xl p-1" role="tablist" aria-label="Какой журнал">
+      <div className="glass mb-3 grid grid-cols-2 gap-1 rounded-2xl p-1" role="tablist" aria-label={t("Какой журнал")}>
         {(
           [
-            ["app", "Приложение"],
-            ["core", "Ядро Xray"],
+            ["app", t("Приложение")],
+            ["core", t("Ядро Xray")],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -72,22 +73,23 @@ export function LogsSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
       <pre
         ref={box}
         tabIndex={0}
-        aria-label={which === "app" ? "Журнал приложения" : "Журнал ядра"}
+        aria-label={which === "app" ? t("Журнал приложения") : t("Журнал ядра")}
         className="glass h-[42dvh] overflow-auto overscroll-contain rounded-[18px] p-3 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-ink-2"
       >
         {text == null
-          ? "Загружаем…"
+          ? t("Загружаем…")
           : text.trim()
             ? text
             : which === "core"
-              ? "Ядро ещё ничего не записало. Подключитесь, и здесь появятся его сообщения. Подробность — в «Ядро Xray» → уровень журнала"
-              : "Журнал пуст"}
+              ? t("Ядро ещё ничего не записало. Подключитесь, и здесь появятся его сообщения. Подробность — в «Ядро Xray» → уровень журнала")
+              : t("Журнал пуст")}
       </pre>
 
       <div className="mt-3 flex flex-wrap gap-2">
         <Button size="sm" variant="glass" onClick={() => void load()}>
           <RefreshCw />
-          Обновить
+          
+          {t("Обновить")}
         </Button>
         <Button
           size="sm"
@@ -96,25 +98,27 @@ export function LogsSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
           onClick={async () => {
             try {
               await navigator.clipboard.writeText(text ?? "");
-              flash("Скопировано");
+              flash(t("Скопировано"));
             } catch {
-              flash("Нет доступа к буферу обмена");
+              flash(t("Нет доступа к буферу обмена"));
             }
           }}
         >
           <ClipboardCopy />
-          Скопировать
+          
+          {t("Скопировать")}
         </Button>
         {desktop && (
           <Button
             size="sm"
             variant="ghost"
             onClick={async () => {
-              if (!(await backend.openLogsFolder())) flash("Папка журналов доступна только в приложении");
+              if (!(await backend.openLogsFolder())) flash(t("Папка журналов доступна только в приложении"));
             }}
           >
             <FolderOpen />
-            Открыть папку
+            
+            {t("Открыть папку")}
           </Button>
         )}
       </div>

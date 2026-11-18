@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Appearance, ThemeId } from "@/backend";
+import { t } from "@/lib/i18n";
 
 /**
  * Темы оформления. Тема задаёт акцентный цвет (кнопка, кольцо, переключатели)
@@ -21,7 +22,7 @@ export interface ThemePreset {
 export const themes: ThemePreset[] = [
   {
     id: "amber",
-    name: "Янтарь",
+    name: t("Янтарь"),
     accent: "#f2b04b",
     idle: ["#2b3a4c", "#1c2a3d", "#24313f"],
     active: ["#b8662c", "#5e3424", "#f2b04b"],
@@ -29,7 +30,7 @@ export const themes: ThemePreset[] = [
   },
   {
     id: "aqua",
-    name: "Аква",
+    name: t("Аква"),
     accent: "#4fe0c8",
     idle: ["#283544", "#1a2636", "#22303f"],
     active: ["#0f6e66", "#1e3f8f", "#4fe0c8"],
@@ -37,7 +38,7 @@ export const themes: ThemePreset[] = [
   },
   {
     id: "gold",
-    name: "Золото",
+    name: t("Золото"),
     accent: "#dcb56a",
     idle: ["#1d2547", "#141a33", "#1e2440"],
     active: ["#6d5222", "#1d2452", "#dcb56a"],
@@ -45,7 +46,7 @@ export const themes: ThemePreset[] = [
   },
   {
     id: "emerald",
-    name: "Изумруд",
+    name: t("Изумруд"),
     accent: "#b4e25a",
     idle: ["#22322a", "#18241e", "#1f2c25"],
     active: ["#3c6a1f", "#123526", "#b4e25a"],
@@ -53,7 +54,7 @@ export const themes: ThemePreset[] = [
   },
   {
     id: "mono",
-    name: "Графит",
+    name: t("Графит"),
     accent: "#e6e9ed",
     idle: ["#2c3036", "#1d2025", "#262a30"],
     active: ["#4a5058", "#2a2e35", "#c9ced6"],

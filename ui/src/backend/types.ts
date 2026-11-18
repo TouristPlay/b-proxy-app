@@ -109,6 +109,8 @@ export interface Appearance {
   /** Размытие стекла, px. */
   glassBlur: number;
   motion: boolean;
+  /** Язык интерфейса; "system" — как в системе. Смена перезагружает интерфейс. */
+  language: "system" | "ru" | "en";
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { ActivityEntry, SessionEnd } from "./types";
+import { LOCALE, t } from "@/lib/i18n";
 
 /**
  * Журнал активности: сеансы VPN, ошибки подключения, обновления подписок.
@@ -94,14 +95,14 @@ export const startOfDay = (t: number) => {
 
 /** Текст журнала для поддержки: без ссылок, ключей и адресов. */
 export function supportReport(list: ActivityEntry[], meta: { app: string; xray: string; platform: string }) {
-  const fmt = (t: number) => new Date(t).toLocaleString("ru-RU");
+  const fmt = (at: number) => new Date(at).toLocaleString(LOCALE);
   const lines = [`B-Proxy ${meta.app}, Xray ${meta.xray}, ${meta.platform}`, ""];
   for (const e of list.slice(0, 40)) {
     if (e.kind === "session") {
-      const end = { manual: "отключено", error: `ошибка: ${e.error ?? ""}`, system: "прервано системой" }[e.end ?? "manual"];
-      lines.push(`${fmt(e.startedAt)} — ${e.endedAt ? fmt(e.endedAt) : "идёт"} · ${e.server} · ${e.endedAt ? end : "подключено"}`);
+      const end = { manual: t("отключено"), error: t("ошибка: {0}", [e.error ?? ""]), system: t("прервано системой") }[e.end ?? "manual"];
+      lines.push(`${fmt(e.startedAt)} — ${e.endedAt ? fmt(e.endedAt) : t("идёт")} · ${e.server} · ${e.endedAt ? end : t("подключено")}`);
     } else if (e.kind === "error") {
-      lines.push(`${fmt(e.at)} · ошибка${e.server ? ` (${e.server})` : ""}: ${e.text}`);
+      lines.push(t("{0} · ошибка{1}: {2}", [fmt(e.at), e.server ? ` (${e.server})` : "", e.text]));
     } else {
       lines.push(`${fmt(e.at)} · ${e.text}`);
     }

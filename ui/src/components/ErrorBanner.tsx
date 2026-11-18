@@ -3,6 +3,7 @@ import { backend, useSnapshot } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useEntrance } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 /**
  * Ошибка подключения или подписки: что случилось и что можно сделать сразу —
@@ -27,7 +28,7 @@ function Banner({ onOpenServers, className }: { onOpenServers?: () => void; clas
           type="button"
           className="-mt-2 -mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-glass-2 hover:text-ink"
           onClick={() => backend.clearError()}
-          aria-label="Скрыть ошибку"
+          aria-label={t("Скрыть ошибку")}
         >
           <X className="size-4" />
         </button>
@@ -36,12 +37,14 @@ function Banner({ onOpenServers, className }: { onOpenServers?: () => void; clas
         <div className="mt-3 flex flex-wrap gap-2 pl-8">
           <Button size="sm" variant="glass" onClick={() => void backend.toggle()}>
             <RotateCcw />
-            Повторить
+            
+            {t("Повторить")}
           </Button>
           {onOpenServers && (
             <Button size="sm" variant="ghost" onClick={onOpenServers}>
               <Server />
-              Другой сервер
+              
+              {t("Другой сервер")}
             </Button>
           )}
         </div>

@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type * as React from "react";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 /** Нижняя шторка на телефоне, окно по центру на широком экране. */
 export function Sheet({
@@ -48,7 +49,7 @@ export function Sheet({
             </div>
             <Dialog.Close
               className="glass flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 hover:text-ink"
-              aria-label="Закрыть"
+              aria-label={t("Закрыть")}
             >
               <X className="size-5" />
             </Dialog.Close>

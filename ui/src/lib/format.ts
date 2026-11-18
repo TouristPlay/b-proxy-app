@@ -1,4 +1,6 @@
-const units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
+import { LANG, t } from "@/lib/i18n";
+
+const units = [t("Б"), t("КБ"), t("МБ"), t("ГБ"), t("ТБ")];
 
 export function formatBytes(bytes: number): string {
   let v = bytes;
@@ -8,10 +10,10 @@ export function formatBytes(bytes: number): string {
     i++;
   }
   const text = v >= 100 || i === 0 ? v.toFixed(0) : v.toFixed(1);
-  return `${text.replace(".", ",")} ${units[i]}`;
+  return `${LANG === "ru" ? text.replace(".", ",") : text} ${units[i]}`;
 }
 
-export const formatSpeed = (bps: number) => `${formatBytes(bps)}/с`;
+export const formatSpeed = (bps: number) => t("{0}/с", [formatBytes(bps)]);
 
 export function formatDuration(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -20,8 +22,8 @@ export function formatDuration(ms: number): string {
 }
 
 const months = [
-  "января", "февраля", "марта", "апреля", "мая", "июня",
-  "июля", "августа", "сентября", "октября", "ноября", "декабря",
+  t("января"), t("февраля"), t("марта"), t("апреля"), t("мая"), t("июня"),
+  t("июля"), t("августа"), t("сентября"), t("октября"), t("ноября"), t("декабря"),
 ];
 
 /** «13 октября», а если год не текущий — «13 октября 2028». */
@@ -50,6 +52,8 @@ export function splitFlag(raw: string): { code: string | null; name: string } {
 
 /** Склонение: 1 сервер, 2 сервера, 5 серверов. */
 export function plural(n: number, one: string, few: string, many: string): string {
+  // В английском две формы: 1 server, 2 servers (вторая — в «few» и «many»).
+  if (LANG === "en") return n === 1 ? one : many;
   const m10 = n % 10;
   const m100 = n % 100;
   if (m10 === 1 && m100 !== 11) return one;
