@@ -122,6 +122,8 @@ export class TauriBackend implements Backend {
         serverSort: saved?.settings?.serverSort ?? defaultSettings.serverSort,
         notifications: { ...defaultSettings.notifications, ...(saved?.settings?.notifications ?? {}) },
         desktop: { ...defaultSettings.desktop, ...(saved?.settings?.desktop ?? {}) },
+        network: { ...defaultSettings.network, ...(saved?.settings?.network ?? {}) },
+        localProxy: { ...defaultSettings.localProxy, ...(saved?.settings?.localProxy ?? {}) },
         appearance,
       },
       downSpeed: null,
@@ -745,7 +747,7 @@ export class TauriBackend implements Backend {
   private async load(url: string, previous?: StoredSubscription): Promise<StoredSubscription> {
     const res = await invoke<FetchResult>("plugin:bproxy|fetch_subscription", {
       url,
-      userAgent: USER_AGENT,
+      userAgent: this.s.settings.userAgent.trim() || USER_AGENT,
       hwid: this.s.settings.sendHwid,
     });
     const fresh = await parseSubscription(url, res, (text) => this.convertLinks(text), previous);

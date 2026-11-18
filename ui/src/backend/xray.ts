@@ -65,6 +65,50 @@ export function buildPingConfig(node: NodeConfig): string {
   return JSON.stringify({ outbounds: [{ ...main, tag: "proxy" }, ...others] });
 }
 
+/** Строка DNS из настроек → список серверов Xray: адреса, DoH (https://), tcp://, quic://. */
+export function dnsServers(raw: string): string[] {
+  const list = raw
+    .split(/[\s,;]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  if (list.length === 0) return ["1.1.1.1", "8.8.8.8"];
+  // Один простой адрес — добавим запасной, чтобы DNS не пропал вместе с ним.
+  return list.length === 1 && !list[0].includes("://") ? [...new Set([list[0], "8.8.8.8"])] : list;
+}
+
+/**
+ * Исключения пользователя → правило «напрямую»: IP и подсети — в ip, остальное — домены.
+ * Можно писать с префиксами Xray (domain:, full:, regexp:, keyword:) или просто example.com.
+ */
+export function exclusionRules(list: string[]): Rule[] {
+  const ip: string[] = [];
+  const domain: string[] = [];
+  for (const raw of list) {
+    const x = raw.trim();
+    if (!x || x.startsWith("#")) continue;
+    if (/^[0-9.]+(\/\d+)?$/.test(x) || (/^[0-9a-f:]+(\/\d+)?$/i.test(x) && x.includes(":"))) ip.push(x);
+    else if (/^(domain|full|regexp|keyword|geosite|ext):/.test(x)) domain.push(x);
+    else domain.push(`domain:${x.replace(/^\*\./, "").replace(/^https?:\/\//, "").replace(/\/.*$/, "")}`);
+  }
+  return [
+    ...(domain.length ? [{ type: "field", domain, outboundTag: "direct" }] : []),
+    ...(ip.length ? [{ type: "field", ip, outboundTag: "direct" }] : []),
+  ];
+}
+
+/**
+ * Mux: только там, где он совместим. С XTLS Vision (flow) и XHTTP (у него своё
+ * мультиплексирование) Mux ломает соединение — такие серверы не трогаем.
+ */
+function withMux(o: Outbound, concurrency: number): Outbound {
+  if (!["vless", "vmess", "trojan", "shadowsocks"].includes(String(o.protocol))) return o;
+  const settings = (o.settings ?? {}) as { vnext?: { users?: { flow?: string }[] }[] };
+  const flow = settings.vnext?.some((v) => v.users?.some((u) => u.flow));
+  const network = (o.streamSettings as { network?: string } | undefined)?.network;
+  if (flow || network === "xhttp" || network === "splithttp") return o;
+  return { ...o, mux: { enabled: true, concurrency, xudpConcurrency: 16, xudpProxyUDP443: "reject" } };
+}
+
 /** Протоколы серверов: к ним применяется фрагментация. */
 const SERVER_PROTOCOLS = new Set(["vless", "vmess", "trojan", "shadowsocks", "socks", "http", "hysteria2", "hysteria"]);
 
@@ -119,7 +163,8 @@ export function buildConfig(
   if (core.noLimitMode) env.BPROXY_AGGRESSIVE_GC = "1";
 
   // Outbound'ы провайдера плюс наши служебные, если их нет.
-  const outbounds: Outbound[] = node.outbounds.map((o) => {
+  const outbounds: Outbound[] = node.outbounds.map((raw) => {
+    const o = core.mux ? withMux(raw, core.muxConcurrency) : raw;
     if (!useFragment || !SERVER_PROTOCOLS.has(String(o.protocol))) return o;
     // Соединение до сервера идёт через outbound «fragment».
     const stream = { ...((o.streamSettings as Record<string, unknown>) ?? {}) };
@@ -130,6 +175,19 @@ export function buildConfig(
   });
   const has = (tag: string) => outbounds.some((o) => o.tag === tag);
   if (!has("direct")) outbounds.push({ tag: "direct", protocol: "freedom" });
+  // С IPv6: какой адрес пробовать первым для сайтов, которые идут напрямую.
+  if (s.ipv6) {
+    const i = outbounds.findIndex((o) => o.tag === "direct" && o.protocol === "freedom");
+    const direct = outbounds[i];
+    const stream = (direct.streamSettings as Record<string, unknown>) ?? {};
+    outbounds[i] = {
+      ...direct,
+      streamSettings: {
+        ...stream,
+        sockopt: { ...((stream.sockopt as object) ?? {}), domainStrategy: s.network.preferIpv6 ? "UseIPv6v4" : "UseIPv4v6" },
+      },
+    };
+  }
   if (!has("block")) outbounds.push({ tag: "block", protocol: "blackhole" });
   outbounds.push({ tag: "dns-out", protocol: "dns" });
   if (useFragment) outbounds.push({ tag: "fragment", protocol: "freedom", settings: { fragment } });
@@ -147,10 +205,10 @@ export function buildConfig(
       levels: { "0": { connIdle: core.idleTimeoutSec, handshake: 8, uplinkOnly: 2, downlinkOnly: 5 } },
     },
     dns: {
-      servers: [s.dnsServer || "1.1.1.1", "8.8.8.8"],
+      servers: dnsServers(s.dnsServer),
       queryStrategy: s.ipv6 ? "UseIP" : "UseIPv4",
     },
-    inbounds: [tunInbound(s, platform)],
+    inbounds: [tunInbound(s, platform), ...proxyInbounds(s, platform)],
     outbounds,
     ...(node.observatory ? { observatory: node.observatory } : {}),
     ...(node.burstObservatory ? { burstObservatory: node.burstObservatory } : {}),
@@ -160,7 +218,8 @@ export function buildConfig(
       rules: [
         { type: "field", inboundTag: ["tun-in"], port: "53", outboundTag: "dns-out" },
         ...(s.blockAds ? [{ type: "field", domain: AD_DOMAINS, outboundTag: "block" }] : []),
-        { type: "field", ip: PRIVATE_CIDRS, outboundTag: "direct" },
+        ...(s.network.lanDirect ? [{ type: "field", ip: PRIVATE_CIDRS, outboundTag: "direct" }] : []),
+        ...exclusionRules(s.network.exclusions),
         ...(s.russianSitesDirect
           ? [
               {
@@ -176,6 +235,21 @@ export function buildConfig(
     },
   };
   return JSON.stringify(config);
+}
+
+/**
+ * Локальный прокси на компьютере: SOCKS5 на порту из настроек, HTTP — на следующем.
+ * Трафик через них идёт по тем же правилам, что и через туннель.
+ */
+function proxyInbounds(s: Settings, platform: Platform) {
+  const p = s.localProxy;
+  if (!p.enabled || isMobile(platform)) return [];
+  const listen = p.lan ? "0.0.0.0" : "127.0.0.1";
+  const sniffing = { enabled: s.core.sniffing, destOverride: ["http", "tls", "quic"], routeOnly: s.core.routeOnly };
+  return [
+    { tag: "socks-in", listen, port: p.port, protocol: "socks", settings: { udp: true, auth: "noauth" }, sniffing },
+    { tag: "http-in", listen, port: p.port + 1, protocol: "http", settings: {}, sniffing },
+  ];
 }
 
 function tunInbound(s: Settings, platform: Platform) {

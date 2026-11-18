@@ -165,6 +165,24 @@ export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
             aside={<Switch id="upd-ping" checked={u.pingAfter} onCheckedChange={(pingAfter) => set({ pingAfter })} />}
           />
         </Group>
+        <Group title="User-Agent">
+          <label className="block px-4 py-3.5">
+            <input
+              defaultValue={settings.userAgent}
+              key={settings.userAgent}
+              onBlur={(e) => void backend.updateSettings({ userAgent: e.target.value.trim() })}
+              onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+              placeholder="Стандартный"
+              autoComplete="off"
+              spellCheck={false}
+              aria-label="Свой User-Agent для загрузки подписок"
+              className="w-full bg-transparent font-mono text-[14px] text-ink placeholder:font-sans placeholder:text-ink-3 focus:outline-none"
+            />
+            <span className="mt-1 block text-[13px] text-ink-3">
+              Меняйте, только если провайдер просит. Пусто — стандартный: панель отдаёт полный конфиг серверов
+            </span>
+          </label>
+        </Group>
         <p className="px-2 text-[13px] text-ink-3">
           Обновить одного провайдера вручную — кнопкой рядом с его названием в «Серверах».
         </p>

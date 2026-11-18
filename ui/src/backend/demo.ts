@@ -67,6 +67,8 @@ export const defaultCore: CoreSettings = {
   sniffing: true,
   routeOnly: true,
   mtu: 0,
+  mux: false,
+  muxConcurrency: 8,
   logLevel: "warning",
 };
 
@@ -88,6 +90,9 @@ export const defaultSettings: Settings = {
   ipv6: false,
   dnsServer: "1.1.1.1",
   sendHwid: true,
+  network: { lanDirect: true, exclusions: [], preferIpv6: false },
+  localProxy: { enabled: false, port: 10808, lan: false },
+  userAgent: "",
   ping: { method: "tcp", timeoutSec: 5, url: "https://www.gstatic.com/generate_204", onStart: true },
   updates: { interval: "provider", onStart: true, pingAfter: false },
   autoConnect: false,

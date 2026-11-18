@@ -1,46 +1,16 @@
-import type { LucideIcon } from "lucide-react";
-import { AppWindow, Ban, Bell, ChevronRight, Copy, Fingerprint, FileText, Gauge, Power, Globe, Info, Network, Palette, Plus, RefreshCw, RotateCcw, Route, Scissors, Server, Trash2 } from "lucide-react";
+import { AppWindow, Plug, Wifi, Bell, ChevronRight, Copy, Fingerprint, FileText, Gauge, Power, Info, Palette, Plus, RefreshCw, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { backend, useSnapshot, type Settings } from "@/backend";
-import { Group, IconTile, Row, type Tone } from "@/components/bits";
+import { backend, useSnapshot } from "@/backend";
+import { Group, IconTile, Row } from "@/components/bits";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { AppearanceSheet } from "./AppearanceGroup";
 import { CoreSettingsSheet } from "./CoreSettingsSheet";
 import { intervalTitle, NotificationsSheet, PingSheet, UpdatesSheet } from "./PingUpdateSheets";
 import { LogsSheet } from "./LogsSheet";
+import { dnsPresets as dns, routes, RoutesSheet } from "./RoutesSheet";
 import { themeById } from "@/lib/theme";
-
-type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
-
-const routes: { key: BoolKey; title: string; short: string; hint: string; icon: LucideIcon; tone: Tone }[] = [
-  {
-    key: "russianSitesDirect",
-    title: "Российские сайты без VPN",
-    short: "РФ напрямую",
-    hint: "Банки, Госуслуги, сайты .ru и .рф открываются напрямую",
-    icon: Globe,
-    tone: "green",
-  },
-  {
-    key: "tlsFragment",
-    title: "Обход блокировок DPI",
-    short: "обход DPI",
-    hint: "Дробит начало соединения. Включайте, если сервер не отвечает",
-    icon: Scissors,
-    tone: "violet",
-  },
-  { key: "blockAds", title: "Блокировать рекламу", short: "без рекламы", hint: "Отсекает основные рекламные домены", icon: Ban, tone: "red" },
-  { key: "ipv6", title: "IPv6", short: "IPv6", hint: "Нужен, только если сервер его поддерживает", icon: Network, tone: "blue" },
-];
-
-const dns = [
-  { value: "1.1.1.1", title: "Cloudflare" },
-  { value: "8.8.8.8", title: "Google" },
-  { value: "9.9.9.9", title: "Quad9" },
-];
 
 export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd: () => void }) {
   const s = useSnapshot();
@@ -64,6 +34,8 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
   const [routing, setRouting] = useState(false);
   const [logs, setLogs] = useState(false);
   const ap = s.settings.appearance;
+  const lp = s.settings.localProxy;
+  const setProxy = (patch: Partial<typeof lp>) => void backend.updateSettings({ localProxy: { ...lp, ...patch } });
   const enabledRoutes = routes.filter((r) => s.settings[r.key]).map((r) => r.short);
   const dnsName = dns.find((d) => d.value === s.settings.dnsServer)?.title ?? s.settings.dnsServer;
   const routingHint = `${enabledRoutes.length ? enabledRoutes.join(", ") : "Всё через VPN"}; DNS ${dnsName}`;
@@ -199,6 +171,48 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
                 />
               }
             />
+            <Row
+              htmlFor="set-proxy"
+              icon={<IconTile icon={Plug} tone="violet" />}
+              title="Локальный прокси"
+              hint={
+                lp.enabled
+                  ? `SOCKS5 ${lp.lan ? "0.0.0.0" : "127.0.0.1"}:${lp.port}, HTTP :${lp.port + 1} — работает, пока VPN включён`
+                  : "SOCKS5 и HTTP для браузера или Telegram в настройках прокси"
+              }
+              aside={<Switch id="set-proxy" checked={lp.enabled} onCheckedChange={(enabled) => setProxy({ enabled })} />}
+            />
+            {lp.enabled && (
+              <>
+                <label className="flex items-center gap-3.5 px-4 py-3.5">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[16px] font-medium">Порт SOCKS5</span>
+                    <span className="block text-[13.5px] text-ink-2">HTTP — на следующем, {lp.port + 1}</span>
+                  </span>
+                  <input
+                    type="number"
+                    min={1024}
+                    max={65534}
+                    defaultValue={lp.port}
+                    key={lp.port}
+                    onBlur={(e) => {
+                      const port = Math.round(Number(e.target.value));
+                      if (port >= 1024 && port <= 65534) setProxy({ port });
+                      else e.target.value = String(lp.port);
+                    }}
+                    aria-label="Порт SOCKS5"
+                    className="w-24 rounded-xl border border-edge-2 bg-glass px-3 py-2 text-right font-display tabular-nums text-ink focus:border-amber/60 focus:outline-none"
+                  />
+                </label>
+                <Row
+                  htmlFor="set-proxy-lan"
+                  icon={<IconTile icon={Wifi} tone="amber" />}
+                  title="Доступ из локальной сети"
+                  hint="Другие устройства в вашей Wi-Fi сети смогут ходить через этот прокси"
+                  aside={<Switch id="set-proxy-lan" checked={lp.lan} onCheckedChange={(lan) => setProxy({ lan })} />}
+                />
+              </>
+            )}
           </Group>
         )}
 
@@ -241,52 +255,7 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
       <NotificationsSheet open={notifications} onOpenChange={setNotifications} />
       <LogsSheet open={logs} onOpenChange={setLogs} />
       <AppearanceSheet open={look} onOpenChange={setLook} />
-      <Sheet
-        open={routing}
-        onOpenChange={setRouting}
-        wide
-        title="Маршруты и DNS"
-        description="Что идёт через VPN, а что напрямую"
-        icon={<IconTile icon={Route} tone="green" />}
-      >
-        <div className="flex flex-col gap-6">
-          <Group title="Маршруты">
-            {routes.map((r) => (
-              <Row
-                key={r.key}
-                htmlFor={`set-${r.key}`}
-                icon={<IconTile icon={r.icon} tone={r.tone} />}
-                title={r.title}
-                hint={r.hint}
-                aside={
-                  <Switch
-                    id={`set-${r.key}`}
-                    checked={s.settings[r.key]}
-                    onCheckedChange={(v) => void backend.updateSettings({ [r.key]: v } as Partial<Settings>)}
-                  />
-                }
-              />
-            ))}
-          </Group>
-
-          <Group title="DNS внутри туннеля">
-            <RadioGroup
-              value={s.settings.dnsServer}
-              onValueChange={(v) => void backend.updateSettings({ dnsServer: v })}
-              className="divide-y divide-edge"
-              aria-label="DNS-сервер"
-            >
-              {dns.map((d) => (
-                <label key={d.value} className="flex cursor-pointer items-center gap-3.5 px-4 py-3.5">
-                  <RadioGroupItem value={d.value} aria-label={d.title} />
-                  <span className="flex-1 font-medium">{d.title}</span>
-                  <span className="text-sm text-ink-3 tabular-nums">{d.value}</span>
-                </label>
-              ))}
-            </RadioGroup>
-          </Group>
-        </div>
-      </Sheet>
+      <RoutesSheet open={routing} onOpenChange={setRouting} />
       <Sheet open={about} onOpenChange={setAbout} title="О приложении" icon={<IconTile icon={Info} tone="gray" />}>
         <Group>
           <Row title="Версия приложения" aside={<span className="text-ink-2 tabular-nums">{s.version.app}</span>} />

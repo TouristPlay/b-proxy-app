@@ -85,6 +85,10 @@ export interface CoreSettings {
   routeOnly: boolean;
   /** MTU туннеля, 0 — автоматически. */
   mtu: number;
+  /** Мультиплексирование: несколько соединений в одном канале до сервера. */
+  mux: boolean;
+  /** Сколько соединений в одном канале Mux. */
+  muxConcurrency: number;
   logLevel: "none" | "error" | "warning" | "info" | "debug";
 }
 
@@ -146,6 +150,25 @@ export interface NotificationSettings {
   announce: boolean;
 }
 
+/** Сеть: локальная сеть, исключения, IPv6. */
+export interface NetworkSettings {
+  /** Адреса локальной сети (роутер, принтер, NAS) — напрямую, мимо VPN. */
+  lanDirect: boolean;
+  /** Свои исключения: домены и IP/подсети, которые идут напрямую. */
+  exclusions: string[];
+  /** При включённом IPv6 сначала пробовать IPv6. */
+  preferIpv6: boolean;
+}
+
+/** Локальный прокси (компьютер): SOCKS5 и HTTP для программ, которым не нужен весь VPN. */
+export interface LocalProxySettings {
+  enabled: boolean;
+  /** Порт SOCKS5; HTTP — на следующем. */
+  port: number;
+  /** Слушать все адреса, а не только 127.0.0.1: прокси доступен другим устройствам в сети. */
+  lan: boolean;
+}
+
 /** Только компьютер. */
 export interface DesktopSettings {
   /** Крестик прячет окно в трей, а не закрывает приложение. */
@@ -164,7 +187,12 @@ export interface Settings {
   tlsFragment: boolean;
   blockAds: boolean;
   ipv6: boolean;
+  /** DNS внутри туннеля: один или несколько адресов через запятую, можно DoH (https://…). */
   dnsServer: string;
+  network: NetworkSettings;
+  localProxy: LocalProxySettings;
+  /** Свой User-Agent для загрузки подписок; пусто — стандартный. */
+  userAgent: string;
   /** Отправлять провайдеру HWID и сведения об устройстве (лимит устройств в панели). */
   sendHwid: boolean;
   /** Подключаться сразу после запуска приложения. */

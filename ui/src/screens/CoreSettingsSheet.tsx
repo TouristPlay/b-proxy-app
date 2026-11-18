@@ -1,4 +1,4 @@
-import { Cpu, Eye, Gauge, GitFork, Minus, Plus, ScrollText, Timer, Waves, Zap } from "lucide-react";
+import { Combine, Cpu, Eye, Gauge, GitFork, Layers, Minus, Plus, ScrollText, Timer, Waves, Zap } from "lucide-react";
 import { useId } from "react";
 import { backend, useSnapshot, type CoreSettings } from "@/backend";
 import { Group, IconTile, Row } from "@/components/bits";
@@ -112,6 +112,34 @@ export function CoreSettingsSheet({ open, onOpenChange }: { open: boolean; onOpe
               />
             }
           />
+        </Group>
+
+        <Group title="Мультиплексирование">
+          <Row
+            htmlFor="core-mux"
+            icon={<IconTile icon={Combine} tone="blue" />}
+            title="Mux"
+            hint="Несколько соединений в одном канале до сервера: быстрее открываются страницы, меньше рукопожатий. Серверы с XTLS Vision и XHTTP работают без него"
+            aside={<Switch id="core-mux" checked={c.mux} onCheckedChange={(v) => set({ mux: v })} />}
+          />
+          {c.mux && (
+            <Row
+              icon={<IconTile icon={Layers} tone="gray" />}
+              title="Соединений в канале"
+              hint="Больше — экономнее, меньше — стабильнее на плохой сети"
+              aside={
+                <Stepper
+                  value={c.muxConcurrency}
+                  min={1}
+                  max={32}
+                  step={1}
+                  format={(v) => String(v)}
+                  label="Соединений в канале Mux"
+                  onChange={(v) => set({ muxConcurrency: v })}
+                />
+              }
+            />
+          )}
         </Group>
 
         <Group title="Отладка">
