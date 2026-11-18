@@ -1,4 +1,5 @@
 import type { Settings } from "./types";
+import { profileDns, profileRules } from "./routing";
 import { mainOutbound, type NodeConfig, type Outbound, type ProviderFragment, type Rule } from "./subscription";
 
 /** Платформа, на которой работает приложение. */
@@ -147,8 +148,11 @@ export function buildConfig(
   providerFragment: ProviderFragment | null,
   /** Файл журнала ядра (logs/xray.log). На iOS ядро в расширении, туда пути нет — пишет в системный журнал. */
   logFile?: string | null,
+  /** Папка с geoip.dat / geosite.dat для профиля маршрутизации. */
+  geoDir?: string | null,
 ): string {
   const core = s.core;
+  const profile = activeProfile(s);
   const useFragment = s.tlsFragment || providerFragment != null;
   const fragment = {
     packets: providerFragment?.packets ?? "tlshello",
@@ -161,6 +165,8 @@ export function buildConfig(
   const env: Record<string, string> = {};
   if (isMobile(platform)) env.BPROXY_MEMORY_LIMIT_MB = String(core.memoryLimitMb);
   if (core.noLimitMode) env.BPROXY_AGGRESSIVE_GC = "1";
+  // Базы geoip/geosite профиля маршрутизации ядро ищет в этой папке.
+  if (profile && geoDir) env["xray.location.asset"] = geoDir;
 
   // Outbound'ы провайдера плюс наши служебные, если их нет.
   const outbounds: Outbound[] = node.outbounds.map((raw) => {
@@ -196,6 +202,9 @@ export function buildConfig(
   const theirs = providerRules(node.rules);
   const catchAll = theirs.find(isCatchAll) ?? { type: "field", network: "tcp,udp", outboundTag: "proxy" };
   const middle = theirs.filter((r) => !isCatchAll(r));
+  // Профиль маршрутизации заменяет «РФ напрямую», «Блокировать рекламу» и DNS из настроек.
+  const fromProfile = profile ? profileRules(profile, catchAll) : null;
+  const profileDnsConfig = profile ? profileDns(profile) : null;
 
   const config = {
     // Журнал доступа (какие сайты открывались) не ведём никогда — только ошибки и события ядра.
@@ -205,7 +214,7 @@ export function buildConfig(
       levels: { "0": { connIdle: core.idleTimeoutSec, handshake: 8, uplinkOnly: 2, downlinkOnly: 5 } },
     },
     dns: {
-      servers: dnsServers(s.dnsServer),
+      ...(profileDnsConfig ?? { servers: dnsServers(s.dnsServer) }),
       queryStrategy: s.ipv6 ? "UseIP" : "UseIPv4",
     },
     inbounds: [tunInbound(s, platform), ...proxyInbounds(s, platform)],
@@ -213,14 +222,15 @@ export function buildConfig(
     ...(node.observatory ? { observatory: node.observatory } : {}),
     ...(node.burstObservatory ? { burstObservatory: node.burstObservatory } : {}),
     routing: {
-      domainStrategy: "IPIfNonMatch",
+      domainStrategy: profile?.domainStrategy ?? "IPIfNonMatch",
       ...(node.balancers?.length ? { balancers: node.balancers } : {}),
       rules: [
         { type: "field", inboundTag: ["tun-in"], port: "53", outboundTag: "dns-out" },
-        ...(s.blockAds ? [{ type: "field", domain: AD_DOMAINS, outboundTag: "block" }] : []),
+        ...(s.blockAds && !profile ? [{ type: "field", domain: AD_DOMAINS, outboundTag: "block" }] : []),
         ...(s.network.lanDirect ? [{ type: "field", ip: PRIVATE_CIDRS, outboundTag: "direct" }] : []),
         ...exclusionRules(s.network.exclusions),
-        ...(s.russianSitesDirect
+        ...(fromProfile?.rules ?? []),
+        ...(s.russianSitesDirect && !profile
           ? [
               {
                 type: "field",
@@ -230,7 +240,7 @@ export function buildConfig(
             ]
           : []),
         ...middle,
-        catchAll,
+        fromProfile?.final ?? catchAll,
       ],
     },
   };
@@ -277,4 +287,10 @@ function tunInbound(s: Settings, platform: Platform) {
       routeOnly: core.routeOnly,
     },
   };
+}
+
+/** Профиль маршрутизации, если он включён и выбран. */
+export function activeProfile(s: Settings) {
+  const r = s.routing;
+  return r.enabled ? (r.profiles.find((p) => p.id === r.activeId) ?? null) : null;
 }

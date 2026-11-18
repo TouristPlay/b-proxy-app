@@ -16,6 +16,8 @@
 - `allow-open-logs-dir`
 - `allow-tcp-ping`
 - `allow-device-info`
+- `allow-geo-info`
+- `allow-download-geo`
 
 ## Permission Table
 
@@ -55,6 +57,32 @@ Denies the device_info command without any pre-configured scope.
 <tr>
 <td>
 
+`bproxy:allow-download-geo`
+
+</td>
+<td>
+
+Enables the download_geo command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-download-geo`
+
+</td>
+<td>
+
+Denies the download_geo command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `bproxy:allow-fetch-subscription`
 
 </td>
@@ -74,6 +102,32 @@ Enables the fetch_subscription command without any pre-configured scope.
 <td>
 
 Denies the fetch_subscription command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-geo-info`
+
+</td>
+<td>
+
+Enables the geo_info command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-geo-info`
+
+</td>
+<td>
+
+Denies the geo_info command without any pre-configured scope.
 
 </td>
 </tr>

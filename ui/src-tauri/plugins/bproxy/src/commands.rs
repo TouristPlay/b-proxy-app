@@ -1,4 +1,5 @@
 use crate::device::DeviceInfo;
+use crate::geo::{self, GeoFile, GeoInfo};
 use crate::logs::{self, LogInfo};
 use crate::models::{FetchResult, PrepareResult, StartArgs, Stats};
 use crate::{subscription, VpnExt};
@@ -19,6 +20,24 @@ pub(crate) async fn fetch_subscription<R: Runtime>(
 ) -> Result<FetchResult, String> {
     let device = if hwid.unwrap_or(true) { app.vpn().device_info().await.ok() } else { None };
     subscription::fetch(&url, &user_agent, device.as_ref()).await
+}
+
+/// Папка баз geoip/geosite и что в ней лежит.
+#[command]
+pub(crate) async fn geo_info<R: Runtime>(app: AppHandle<R>) -> Result<GeoInfo, String> {
+    Ok(geo::info(&app.vpn().geo_dir().await?))
+}
+
+/// Скачать geoip.dat или geosite.dat по ссылке из профиля маршрутизации.
+#[command]
+pub(crate) async fn download_geo<R: Runtime>(app: AppHandle<R>, name: String, url: String) -> Result<GeoFile, String> {
+    let dir = app.vpn().geo_dir().await?;
+    let file = geo::download(dir, &name, &url).await;
+    match &file {
+        Ok(f) => logs::info("geo", &format!("{} скачан: {} КБ", f.name, f.size / 1024)),
+        Err(e) => logs::error("geo", e),
+    }
+    file
 }
 
 /// HWID и сведения об устройстве — те же, что уходят провайдеру с подпиской.

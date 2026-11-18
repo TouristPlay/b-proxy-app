@@ -169,6 +169,47 @@ export interface LocalProxySettings {
   lan: boolean;
 }
 
+/**
+ * Профиль маршрутизации в формате Happ/INCY (например, RoscomVPN): какие сайты и адреса
+ * идут напрямую, через VPN или блокируются, плюс DNS и ссылки на базы geoip/geosite.
+ */
+export interface RoutingProfile {
+  id: string;
+  name: string;
+  /** Откуда взят: ссылка, если профиль добавлен по https — по ней же обновляется. */
+  source: string | null;
+  directSites: string[];
+  directIp: string[];
+  proxySites: string[];
+  proxyIp: string[];
+  blockSites: string[];
+  blockIp: string[];
+  /** true — всё остальное через VPN, false — всё остальное напрямую. */
+  globalProxy: boolean;
+  /** Порядок групп правил: "block-proxy-direct" и т. п. */
+  routeOrder: string;
+  domainStrategy: string;
+  /** DNS для сайтов через VPN и для сайтов напрямую (адрес или https://…/dns-query). */
+  remoteDns: string;
+  domesticDns: string;
+  dnsHosts: Record<string, string>;
+  geoipUrl: string;
+  geositeUrl: string;
+  addedAt: number;
+}
+
+export interface RoutingSettings {
+  enabled: boolean;
+  activeId: string | null;
+  profiles: RoutingProfile[];
+}
+
+/** Базы geoip.dat и geosite.dat на устройстве. */
+export interface GeoState {
+  files: { name: string; size: number; updatedAt: number }[];
+  downloading: boolean;
+}
+
 /** Только компьютер. */
 export interface DesktopSettings {
   /** Крестик прячет окно в трей, а не закрывает приложение. */
@@ -190,6 +231,7 @@ export interface Settings {
   /** DNS внутри туннеля: один или несколько адресов через запятую, можно DoH (https://…). */
   dnsServer: string;
   network: NetworkSettings;
+  routing: RoutingSettings;
   localProxy: LocalProxySettings;
   /** Свой User-Agent для загрузки подписок; пусто — стандартный. */
   userAgent: string;
@@ -235,6 +277,8 @@ export interface Snapshot {
   autostart: boolean | null;
   /** HWID и устройство — то, что уходит провайдеру; null — ещё не узнали. */
   device: DeviceInfo | null;
+  /** Базы geoip/geosite; null — платформа не умеет (демо). */
+  geo: GeoState | null;
   /** Журнал: сеансы VPN и события, новые сверху. Хранится только на устройстве. */
   activity: ActivityEntry[];
 }
@@ -292,6 +336,12 @@ export interface Backend {
   /** Своё название сервера; null — вернуть название из подписки. */
   renameNode(subUrl: string, nodeId: string, name: string | null): void;
   setNodeHidden(subUrl: string, nodeId: string, hidden: boolean): void;
+  /** Профиль маршрутизации: ссылка https, диплинк happ:// incy:// bproxy:// или JSON. */
+  addRoutingProfile(input: string): Promise<void>;
+  removeRoutingProfile(id: string): void;
+  setRouting(patch: Partial<Pick<RoutingSettings, "enabled" | "activeId">>): void;
+  /** Скачать базы geoip/geosite активного профиля заново. */
+  updateGeo(): Promise<void>;
   updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>): Promise<void>;
   updateCore(patch: Partial<CoreSettings>): Promise<void>;
   updateAppearance(patch: Partial<Appearance>): void;

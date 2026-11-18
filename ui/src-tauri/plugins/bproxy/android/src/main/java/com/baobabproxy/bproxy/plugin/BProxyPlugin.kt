@@ -63,6 +63,15 @@ class BProxyPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     /** Разрешение на VPN: системный диалог при первом подключении. */
+    /** Папка баз geoip/geosite: служба VPN в том же процессе, ей хватает filesDir. */
+    @Command
+    fun geoDir(invoke: Invoke) {
+        val dir = java.io.File(activity.filesDir, "geo").apply { mkdirs() }
+        val ret = JSObject()
+        ret.put("path", dir.absolutePath)
+        invoke.resolve(ret)
+    }
+
     /** Сырой идентификатор устройства для HWID (хэширует Rust) и сведения о системе. */
     @Command
     fun deviceInfo(invoke: Invoke) {

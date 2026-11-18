@@ -144,6 +144,12 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   `x-device-os`, `x-ver-os`, `x-device-model` (выключается настройкой «Отправлять HWID»). HWID — SHA-256 от
   «bproxy_hwid_» + machine-id / MachineGuid / IOPlatformUUID / ANDROID_ID / identifierForVendor (iOS хранит в Keychain),
   в виде UUID. Ответы `x-hwid-max-devices-reached`, `x-hwid-limit`, `x-hwid-not-supported` превращаются в понятные ошибки.
+- Профили маршрутизации (формат Happ/INCY, например RoscomVPN): `backend/routing.ts` разбирает диплинк
+  `happ://routing/onadd/<base64>` / `incy://…` / `bproxy://…`, JSON или ссылку https. Правила идут в порядке
+  RouteOrder (block-proxy-direct), «через VPN» — туда же, куда правило провайдера «всё остальное».
+  DNS профиля: домашний (`https+local://`) для DirectSites, удалённый — для остального. Базы geoip.dat/geosite.dat
+  качает плагин (`download_geo`, `geo.rs`) в папку приложения (iOS — App Group), путь уходит в env `xray.location.asset`.
+  Профиль заменяет «РФ напрямую», рекламу и DNS из настроек; исключения и локальная сеть пользователя остаются выше.
 - Подписки понимают те же заголовки, что INCY/Happ: `profile-title`, `subscription-userinfo`, `announce`,
   `support-url`, `profile-web-page-url`, `hide-url`, `sort-order`, `new-url`, `fragmentation-*`, метаданные `#key:` в теле.
 

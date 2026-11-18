@@ -307,6 +307,18 @@
           "markdownDescription": "Denies the device_info command without any pre-configured scope."
         },
         {
+          "description": "Enables the download_geo command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-download-geo",
+          "markdownDescription": "Enables the download_geo command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the download_geo command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-download-geo",
+          "markdownDescription": "Denies the download_geo command without any pre-configured scope."
+        },
+        {
           "description": "Enables the fetch_subscription command without any pre-configured scope.",
           "type": "string",
           "const": "allow-fetch-subscription",
@@ -317,6 +329,18 @@
           "type": "string",
           "const": "deny-fetch-subscription",
           "markdownDescription": "Denies the fetch_subscription command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the geo_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-geo-info",
+          "markdownDescription": "Enables the geo_info command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the geo_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-geo-info",
+          "markdownDescription": "Denies the geo_info command without any pre-configured scope."
         },
         {
           "description": "Enables the invoke_core command without any pre-configured scope.",
@@ -439,10 +463,10 @@
           "markdownDescription": "Denies the tcp_ping command without any pre-configured scope."
         },
         {
-          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`",
+          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`"
+          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`"
         }
       ]
     }

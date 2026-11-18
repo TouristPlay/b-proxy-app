@@ -8,6 +8,7 @@ import {
   type DesktopSettings,
   type DeviceInfo,
   type SubPrefs,
+  type GeoState,
   type Appearance,
   type Backend,
   type CoreSettings,
@@ -20,8 +21,9 @@ import {
 import { plural } from "@/lib/format";
 import { loadActivity, newId, saveActivity } from "./activity";
 import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
+import { decodeProfile, needsGeo } from "./routing";
 import { Toaster } from "./toaster";
-import { buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
+import { activeProfile, buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
 
 const APP_VERSION = "0.1.0";
 /** Remnawave отдаёт список серверов только приложениям; с этим заголовком приходят ссылки. */
@@ -123,6 +125,7 @@ export class TauriBackend implements Backend {
         notifications: { ...defaultSettings.notifications, ...(saved?.settings?.notifications ?? {}) },
         desktop: { ...defaultSettings.desktop, ...(saved?.settings?.desktop ?? {}) },
         network: { ...defaultSettings.network, ...(saved?.settings?.network ?? {}) },
+        routing: { ...defaultSettings.routing, ...(saved?.settings?.routing ?? {}) },
         localProxy: { ...defaultSettings.localProxy, ...(saved?.settings?.localProxy ?? {}) },
         appearance,
       },
@@ -139,6 +142,7 @@ export class TauriBackend implements Backend {
       version: { app: APP_VERSION, xray: "—" },
       autostart: null,
       device: null,
+      geo: null,
       activity: loadActivity(),
     };
     this.recompute();
@@ -188,6 +192,16 @@ export class TauriBackend implements Backend {
     if (device) {
       this.emit({ device });
       this.writeLog("info", `Устройство: ${device.os} ${device.osVersion}, ${device.model}, HWID ${device.hwid}`);
+    }
+
+    // Базы geoip/geosite: что уже скачано; у активного профиля — обновляем раз в неделю.
+    await this.loadGeoInfo();
+    const profile = activeProfile(this.s.settings);
+    if (profile && this.s.geo) {
+      const oldest = Math.min(...this.s.geo.files.map((f) => f.updatedAt), Date.now());
+      const need = needsGeo(profile);
+      const missing = (need.geoip && !this.geoFile("geoip.dat")) || (need.geosite && !this.geoFile("geosite.dat"));
+      if (missing || Date.now() - oldest > 7 * 86_400_000) void this.updateGeo(true);
     }
 
     // Компьютер: крестик в трей (настройка) и состояние автозапуска из системы.
@@ -592,15 +606,25 @@ export class TauriBackend implements Backend {
       if (!permission.granted) throw new Error("Разрешите B-Proxy создать VPN, чтобы подключиться");
 
       const coreLog = this.platform === "ios" ? null : (this.logPaths?.coreLog ?? null);
+      // Профиль маршрутизации с geosite/geoip не запустится без баз — докачиваем перед подключением.
+      const profile = activeProfile(this.s.settings);
+      if (profile) {
+        const need = needsGeo(profile);
+        if ((need.geoip && !this.geoFile("geoip.dat")) || (need.geosite && !this.geoFile("geosite.dat"))) await this.updateGeo(true);
+        if ((need.geoip && !this.geoFile("geoip.dat")) || (need.geosite && !this.geoFile("geosite.dat"))) {
+          throw new Error(`Для профиля «${profile.name}» нужны базы geoip и geosite, а скачать их не получилось. Проверьте интернет или выключите профиль в «Маршрутах и DNS»`);
+        }
+      }
       // Свой DNS провайдера (если задан) вместо общего.
       const set = { ...this.s.settings, dnsServer: stored.prefs?.dns?.trim() || this.s.settings.dnsServer };
-      const config = buildConfig(node, set, this.platform, stored.fragment, coreLog);
+      const config = buildConfig(node, set, this.platform, stored.fragment, coreLog, this.geoDir);
       this.writeLog(
         "info",
         `Подключение: ${target.node.name} [${target.node.tags.join("/")}], ` +
           `маршруты: РФ напрямую=${set.russianSitesDirect}, DPI=${set.tlsFragment || stored.fragment != null}, ` +
           `реклама=${set.blockAds}, IPv6=${set.ipv6}, DNS ${set.dnsServer}; ядро: память ${set.core.memoryLimitMb} МБ, ` +
-          `MTU ${set.core.mtu || 1500}, журнал ${set.core.logLevel}`,
+          `MTU ${set.core.mtu || 1500}, Mux ${set.core.mux ? set.core.muxConcurrency : "нет"}, журнал ${set.core.logLevel}` +
+          (profile ? `; профиль маршрутизации «${profile.name}»` : ""),
       );
       if (this.cancelled) return;
       const n = this.s.settings.notifications;
@@ -884,6 +908,119 @@ export class TauriBackend implements Backend {
     await this.ping(subUrl, true, [nodeId]);
     const node = this.s.subscriptions.find((x) => x.url === subUrl)?.nodes.find((n) => n.id === nodeId);
     if (node) this.toast(node.pingMs && node.pingMs > 0 ? `${node.name}: ${node.pingMs} мс` : `${node.name}: нет связи`);
+  }
+
+  // ---------- Профили маршрутизации ----------
+
+  private geoDir: string | null = null;
+
+  private geoFile(name: string) {
+    return this.s.geo?.files.find((f) => f.name === name && f.size > 0) ?? null;
+  }
+
+  private async loadGeoInfo() {
+    const info = await invoke<{ dir: string; files: GeoState["files"] }>("plugin:bproxy|geo_info").catch(() => null);
+    if (!info) return;
+    this.geoDir = info.dir;
+    this.emit({ geo: { files: info.files, downloading: this.s.geo?.downloading ?? false } });
+  }
+
+  private setRoutingSettings(routing: Settings["routing"]) {
+    void this.updateSettings({ routing });
+  }
+
+  async addRoutingProfile(input: string) {
+    const text = input.trim();
+    let body = text;
+    let source: string | null = null;
+    if (/^https:\/\//i.test(text)) {
+      const res = await invoke<FetchResult>("plugin:bproxy|fetch_subscription", { url: text, userAgent: "B-Proxy", hwid: false });
+      if (res.status !== 200) throw new Error(`Не удалось загрузить профиль: сервер ответил ${res.status}`);
+      body = res.body;
+      source = text;
+    }
+    const profile = decodeProfile(body, source);
+    const r = this.s.settings.routing;
+    // Тот же профиль добавили ещё раз — заменяем, а не плодим копии.
+    const same = r.profiles.find((p) => (source && p.source === source) || p.name === profile.name);
+    const next = same ? { ...profile, id: same.id } : profile;
+    this.setRoutingSettings({
+      enabled: true,
+      activeId: next.id,
+      profiles: same ? r.profiles.map((p) => (p.id === same.id ? next : p)) : [...r.profiles, next],
+    });
+    this.writeLog("info", `Профиль маршрутизации «${next.name}» ${same ? "обновлён" : "добавлен"}`);
+    this.toast(`Профиль «${next.name}» включён`);
+    const need = needsGeo(next);
+    if (need.geoip || need.geosite) await this.updateGeo();
+  }
+
+  removeRoutingProfile(id: string) {
+    const r = this.s.settings.routing;
+    const removed = r.profiles.find((p) => p.id === id);
+    if (!removed) return;
+    const before = r;
+    const profiles = r.profiles.filter((p) => p.id !== id);
+    this.setRoutingSettings({ ...r, profiles, activeId: r.activeId === id ? (profiles[0]?.id ?? null) : r.activeId, enabled: r.enabled && profiles.length > 0 });
+    this.toaster.show(`Профиль «${removed.name}» удалён`, { id: "undo", label: "Вернуть", run: () => this.setRoutingSettings(before) });
+  }
+
+  setRouting(patch: Partial<Pick<Settings["routing"], "enabled" | "activeId">>) {
+    this.setRoutingSettings({ ...this.s.settings.routing, ...patch });
+    const p = activeProfile(this.s.settings);
+    if (p) {
+      const need = needsGeo(p);
+      if ((need.geoip && !this.geoFile("geoip.dat")) || (need.geosite && !this.geoFile("geosite.dat"))) void this.updateGeo(true);
+    }
+  }
+
+  /** Скачать базы активного профиля (и сам профиль, если он добавлен по ссылке). */
+  async updateGeo(quiet = false) {
+    const profile = activeProfile(this.s.settings) ?? this.s.settings.routing.profiles[0];
+    if (!profile || this.s.geo?.downloading) return;
+    this.emit({ geo: { files: this.s.geo?.files ?? [], downloading: true } });
+    const errors: string[] = [];
+    try {
+      let p = profile;
+      if (p.source) {
+        try {
+          const res = await invoke<FetchResult>("plugin:bproxy|fetch_subscription", { url: p.source, userAgent: "B-Proxy", hwid: false });
+          if (res.status === 200) {
+            p = { ...decodeProfile(res.body, p.source), id: p.id, addedAt: p.addedAt };
+            const r = this.s.settings.routing;
+            this.emit({ settings: { ...this.s.settings, routing: { ...r, profiles: r.profiles.map((x) => (x.id === p.id ? p : x)) } } });
+            this.persist();
+          }
+        } catch {
+          // Профиль не обновился — работаем со старым.
+        }
+      }
+      const need = needsGeo(p);
+      const jobs: [string, string][] = [];
+      if (need.geoip || p.geoipUrl) jobs.push(["geoip.dat", p.geoipUrl]);
+      if (need.geosite || p.geositeUrl) jobs.push(["geosite.dat", p.geositeUrl]);
+      for (const [name, url] of jobs) {
+        if (!url) {
+          errors.push(`в профиле нет ссылки на ${name}`);
+          continue;
+        }
+        try {
+          await invoke("plugin:bproxy|download_geo", { name, url });
+        } catch (e) {
+          errors.push(message(e));
+        }
+      }
+    } finally {
+      await this.loadGeoInfo();
+      this.emit({ geo: { files: this.s.geo?.files ?? [], downloading: false } });
+    }
+    if (errors.length) {
+      this.writeLog("warn", `Базы маршрутизации: ${errors.join("; ")}`);
+      if (!quiet) this.emit({ error: `Базы маршрутизации не обновились: ${errors.join("; ")}` });
+    } else if (!quiet) {
+      this.toast("Базы маршрутизации обновлены");
+      this.offerReconnect();
+    }
   }
 
   // ---------- Свои настройки провайдера ----------

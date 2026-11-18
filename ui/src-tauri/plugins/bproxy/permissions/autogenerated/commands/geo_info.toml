@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-geo-info"
+description = "Enables the geo_info command without any pre-configured scope."
+commands.allow = ["geo_info"]
+
+[[permission]]
+identifier = "deny-geo-info"
+description = "Denies the geo_info command without any pre-configured scope."
+commands.deny = ["geo_info"]

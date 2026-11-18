@@ -119,6 +119,10 @@ impl<R: Runtime> Vpn<R> {
             .map_err(|e| e.to_string())?
     }
 
+    pub async fn geo_dir(&self) -> Result<PathBuf, String> {
+        Ok(self.data_dir()?.join("geo"))
+    }
+
     pub async fn device_info(&self) -> Result<crate::device::DeviceInfo, String> {
         static CACHE: std::sync::OnceLock<crate::device::DeviceInfo> = std::sync::OnceLock::new();
         if let Some(d) = CACHE.get() {

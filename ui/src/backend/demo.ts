@@ -1,5 +1,6 @@
 import { newId } from "./activity";
 import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
+import { decodeProfile } from "./routing";
 import { Toaster } from "./toaster";
 import {
   nodeKey,
@@ -91,6 +92,7 @@ export const defaultSettings: Settings = {
   dnsServer: "1.1.1.1",
   sendHwid: true,
   network: { lanDirect: true, exclusions: [], preferIpv6: false },
+  routing: { enabled: false, activeId: null, profiles: [] },
   localProxy: { enabled: false, port: 10808, lan: false },
   userAgent: "",
   ping: { method: "tcp", timeoutSec: 5, url: "https://www.gstatic.com/generate_204", onStart: true },
@@ -145,6 +147,7 @@ export class DemoBackend implements Backend {
       toast: null,
       version: { app: "0.1.0", xray: "26.11.9" },
       autostart: false,
+      geo: { files: [], downloading: false },
       device: { hwid: "3F2A9C1E-7B4D-4E8A-9C21-5D6E7F8A9B0C", os: "Linux", osVersion: "Ubuntu 24.04 LTS", model: "Demo PC" },
       activity: empty ? [] : demoActivity(),
     };
@@ -317,6 +320,46 @@ export class DemoBackend implements Backend {
   }
 
   /** Пинг одного провайдера (по умолчанию — того, чей сервер выбран). */
+  // В демо профиль разбирается по-настоящему, а базы «скачиваются» понарошку.
+  async addRoutingProfile(input: string) {
+    const text = input.trim();
+    if (/^https:\/\//i.test(text)) throw new Error("В демо профиль по ссылке не загрузить — вставьте диплинк или JSON");
+    const profile = decodeProfile(text);
+    const r = this.s.settings.routing;
+    this.emit({ settings: { ...this.s.settings, routing: { enabled: true, activeId: profile.id, profiles: [...r.profiles, profile] } } });
+    this.toast(`Профиль «${profile.name}» включён`);
+    await this.updateGeo();
+  }
+
+  removeRoutingProfile(id: string) {
+    const r = this.s.settings.routing;
+    const profiles = r.profiles.filter((p) => p.id !== id);
+    this.emit({
+      settings: { ...this.s.settings, routing: { ...r, profiles, activeId: r.activeId === id ? (profiles[0]?.id ?? null) : r.activeId, enabled: r.enabled && profiles.length > 0 } },
+    });
+  }
+
+  setRouting(patch: Partial<Pick<Settings["routing"], "enabled" | "activeId">>) {
+    this.emit({ settings: { ...this.s.settings, routing: { ...this.s.settings.routing, ...patch } } });
+    this.offerReconnect();
+  }
+
+  async updateGeo() {
+    this.emit({ geo: { files: this.s.geo?.files ?? [], downloading: true } });
+    await wait(1200);
+    const now = Date.now();
+    this.emit({
+      geo: {
+        downloading: false,
+        files: [
+          { name: "geoip.dat", size: 1_248_512, updatedAt: now },
+          { name: "geosite.dat", size: 3_655_210, updatedAt: now },
+        ],
+      },
+    });
+    this.toast("Базы маршрутизации обновлены");
+  }
+
   async pingNode(subUrl: string, nodeId: string) {
     await this.ping(subUrl, true, [nodeId]);
     const node = this.s.subscriptions.find((x) => x.url === subUrl)?.nodes.find((n) => n.id === nodeId);

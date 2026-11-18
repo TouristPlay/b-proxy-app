@@ -13,6 +13,7 @@ use tauri::{
 
 mod commands;
 mod device;
+mod geo;
 mod ping;
 pub mod logs;
 mod models;
@@ -55,7 +56,9 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::read_log,
             commands::open_logs_dir,
             commands::tcp_ping,
-            commands::device_info
+            commands::device_info,
+            commands::geo_info,
+            commands::download_geo
         ])
         .setup(|app, api| {
             if let Ok(dir) = app.path().app_local_data_dir() {

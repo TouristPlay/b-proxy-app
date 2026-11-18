@@ -52,6 +52,19 @@ impl<R: Runtime> Vpn<R> {
             .map_err(|e| e.to_string())
     }
 
+    /// Android — папка приложения, iOS — общий контейнер App Group (его читает расширение).
+    pub async fn geo_dir(&self) -> Result<std::path::PathBuf, String> {
+        #[derive(Deserialize)]
+        struct Dir {
+            path: String,
+        }
+        self.0
+            .run_mobile_plugin_async::<Dir>("geoDir", ())
+            .await
+            .map(|d| std::path::PathBuf::from(d.path))
+            .map_err(|e| e.to_string())
+    }
+
     pub async fn device_info(&self) -> Result<crate::device::DeviceInfo, String> {
         static CACHE: std::sync::OnceLock<crate::device::DeviceInfo> = std::sync::OnceLock::new();
         if let Some(d) = CACHE.get() {

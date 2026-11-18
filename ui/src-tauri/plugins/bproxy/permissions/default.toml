@@ -15,4 +15,6 @@ permissions = [
   "allow-open-logs-dir",
   "allow-tcp-ping",
   "allow-device-info",
+  "allow-geo-info",
+  "allow-download-geo",
 ]

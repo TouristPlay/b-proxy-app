@@ -49,6 +49,15 @@ class BProxyPlugin: Plugin {
     }
 
     /// Разрешение система спросит сама при первом сохранении профиля VPN.
+    /// Папка баз geoip/geosite в общем контейнере App Group: её читает расширение PacketTunnel.
+    @objc public func geoDir(_ invoke: Invoke) {
+        let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Shared.appGroup)
+            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = base.appendingPathComponent("geo", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        invoke.resolve(["path": dir.path])
+    }
+
     /// Сырой идентификатор устройства для HWID (хэширует Rust) и сведения о системе.
     /// identifierForVendor сохраняем в Keychain: так HWID переживает переустановку приложения.
     @objc public func deviceInfo(_ invoke: Invoke) {
