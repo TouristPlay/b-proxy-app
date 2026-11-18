@@ -337,7 +337,7 @@ jobs:
       - name: Файл обновления latest.json
         run: |
           mkdir -p artifacts/updater
-          if ls artifacts/*/*.sig artifacts/*/*/*.sig >/dev/null 2>&1; then
+          if find artifacts -name "*.sig" | grep -q .; then
             python3 scripts/updater_manifest.py artifacts "${{ steps.tag.outputs.tag }}" "$GITHUB_REPOSITORY" > artifacts/updater/latest.json
           else
             echo "::warning::Нет ключа подписи TAURI_SIGNING_PRIVATE_KEY — релиз без автообновления"
