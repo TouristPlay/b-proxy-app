@@ -11,7 +11,7 @@ VPN-клиент сервиса BaobabVPN (сайт baobabproxy.com) на ядр
   `ui/src-tauri/` — оболочка на Rust и плагин `bproxy` (ядро Xray и VPN на всех платформах).
   В приложении работает `TauriBackend`, в браузере (демо дизайна) — `DemoBackend` с тестовыми данными.
 - `app/` — первая версия на Flutter, больше не собирается. Оставлена как справка.
-- Дальше: подпись iOS/macOS (TestFlight), проверка VPN на устройствах → QR, диплинки `bproxy://`, kill switch,
+- Дальше: подпись iOS/macOS (TestFlight), проверка VPN на устройствах → QR, kill switch,
   VPN по приложениям, разделы «Тарифы» и «Баланс» (нужен API панели/бота).
 
 ## Структура
@@ -150,6 +150,10 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   DNS профиля: домашний (`https+local://`) для DirectSites, удалённый — для остального. Базы geoip.dat/geosite.dat
   качает плагин (`download_geo`, `geo.rs`) в папку приложения (iOS — App Group), путь уходит в env `xray.location.asset`.
   Профиль заменяет «РФ напрямую», рекламу и DNS из настроек; исключения и локальная сеть пользователя остаются выше.
+- Ссылки `bproxy://` (`tauri-plugin-deep-link`, разбор в `backend/links.ts`): `add/<url>` (или `add?url=`, `import/`, `sub/`),
+  `routing/onadd/<base64>`, `connect`, `disconnect`, `toggle`. Подписку и профиль добавляем только после подтверждения
+  (`LinkConfirm`). На компьютере ссылку из второго запуска передаёт `tauri-plugin-single-instance` (фича deep-link),
+  Windows и Linux регистрируют схему при запуске (`register_all`).
 - Подписки понимают те же заголовки, что INCY/Happ: `profile-title`, `subscription-userinfo`, `announce`,
   `support-url`, `profile-web-page-url`, `hide-url`, `sort-order`, `new-url`, `fragmentation-*`, метаданные `#key:` в теле.
 

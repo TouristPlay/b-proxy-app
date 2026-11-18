@@ -1,4 +1,5 @@
-//! Компьютер: значок в трее, закрытие окна в трей и автозапуск при входе в систему.
+//! Компьютер: значок в трее, закрытие окна в трей, автозапуск при входе в систему,
+//! регистрация ссылок bproxy://. Один экземпляр приложения — в lib.rs.
 //!
 //! При автозапуске приложение получает аргумент `--minimized` и стартует сразу в трее.
 //! Сворачивать ли окно в трей при закрытии, решает настройка в интерфейсе
@@ -35,8 +36,6 @@ pub fn show_main<R: Runtime>(app: &AppHandle<R>) {
 
 pub fn setup(builder: Builder<Wry>) -> Builder<Wry> {
     builder
-        // Повторный запуск (ярлык, меню) не создаёт вторую копию, а показывает окно из трея.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec![MINIMIZED]),
@@ -79,6 +78,16 @@ pub fn setup(builder: Builder<Wry>) -> Builder<Wry> {
                 tray = tray.icon(icon.clone());
             }
             tray.build(app)?;
+
+            // Ссылки bproxy:// на Windows и Linux регистрируем при запуске: так они работают
+            // и без установщика (AppImage, переносная версия). macOS берёт схему из Info.plist.
+            #[cfg(any(windows, target_os = "linux"))]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                if let Err(e) = app.deep_link().register_all() {
+                    eprintln!("bproxy:// не зарегистрирован: {e}");
+                }
+            }
 
             // Окно создаётся скрытым, чтобы при автозапуске не мелькать на экране.
             let minimized = std::env::args().any(|a| a == MINIMIZED);

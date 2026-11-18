@@ -49,5 +49,22 @@
       "minimumSystemVersion": "13.0"
     },
     "publisher": "B-Proxy"
+  },
+  "plugins": {
+    "deep-link": {
+      "mobile": [
+        {
+          "scheme": [
+            "bproxy"
+          ],
+          "appLink": false
+        }
+      ],
+      "desktop": {
+        "schemes": [
+          "bproxy"
+        ]
+      }
+    }
   }
 }

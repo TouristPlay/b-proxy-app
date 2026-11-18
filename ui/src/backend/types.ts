@@ -204,6 +204,8 @@ export interface RoutingSettings {
   profiles: RoutingProfile[];
 }
 
+export type PendingLink = { kind: "subscription"; url: string } | { kind: "routing"; input: string; name: string };
+
 /** Базы geoip.dat и geosite.dat на устройстве. */
 export interface GeoState {
   files: { name: string; size: number; updatedAt: number }[];
@@ -277,6 +279,8 @@ export interface Snapshot {
   autostart: boolean | null;
   /** HWID и устройство — то, что уходит провайдеру; null — ещё не узнали. */
   device: DeviceInfo | null;
+  /** Ссылка bproxy:// ждёт подтверждения: добавить подписку или профиль маршрутизации. */
+  pendingLink: PendingLink | null;
   /** Базы geoip/geosite; null — платформа не умеет (демо). */
   geo: GeoState | null;
   /** Журнал: сеансы VPN и события, новые сверху. Хранится только на устройстве. */
@@ -340,6 +344,10 @@ export interface Backend {
   addRoutingProfile(input: string): Promise<void>;
   removeRoutingProfile(id: string): void;
   setRouting(patch: Partial<Pick<RoutingSettings, "enabled" | "activeId">>): void;
+  /** Ссылка bproxy://… — из системы (нажали в браузере, боте) или вставлена вручную. */
+  openLink(url: string): Promise<void>;
+  /** Ответ на «Добавить подписку из ссылки?». */
+  confirmLink(accept: boolean): Promise<void>;
   /** Скачать базы geoip/geosite активного профиля заново. */
   updateGeo(): Promise<void>;
   updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>): Promise<void>;

@@ -70,7 +70,7 @@ fn clean(value: &str) -> String {
         .collect()
 }
 
-#[cfg(desktop)]
+#[cfg(any(windows, target_os = "macos"))]
 fn run(cmd: &str, args: &[&str]) -> String {
     let mut command = std::process::Command::new(cmd);
     command.args(args);

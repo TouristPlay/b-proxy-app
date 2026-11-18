@@ -1,5 +1,6 @@
 import { addPluginListener, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrent as getDeepLinks, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { cancel, isPermissionGranted, requestPermission, Schedule, sendNotification } from "@tauri-apps/plugin-notification";
 import { defaultAppearance, defaultSettings } from "./demo";
 import { checkUrl, mainOutbound, parseSubscription, type FetchResult, type NodeConfig, type Outbound, type StoredSubscription } from "./subscription";
@@ -21,6 +22,7 @@ import {
 import { plural } from "@/lib/format";
 import { loadActivity, newId, saveActivity } from "./activity";
 import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
+import { parseLink } from "./links";
 import { decodeProfile, needsGeo } from "./routing";
 import { Toaster } from "./toaster";
 import { activeProfile, buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
@@ -143,6 +145,7 @@ export class TauriBackend implements Backend {
       autostart: null,
       device: null,
       geo: null,
+      pendingLink: null,
       activity: loadActivity(),
     };
     this.recompute();
@@ -193,6 +196,12 @@ export class TauriBackend implements Backend {
       this.emit({ device });
       this.writeLog("info", `Устройство: ${device.os} ${device.osVersion}, ${device.model}, HWID ${device.hwid}`);
     }
+
+    // Ссылки bproxy://: та, с которой приложение запустили, и все следующие.
+    void onOpenUrl((urls) => urls.forEach((u) => void this.openLink(u))).catch(() => undefined);
+    void getDeepLinks()
+      .then((urls) => urls?.forEach((u) => void this.openLink(u)))
+      .catch(() => undefined);
 
     // Базы geoip/geosite: что уже скачано; у активного профиля — обновляем раз в неделю.
     await this.loadGeoInfo();
@@ -780,6 +789,15 @@ export class TauriBackend implements Backend {
   }
 
   async addSubscription(raw: string) {
+    // Вставили не подписку, а ссылку bproxy:// или профиль маршрутизации — разбираем как их.
+    if (/^bproxy:\/\//i.test(raw.trim())) {
+      const action = parseLink(raw);
+      if (action.kind !== "pending") return this.openLink(raw);
+      if (action.link.kind === "routing") return this.addRoutingProfile(action.link.input);
+      raw = action.link.url;
+    } else if (/^[a-z]+:\/\/routing\//i.test(raw.trim())) {
+      return this.addRoutingProfile(raw);
+    }
     const url = checkUrl(raw);
     const sub = await this.load(url).catch((e) => {
       throw new Error(message(e));
@@ -908,6 +926,28 @@ export class TauriBackend implements Backend {
     await this.ping(subUrl, true, [nodeId]);
     const node = this.s.subscriptions.find((x) => x.url === subUrl)?.nodes.find((n) => n.id === nodeId);
     if (node) this.toast(node.pingMs && node.pingMs > 0 ? `${node.name}: ${node.pingMs} мс` : `${node.name}: нет связи`);
+  }
+
+  async openLink(url: string) {
+    const action = parseLink(url);
+    this.writeLog("info", `Ссылка: ${url.split("/").slice(0, 3).join("/")}… → ${action.kind}`);
+    if (action.kind === "pending") this.emit({ pendingLink: action.link });
+    else if (action.kind === "connect" && this.s.state === "disconnected") await this.toggle();
+    else if (action.kind === "disconnect" && this.s.state === "connected") await this.toggle();
+    else if (action.kind === "toggle") await this.toggle();
+    else if (action.kind === "unknown") this.toast("Ссылка bproxy:// не распознана — проверьте её у провайдера");
+  }
+
+  async confirmLink(accept: boolean) {
+    const link = this.s.pendingLink;
+    this.emit({ pendingLink: null });
+    if (!accept || !link) return;
+    try {
+      if (link.kind === "subscription") await this.addSubscription(link.url);
+      else await this.addRoutingProfile(link.input);
+    } catch (e) {
+      this.emit({ error: e instanceof Error ? e.message : String(e) });
+    }
   }
 
   // ---------- Профили маршрутизации ----------

@@ -1,5 +1,6 @@
 import { newId } from "./activity";
 import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
+import { parseLink } from "./links";
 import { decodeProfile } from "./routing";
 import { Toaster } from "./toaster";
 import {
@@ -148,6 +149,7 @@ export class DemoBackend implements Backend {
       version: { app: "0.1.0", xray: "26.11.9" },
       autostart: false,
       geo: { files: [], downloading: false },
+      pendingLink: null,
       device: { hwid: "3F2A9C1E-7B4D-4E8A-9C21-5D6E7F8A9B0C", os: "Linux", osVersion: "Ubuntu 24.04 LTS", model: "Demo PC" },
       activity: empty ? [] : demoActivity(),
     };
@@ -276,6 +278,15 @@ export class DemoBackend implements Backend {
   }
 
   async addSubscription(url: string) {
+    // Вставили не подписку, а ссылку bproxy:// или профиль маршрутизации — разбираем как их.
+    if (/^bproxy:\/\//i.test(url.trim())) {
+      const action = parseLink(url);
+      if (action.kind !== "pending") return this.openLink(url);
+      if (action.link.kind === "routing") return this.addRoutingProfile(action.link.input);
+      url = action.link.url;
+    } else if (/^[a-z]+:\/\/routing\//i.test(url.trim())) {
+      return this.addRoutingProfile(url);
+    }
     if (!/^https?:\/\//.test(url.trim())) {
       throw new Error("Ссылка должна начинаться с https://");
     }
@@ -320,6 +331,27 @@ export class DemoBackend implements Backend {
   }
 
   /** Пинг одного провайдера (по умолчанию — того, чей сервер выбран). */
+  async openLink(url: string) {
+    const action = parseLink(url);
+    if (action.kind === "pending") this.emit({ pendingLink: action.link });
+    else if (action.kind === "connect" && this.s.state === "disconnected") await this.toggle();
+    else if (action.kind === "disconnect" && this.s.state === "connected") await this.toggle();
+    else if (action.kind === "toggle") await this.toggle();
+    else if (action.kind === "unknown") this.toast("Ссылка bproxy:// не распознана — проверьте её у провайдера");
+  }
+
+  async confirmLink(accept: boolean) {
+    const link = this.s.pendingLink;
+    this.emit({ pendingLink: null });
+    if (!accept || !link) return;
+    try {
+      if (link.kind === "subscription") await this.addSubscription(link.url);
+      else await this.addRoutingProfile(link.input);
+    } catch (e) {
+      this.emit({ error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
   // В демо профиль разбирается по-настоящему, а базы «скачиваются» понарошку.
   async addRoutingProfile(input: string) {
     const text = input.trim();
