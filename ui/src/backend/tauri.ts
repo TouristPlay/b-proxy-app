@@ -27,6 +27,7 @@ import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
 import { parseLink } from "./links";
 import { decodeProfile, needsGeo } from "./routing";
 import { Toaster } from "./toaster";
+import { CATALOG_URL, parseCatalog } from "./catalog";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { activeProfile, buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
@@ -57,6 +58,13 @@ interface AlertMarks {
 }
 const APPEARANCE_KEY = "b-proxy.appearance";
 const ONBOARDED_KEY = "b-proxy.onboarded";
+const CATALOG_KEY = "b-proxy.catalog";
+
+function readCatalogCache() {
+  if (!CATALOG_URL) return null;
+  const cached = readJson<{ at: number; raw: string }>(CATALOG_KEY);
+  return cached ? parseCatalog(cached.raw) : [];
+}
 
 interface Persisted {
   subscriptions: StoredSubscription[];
@@ -158,6 +166,7 @@ export class TauriBackend implements Backend {
       autostart: null,
       appUpdate: null,
       speedTest: null,
+      catalog: readCatalogCache(),
       onboarded: localStorage.getItem(ONBOARDED_KEY) === "1" || this.subs.length > 0,
       device: null,
       geo: null,
@@ -195,6 +204,7 @@ export class TauriBackend implements Backend {
     this.logPaths = await invoke<{ dir: string; appLog: string; coreLog: string } | null>("plugin:bproxy|log_info").catch(() => null);
     const sub = this.subs.map((x) => `«${x.title}» (${x.nodes.filter((n) => !n.divider).length})`).join(", ");
     this.writeLog("info", `Интерфейс ${APP_VERSION}, ${this.platform}; подписки: ${sub || "нет"}`);
+    void this.loadCatalog();
     // Состояние туннеля приходит из Rust (компьютеры) или из нативного кода (телефоны).
     const onState = (p: { state: string; error?: string | null }) => this.onTunnelState(p.state, p.error ?? null);
     if (isMobile(this.platform)) {
@@ -373,6 +383,21 @@ export class TauriBackend implements Backend {
 
   async requestNotifications() {
     return this.ensureNotifyPermission(true);
+  }
+
+  async loadCatalog(force = false) {
+    if (!CATALOG_URL) return;
+    const cached = readJson<{ at: number; raw: string }>(CATALOG_KEY);
+    if (!force && cached && Date.now() - cached.at < 6 * 3600_000) return;
+    try {
+      // Без HWID и данных устройства: это просто список, не подписка.
+      const res = await invoke<FetchResult>("plugin:bproxy|fetch_subscription", { url: CATALOG_URL, userAgent: "B-Proxy", hwid: false });
+      if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
+      localStorage.setItem(CATALOG_KEY, JSON.stringify({ at: Date.now(), raw: res.body }));
+      this.emit({ catalog: parseCatalog(res.body) });
+    } catch (e) {
+      this.writeLog("warn", `Рекомендуемые VPN: ${message(e)}`);
+    }
   }
 
   async listApps() {

@@ -4,6 +4,7 @@ import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
 import { parseLink } from "./links";
 import { decodeProfile } from "./routing";
 import { Toaster } from "./toaster";
+import { parseCatalog } from "./catalog";
 import {
   nodeKey,
   type ActivityEntry,
@@ -157,6 +158,8 @@ export class DemoBackend implements Backend {
       autostart: false,
       appUpdate: { state: "idle" },
       speedTest: null,
+      // Демо: вымышленные сервисы, чтобы показать раздел «Рекомендуемые VPN».
+      catalog: parseCatalog(JSON.stringify(demoCatalog)),
       // #welcome в адресе — показать знакомство (первый запуск).
       onboarded: !demoFlag("welcome"),
       geo: { files: [], downloading: false },
@@ -540,6 +543,8 @@ export class DemoBackend implements Backend {
     return true;
   }
 
+  async loadCatalog() {}
+
   async listApps(): Promise<AppEntry[]> {
     await wait(300);
     // В демо — вымышленный список, как на компьютере.
@@ -649,3 +654,32 @@ function demoActivity(): ActivityEntry[] {
   list.push({ kind: "error", id: newId(), at: now - 50 * H, server: t("🇯🇵 Япония"), text: t("Сервер не ответил за 8 секунд. Попробуйте другой сервер") });
   return list.sort((a, b) => (b.kind === "session" ? b.startedAt : b.at) - (a.kind === "session" ? a.startedAt : a.at));
 }
+
+const demoCatalog = {
+  items: [
+    {
+      id: "north",
+      name: "Северный VPN",
+      description: "Серверы в 12 странах, обход белых списков, поддержка в Telegram круглосуточно.",
+      url: "https://example.com/north",
+      price: "от 149 ₽/мес",
+      tags: ["Безлимит", "REALITY", "5 устройств"],
+      badge: "Скидка 30%",
+      promo: "BPROXY30",
+      advertiser: "ООО «Пример»",
+      erid: "2VtzqxEXAMPLE",
+      weight: 10,
+    },
+    {
+      id: "lagoon",
+      name: "Лагуна",
+      description: "Быстрые серверы в Европе для видео и игр, пробный день бесплатно.",
+      url: "https://example.com/lagoon",
+      price: "от 199 ₽/мес",
+      tags: ["Европа", "Пробный день"],
+      advertiser: "ИП Иванов И. И.",
+      erid: "2VtzqyEXAMPLE",
+      weight: 5,
+    },
+  ],
+};

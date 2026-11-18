@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "id": "example",
+      "name": "Пример VPN",
+      "description": "Короткое описание: страны серверов, скорость, поддержка.",
+      "url": "https://example.com/?utm_source=b-proxy",
+      "logo": "https://example.com/logo.png",
+      "price": "от 149 ₽/мес",
+      "tags": ["Безлимит", "REALITY"],
+      "badge": "Скидка 30%",
+      "promo": "BPROXY30",
+      "advertiser": "ООО «Пример», ИНН 0000000000",
+      "erid": "2Vtzqx0000",
+      "weight": 10,
+      "until": "2027-12-31"
+    }
+  ]
+}

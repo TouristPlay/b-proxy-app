@@ -334,6 +334,8 @@ export interface Snapshot {
   autostart: boolean | null;
   /** HWID и устройство — то, что уходит провайдеру; null — ещё не узнали. */
   device: DeviceInfo | null;
+  /** «Рекомендуемые VPN»: null — раздела нет (адрес списка не задан) или ещё не загружен. */
+  catalog: import("./catalog").CatalogItem[] | null;
   /** Знакомство при первом запуске пройдено (или подписки уже есть). */
   onboarded: boolean;
   /** Последняя проверка скорости в этом сеансе; null — не проверяли. */
@@ -428,6 +430,8 @@ export interface Backend {
   requestVpnPermission(): Promise<boolean>;
   /** Разрешение на уведомления. */
   requestNotifications(): Promise<boolean>;
+  /** Загрузить «Рекомендуемые VPN» (кэш на 6 часов, force — заново). */
+  loadCatalog(force?: boolean): Promise<void>;
   /** Приложения для выбора в «VPN по приложениям». */
   listApps(): Promise<AppEntry[]>;
   /** Android: системные настройки VPN (там «Блокировать соединения без VPN»). */

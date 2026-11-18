@@ -1,4 +1,4 @@
-import { AppWindow, Check, LayoutGrid, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
+import { AppWindow, Check, LayoutGrid, Sparkles, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import { detectPlatform } from "@/backend/xray";
@@ -12,6 +12,7 @@ import { intervalTitle, NotificationsSheet, PingSheet, ProvidersSheet } from "./
 import { LogsSheet } from "./LogsSheet";
 import { dnsPresets as dns, routes, RoutesSheet } from "./RoutesSheet";
 import { AppsSheet, perAppHint } from "./AppsSheet";
+import { RecommendedSheet } from "./RecommendedSheet";
 import { themeById } from "@/lib/theme";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd: () => void }) {
   const s = useSnapshot();
   const [appsOpen, setAppsOpen] = useState(false);
+  const [recommended, setRecommended] = useState(false);
   const [core, setCore] = useState(false);
   const [ping, setPing] = useState(false);
   const [updates, setUpdates] = useState(false);
@@ -58,6 +60,15 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
         </Group>
 
         <Group title={t("Провайдеры")}>
+          {s.catalog !== null && (
+            <Row
+              onClick={() => setRecommended(true)}
+              icon={<IconTile icon={Sparkles} tone="amber" />}
+              title={t("Рекомендуемые VPN")}
+              hint={t("Где купить подписку")}
+              aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
+            />
+          )}
           <Row
             onClick={() => setUpdates(true)}
             icon={<IconTile icon={Server} tone="teal" />}
@@ -247,6 +258,7 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
       <AppearanceSheet open={look} onOpenChange={setLook} />
       <RoutesSheet open={routing} onOpenChange={setRouting} />
       <AppsSheet open={appsOpen} onOpenChange={setAppsOpen} />
+      <RecommendedSheet open={recommended} onOpenChange={setRecommended} />
       <Sheet open={about} onOpenChange={setAbout} title={t("О приложении")} icon={<IconTile icon={Info} tone="gray" />}>
         <Group>
           <Row title={t("Версия приложения")} aside={<span className="text-ink-2 tabular-nums">{s.version.app}</span>} />

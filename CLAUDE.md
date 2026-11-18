@@ -171,6 +171,9 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   программы (список запущенных — команда `list_apps`, sysinfo), на Android — `addAllowedApplication` /
   `addDisallowedApplication` в `BProxyVpnService` по env `BPROXY_APPS_MODE`, `BPROXY_APPS` (список — `listApps`,
   приложения с рабочего стола, `<queries>` в манифесте). В iOS недоступно (только MDM).
+- «Рекомендуемые VPN» — платные размещения: JSON по адресу `VITE_CATALOG_URL` (`backend/catalog.ts`, формат и закон
+  о рекламе — `catalog/README.md`), кэш 6 часов в `b-proxy.catalog`, скачивается без HWID. Пустой адрес — раздела нет.
+  Карточки — «Настройки» → «Провайдеры» и лист «Новая подписка»; у каждой пометка «Реклама · рекламодатель · erid».
 - Окно запоминает размер и место (`tauri-plugin-window-state`, без флага видимости); при первом запуске — по экрану.
 - Уведомления — `tauri-plugin-notification`: VPN отключился, срок подписки (3 дня, 1 день, закончилась),
   90% трафика, новое объявление провайдера. Что уже показано — `b-proxy.alerts` в localStorage.
