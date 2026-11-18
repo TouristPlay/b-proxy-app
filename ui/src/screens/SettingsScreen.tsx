@@ -1,4 +1,4 @@
-import { AppWindow, RadioTower, Plug, Wifi, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
+import { AppWindow, Check, Copy, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import { detectPlatform } from "@/backend/xray";
@@ -158,48 +158,16 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
                 />
               }
             />
-            <Row
-              htmlFor="set-proxy"
-              icon={<IconTile icon={Plug} tone="violet" />}
-              title={t("Локальный прокси")}
-              hint={
-                lp.enabled
-                  ? t("SOCKS5 {0}:{1}, HTTP :{2} — работает, пока VPN включён", [lp.lan ? "0.0.0.0" : "127.0.0.1", lp.port, lp.port + 1])
-                  : t("SOCKS5 и HTTP для браузера или Telegram в настройках прокси")
-              }
-              aside={<Switch id="set-proxy" checked={lp.enabled} onCheckedChange={(enabled) => setProxy({ enabled })} />}
-            />
-            {lp.enabled && (
-              <>
-                <label className="flex items-center gap-3.5 px-4 py-3.5">
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[16px] font-medium">{t("Порт SOCKS5")}</span>
-                    <span className="block text-[13.5px] text-ink-2">{t("HTTP — на следующем, {0}", [lp.port + 1])}</span>
-                  </span>
-                  <input
-                    type="number"
-                    min={1024}
-                    max={65534}
-                    defaultValue={lp.port}
-                    key={lp.port}
-                    onBlur={(e) => {
-                      const port = Math.round(Number(e.target.value));
-                      if (port >= 1024 && port <= 65534) setProxy({ port });
-                      else e.target.value = String(lp.port);
-                    }}
-                    aria-label={t("Порт SOCKS5")}
-                    className="w-24 rounded-xl border border-edge-2 bg-glass px-3 py-2 text-right font-display tabular-nums text-ink focus:border-amber/60 focus:outline-none"
-                  />
-                </label>
-                <Row
-                  htmlFor="set-proxy-lan"
-                  icon={<IconTile icon={Wifi} tone="amber" />}
-                  title={t("Доступ из локальной сети")}
-                  hint={t("Другие устройства в вашей Wi-Fi сети смогут ходить через этот прокси")}
-                  aside={<Switch id="set-proxy-lan" checked={lp.lan} onCheckedChange={(lan) => setProxy({ lan })} />}
-                />
-              </>
-            )}
+            <div>
+              <Row
+                htmlFor="set-proxy"
+                icon={<IconTile icon={Plug} tone="violet" />}
+                title={t("Локальный прокси")}
+                hint={lp.enabled ? t("Работает, пока VPN включён") : t("SOCKS5 и HTTP для браузера или Telegram в настройках прокси")}
+                aside={<Switch id="set-proxy" checked={lp.enabled} onCheckedChange={(enabled) => setProxy({ enabled })} />}
+              />
+              {lp.enabled && <ProxyDetails />}
+            </div>
           </Group>
         )}
 
@@ -260,4 +228,81 @@ function safeHost(url: string) {
   } catch {
     return url;
   }
+}
+
+/** Раскрытая часть «Локального прокси»: адреса с копированием, порт и доступ из сети. */
+function ProxyDetails() {
+  const lp = useSnapshot().settings.localProxy;
+  const setProxy = (patch: Partial<typeof lp>) => void backend.updateSettings({ localProxy: { ...lp, ...patch } });
+  const [copied, setCopied] = useState<string | null>(null);
+  const host = lp.lan ? lanHost() : "127.0.0.1";
+  const addresses = [
+    { kind: "SOCKS5", value: `${host}:${lp.port}` },
+    { kind: "HTTP", value: `${host}:${lp.port + 1}` },
+  ];
+  async function copy(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(value);
+      window.setTimeout(() => setCopied((c) => (c === value ? null : c)), 1800);
+    } catch {
+      /* буфер обмена недоступен — адрес и так виден */
+    }
+  }
+
+  return (
+    <div className="mx-4 mb-3.5 min-[460px]:ml-[70px] overflow-hidden rounded-2xl border border-edge bg-glass">
+      {addresses.map((a) => (
+        <button
+          key={a.kind}
+          type="button"
+          onClick={() => void copy(a.value)}
+          className="flex min-h-11 w-full items-center gap-3 border-b border-edge px-3.5 py-2 text-left transition-colors hover:bg-glass-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-amber"
+          aria-label={t("Скопировать адрес {0} {1}", [a.kind, a.value])}
+        >
+          <span className="w-14 shrink-0 text-[13px] text-ink-3">{a.kind}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-[14px] text-ink">{a.value}</span>
+          {copied === a.value ? (
+            <span className="flex items-center gap-1 text-[13px] text-good">
+              <Check className="size-4" aria-hidden />
+              {t("Скопирован")}
+            </span>
+          ) : (
+            <Copy className="size-4 shrink-0 text-ink-3" aria-hidden />
+          )}
+        </button>
+      ))}
+      <label className="flex min-h-11 items-center gap-3 border-b border-edge px-3.5 py-1.5">
+        <span className="flex-1 text-[14px] text-ink-2">{t("Порт")}</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={5}
+          defaultValue={lp.port}
+          key={lp.port}
+          onBlur={(e) => {
+            const port = Math.round(Number(e.target.value));
+            if (port >= 1024 && port <= 65534) setProxy({ port });
+            else e.target.value = String(lp.port);
+          }}
+          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+          aria-label={t("Порт SOCKS5")}
+          className="w-[76px] rounded-lg border border-edge-2 bg-base/40 px-2 py-1.5 text-center font-mono text-[16px] tabular-nums text-ink md:text-[14px] focus:border-amber/60 focus:outline-none"
+        />
+      </label>
+      <label htmlFor="set-proxy-lan" className="flex min-h-11 cursor-pointer items-center gap-3 px-3.5 py-2">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] text-ink">{t("Доступ из локальной сети")}</span>
+          <span className="block text-[12.5px] leading-snug text-ink-3">{t("Для других устройств в вашей сети Wi-Fi")}</span>
+        </span>
+        <Switch id="set-proxy-lan" checked={lp.lan} onCheckedChange={(lan) => setProxy({ lan })} />
+      </label>
+    </div>
+  );
+}
+
+/** Адрес для других устройств: компьютер слушает все интерфейсы, свой IP в сети приложение не знает. */
+function lanHost() {
+  return t("IP компьютера");
 }

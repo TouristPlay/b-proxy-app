@@ -34,6 +34,28 @@ pub fn show_main<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Размер окна при запуске: 1280×820 (раскладка для компьютера), но не больше рабочей
+/// области экрана. Без этого на скрытом окне Linux и маленьких экранах окно открывалось
+/// узким — с раскладкой для телефона.
+fn fit_to_screen<R: Runtime>(app: &AppHandle<R>) {
+    use tauri::{LogicalSize, PhysicalPosition, PhysicalSize};
+    let Some(w) = app.get_webview_window("main") else { return };
+    let Some(monitor) = w.primary_monitor().ok().flatten().or_else(|| w.current_monitor().ok().flatten()) else {
+        return;
+    };
+    let scale = monitor.scale_factor();
+    let area = monitor.work_area();
+    let (aw, ah) = (area.size.width as f64 / scale, area.size.height as f64 / scale);
+    let width = 1280f64.min(aw * 0.94).max(400.0);
+    let height = 820f64.min(ah * 0.92).max(640f64.min(ah));
+    let _ = w.set_size(LogicalSize::new(width, height));
+    let size = PhysicalSize::new((width * scale) as i32, (height * scale) as i32);
+    let _ = w.set_position(PhysicalPosition::new(
+        area.position.x + (area.size.width as i32 - size.width) / 2,
+        area.position.y + (area.size.height as i32 - size.height) / 2,
+    ));
+}
+
 pub fn setup(builder: Builder<Wry>) -> Builder<Wry> {
     builder
         .plugin(tauri_plugin_autostart::init(
@@ -88,6 +110,8 @@ pub fn setup(builder: Builder<Wry>) -> Builder<Wry> {
                     eprintln!("bproxy:// не зарегистрирован: {e}");
                 }
             }
+
+            fit_to_screen(app.handle());
 
             // Окно создаётся скрытым, чтобы при автозапуске не мелькать на экране.
             let minimized = std::env::args().any(|a| a == MINIMIZED);

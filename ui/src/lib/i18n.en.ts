@@ -594,4 +594,10 @@ export const en: Record<string, string> = {
   "Подключение": "Connection",
   "при запуске": "on launch",
   "без HWID": "no HWID",
+  "Работает, пока VPN включён": "Works while the VPN is on",
+  "Скопировать адрес {0} {1}": "Copy {0} address {1}",
+  "Скопирован": "Copied",
+  "Для других устройств в вашей сети Wi-Fi": "For other devices on your Wi-Fi network",
+  "IP компьютера": "computer IP",
+  "Порт": "Port",
 };
