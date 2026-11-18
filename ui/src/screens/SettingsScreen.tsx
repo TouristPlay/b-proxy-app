@@ -1,4 +1,4 @@
-import { AppWindow, Check, Copy, Download, LoaderCircle, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
+import { AppWindow, Check, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import { detectPlatform } from "@/backend/xray";
@@ -84,6 +84,27 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
             hint={t("B-Proxy включит VPN сразу после открытия")}
             aside={<Switch id="set-autoconnect" checked={s.settings.autoConnect} onCheckedChange={(v) => void backend.updateSettings({ autoConnect: v })} />}
           />
+          {detectPlatform() === "android" ? (
+            <Row
+              onClick={() => void backend.openVpnSettings()}
+              icon={<IconTile icon={ShieldOff} tone="red" />}
+              title={t("Kill switch")}
+              hint={t("В Android включается в системе: «Постоянная VPN» и «Блокировать соединения без VPN»")}
+              aside={<ExternalLink className="size-5 text-ink-3" aria-hidden />}
+            />
+          ) : (
+            <Row
+              htmlFor="set-kill"
+              icon={<IconTile icon={ShieldOff} tone="red" />}
+              title={t("Kill switch")}
+              hint={
+                s.settings.killSwitch
+                  ? t("Если VPN оборвётся, интернет закроется, пока VPN не подключится снова")
+                  : t("Закрывать интернет, если VPN оборвался")
+              }
+              aside={<Switch id="set-kill" checked={s.settings.killSwitch} onCheckedChange={(v) => void backend.updateSettings({ killSwitch: v })} />}
+            />
+          )}
           {detectPlatform() === "ios" && (
             <Row
               htmlFor="set-live"

@@ -661,4 +661,11 @@ export const en: Record<string, string> = {
   "Ссылка https://… или vless://, trojan://, hysteria2://": "An https://… link or vless://, trojan://, hysteria2://",
   "Ссылку выдаёт ваш VPN-провайдер — в личном кабинете или в Telegram-боте. Серверы, срок и трафик B-Proxy подтянет из неё сам.": "Your VPN provider gives you the link — in your account or a Telegram bot. B-Proxy gets the servers, term and traffic from it.",
   "Шаг {0} из 2": "Step {0} of 2",
+  "Kill switch": "Kill switch",
+  "В Android включается в системе: «Постоянная VPN» и «Блокировать соединения без VPN»": "On Android it's a system setting: “Always-on VPN” and “Block connections without VPN”",
+  "Если VPN оборвётся, интернет закроется, пока VPN не подключится снова": "If the VPN drops, the internet is closed until the VPN reconnects",
+  "Закрывать интернет, если VPN оборвался": "Close the internet if the VPN drops",
+  "Не удалось открыть настройки VPN: {0}": "Couldn't open VPN settings: {0}",
+  "В приложении откроются системные настройки VPN": "In the app, system VPN settings will open",
+  "Kill switch закрыл интернет, пока VPN не подключится снова. Чтобы открыть без VPN — выключите kill switch": "Kill switch closed the internet until the VPN reconnects. To open it without the VPN, turn off the kill switch",
 };

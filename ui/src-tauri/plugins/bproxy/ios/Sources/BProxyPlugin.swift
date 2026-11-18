@@ -25,6 +25,7 @@ class LiveActivityArgs: Decodable {
 class StartArgs: Decodable {
     let config: String
     let notifyDisconnect: Bool?
+    let killSwitch: Bool?
 }
 
 /// Мост между интерфейсом (Tauri) и iOS.
@@ -71,6 +72,11 @@ class BProxyPlugin: Plugin {
     }
 
     /// Папка баз geoip/geosite в общем контейнере App Group: её читает расширение PacketTunnel.
+    /// Системные настройки VPN есть только на Android.
+    @objc public func openVpnSettings(_ invoke: Invoke) {
+        invoke.reject("Есть только на Android")
+    }
+
     @objc public func geoDir(_ invoke: Invoke) {
         let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Shared.appGroup)
             ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -134,6 +140,13 @@ class BProxyPlugin: Plugin {
             proto.serverAddress = "B-Proxy"
             proto.providerConfiguration = ["config": config, "notifyDisconnect": notify]
             proto.disconnectOnSleep = false
+            // Kill switch: весь трафик только через туннель, при его обрыве — никуда.
+            // Локальную сеть (принтер, AirDrop) оставляем, как и без kill switch.
+            if #available(iOS 14.0, *) {
+                let kill = args.killSwitch ?? false
+                proto.includeAllNetworks = kill
+                proto.excludeLocalNetworks = kill
+            }
             manager.protocolConfiguration = proto
             manager.localizedDescription = "B-Proxy"
             manager.isEnabled = true

@@ -19,4 +19,5 @@ permissions = [
   "allow-download-geo",
   "allow-live-activity",
   "allow-speed-test",
+  "allow-open-vpn-settings",
 ]

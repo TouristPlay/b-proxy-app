@@ -20,6 +20,7 @@
 - `allow-download-geo`
 - `allow-live-activity`
 - `allow-speed-test`
+- `allow-open-vpn-settings`
 
 ## Permission Table
 
@@ -260,6 +261,32 @@ Enables the open_logs_dir command without any pre-configured scope.
 <td>
 
 Denies the open_logs_dir command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-open-vpn-settings`
+
+</td>
+<td>
+
+Enables the open_vpn_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-open-vpn-settings`
+
+</td>
+<td>
+
+Denies the open_vpn_settings command without any pre-configured scope.
 
 </td>
 </tr>

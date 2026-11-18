@@ -17,6 +17,10 @@ pub struct StartArgs {
     /// Телефоны: служба VPN сама сообщит, если туннель оборвался не по команде пользователя.
     #[serde(default)]
     pub notify_disconnect: bool,
+    /// iOS: includeAllNetworks — трафик мимо туннеля закрыт, даже если он упал.
+    /// На компьютерах kill switch приходит в самом конфиге (env и WFP).
+    #[serde(default)]
+    pub kill_switch: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

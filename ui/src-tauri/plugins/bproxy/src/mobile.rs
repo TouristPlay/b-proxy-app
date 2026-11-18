@@ -67,6 +67,14 @@ impl<R: Runtime> Vpn<R> {
         }
     }
 
+    pub async fn open_vpn_settings(&self) -> Result<(), String> {
+        self.0
+            .run_mobile_plugin_async::<serde_json::Value>("openVpnSettings", ())
+            .await
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
     /// Android — папка приложения, iOS — общий контейнер App Group (его читает расширение).
     pub async fn geo_dir(&self) -> Result<std::path::PathBuf, String> {
         #[derive(Deserialize)]

@@ -127,6 +127,10 @@ impl<R: Runtime> Vpn<R> {
         Ok(self.data_dir()?.join("geo"))
     }
 
+    pub async fn open_vpn_settings(&self) -> Result<(), String> {
+        Err("Есть только на Android".into())
+    }
+
     pub async fn device_info(&self) -> Result<crate::device::DeviceInfo, String> {
         static CACHE: std::sync::OnceLock<crate::device::DeviceInfo> = std::sync::OnceLock::new();
         if let Some(d) = CACHE.get() {
@@ -289,17 +293,25 @@ impl<R: Runtime> Vpn<R> {
         let state = dir.join("core.state");
         // Флаг пишем всегда: если ядро ещё ждёт пароль, оно увидит его и не запустится.
         std::fs::write(dir.join("core.stop"), b"").map_err(|e| e.to_string())?;
-        if read_state(&state).as_deref() != Some("running") {
-            return Ok(());
-        }
-        let started = Instant::now();
-        while started.elapsed() < Duration::from_secs(10) {
-            if read_state(&state).as_deref() != Some("running") {
-                return Ok(());
+        if read_state(&state).as_deref() == Some("running") {
+            let started = Instant::now();
+            while read_state(&state).as_deref() == Some("running") {
+                if started.elapsed() > Duration::from_secs(10) {
+                    return Err("Ядро не остановилось за 10 секунд".into());
+                }
+                tokio_sleep(Duration::from_millis(200)).await;
             }
-            tokio_sleep(Duration::from_millis(200)).await;
         }
-        Err("Ядро не остановилось за 10 секунд".into())
+        // Ядро упало или приложение закрывалось аварийно — kill switch ещё держит
+        // интернет закрытым. Пользователь отключает VPN — открываем.
+        if dir.join("killswitch").exists() {
+            let installed = self.app.path().resource_dir().map_err(|e| e.to_string())?.join("core/bproxy-core");
+            let copy = dir.join("bproxy-core");
+            tauri::async_runtime::spawn_blocking(move || release_kill_switch(&installed, &copy, &dir))
+                .await
+                .map_err(|e| e.to_string())??;
+        }
+        Ok(())
     }
 }
 
@@ -401,6 +413,35 @@ fn launch_direct(binary: &PathBuf, config: &PathBuf, state: &PathBuf, stop: &Pat
 #[cfg(target_os = "macos")]
 fn launch_direct(_: &PathBuf, _: &PathBuf, _: &PathBuf, _: &PathBuf) -> Result<(), String> {
     Err("Запуск без пароля на macOS пока не поддерживается".into())
+}
+
+/// Снять правила kill switch, оставшиеся после аварии (`bproxy-core --killswitch-off`).
+#[cfg(target_os = "linux")]
+fn release_kill_switch(installed: &PathBuf, copy: &PathBuf, dir: &PathBuf) -> Result<(), String> {
+    let status = if has_net_caps(installed) {
+        std::process::Command::new(installed).arg("--killswitch-off").arg(dir).status()
+    } else {
+        std::process::Command::new("pkexec").arg(copy).arg("--killswitch-off").arg(dir).status()
+    };
+    match status {
+        Ok(s) if s.success() => Ok(()),
+        _ => Err("Не удалось снять kill switch — интернет закрыт. Подключитесь снова или перезагрузите компьютер".into()),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn release_kill_switch(_installed: &PathBuf, copy: &PathBuf, dir: &PathBuf) -> Result<(), String> {
+    let command = format!("{} --killswitch-off {}", shell_quote(copy), shell_quote(dir));
+    let script = format!(
+        "do shell script \"{}\" with prompt \"B-Proxy открывает интернет после сбоя VPN\" with administrator privileges",
+        command.replace('\\', "\\\\").replace('"', "\\\"")
+    );
+    let ok = std::process::Command::new("osascript").arg("-e").arg(script).status().map(|s| s.success()).unwrap_or(false);
+    if ok {
+        Ok(())
+    } else {
+        Err("Не удалось снять kill switch — интернет закрыт. Подключитесь снова или перезагрузите компьютер".into())
+    }
 }
 
 #[cfg(target_os = "linux")]

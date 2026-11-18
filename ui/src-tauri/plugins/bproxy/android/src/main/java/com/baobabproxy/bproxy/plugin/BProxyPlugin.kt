@@ -63,6 +63,20 @@ class BProxyPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     /** Разрешение на VPN: системный диалог при первом подключении. */
+    /**
+     * Системные настройки VPN: там «Постоянная VPN» и «Блокировать соединения без VPN» —
+     * настоящий kill switch Android, приложение включить его само не может.
+     */
+    @Command
+    fun openVpnSettings(invoke: Invoke) {
+        try {
+            activity.startActivity(android.content.Intent(Settings.ACTION_VPN_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+            invoke.resolve()
+        } catch (e: Throwable) {
+            invoke.reject(e.message ?: "Не удалось открыть настройки VPN")
+        }
+    }
+
     /** Папка баз geoip/geosite: служба VPN в том же процессе, ей хватает filesDir. */
     @Command
     fun geoDir(invoke: Invoke) {

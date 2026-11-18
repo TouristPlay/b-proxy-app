@@ -154,6 +154,13 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   открытый ключ — в `plugins.updater.pubkey` в tauri.conf.json. Версия сборки берётся из тега (`scripts/tauri_build_conf.sh`).
   Без ключа релиз выходит без автообновления. Проверка — через минуту после запуска и раз в 12 часов
   (настройка `desktop.autoUpdate`), установка — только по кнопке; перед установкой VPN выключается.
+- Kill switch (настройка `killSwitch`): Linux — таблица nftables `inet bproxy_killswitch` (выпускает только `lo`,
+  туннель, локальную сеть и сокеты ядра с меткой SO_MARK `0x62707278`), macOS — якорь pf `com.apple/250.BProxyKillSwitch`
+  («user root» — ядро), оба ставит `bproxy-core` по env `BPROXY_KILL_SWITCH*` (`core/runner/killswitch_*.go`).
+  Штатное отключение снимает правила; если не стало приложения — правила остаются, метка `killswitch` в папке
+  данных, приложение снимает их при отключении (`bproxy-core --killswitch-off <папка>`). Windows — WFP
+  `autoSystemWfpBlockLeak: all / allexceptlan` (пока работает ядро). iOS — `includeAllNetworks`.
+  Android — только системная «Блокировать соединения без VPN» (кнопка открывает настройки VPN).
 - Окно запоминает размер и место (`tauri-plugin-window-state`, без флага видимости); при первом запуске — по экрану.
 - Уведомления — `tauri-plugin-notification`: VPN отключился, срок подписки (3 дня, 1 день, закончилась),
   90% трафика, новое объявление провайдера. Что уже показано — `b-proxy.alerts` в localStorage.

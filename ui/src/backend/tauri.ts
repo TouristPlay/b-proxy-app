@@ -374,6 +374,14 @@ export class TauriBackend implements Backend {
     return this.ensureNotifyPermission(true);
   }
 
+  async openVpnSettings() {
+    try {
+      await invoke("plugin:bproxy|open_vpn_settings");
+    } catch (e) {
+      this.toast(t("Не удалось открыть настройки VPN: {0}", [message(e)]));
+    }
+  }
+
   finishOnboarding() {
     localStorage.setItem(ONBOARDED_KEY, "1");
     this.emit({ onboarded: true });
@@ -769,7 +777,7 @@ export class TauriBackend implements Backend {
       const notifyDisconnect = isMobile(this.platform) && n.enabled && n.disconnect;
       // Служба VPN шлёт уведомление сама, поэтому разрешение спрашиваем заранее, при подключении.
       if (notifyDisconnect) await this.ensureNotifyPermission();
-      await invoke("plugin:bproxy|start", { config, notifyDisconnect });
+      await invoke("plugin:bproxy|start", { config, notifyDisconnect, killSwitch: this.s.settings.killSwitch });
       if (this.cancelled) {
         // Отменили, пока ядро запускалось: гасим то, что успело подняться.
         await invoke("plugin:bproxy|stop").catch(() => undefined);
@@ -830,7 +838,9 @@ export class TauriBackend implements Backend {
       if (!isMobile(this.platform)) void this.notify(
         "disconnect",
         t("VPN отключился"),
-        error ?? t("Соединение{0} прервано. Откройте B-Proxy, чтобы подключиться снова", [server ? t(" с «{0}»", [server.replace(/^\p{RI}{2}\s*/u, "")]) : ""]),
+        this.s.settings.killSwitch
+          ? t("Kill switch закрыл интернет, пока VPN не подключится снова. Чтобы открыть без VPN — выключите kill switch")
+          : error ?? t("Соединение{0} прервано. Откройте B-Proxy, чтобы подключиться снова", [server ? t(" с «{0}»", [server.replace(/^\p{RI}{2}\s*/u, "")]) : ""]),
       );
       this.closeSession(error ? "error" : "system", error ?? undefined);
       if (error) this.logError(error);
@@ -1327,6 +1337,10 @@ export class TauriBackend implements Backend {
     if (Object.keys(patch).some((k) => !APP_ONLY.has(k))) this.settingsChanged();
     else this.persist();
     if (patch.liveActivity !== undefined) this.syncLiveActivity();
+    // Kill switch выключили после аварии — открываем интернет (ядро снимет оставшиеся правила).
+    if (patch.killSwitch === false && this.s.state === "disconnected" && !isMobile(this.platform)) {
+      void invoke("plugin:bproxy|stop").catch((e) => this.logError(message(e)));
+    }
     // Включили или выключили уведомления о сроке — переставим расписание на телефоне.
     if (patch.notifications && isMobile(this.platform)) this.checkAlerts();
   }

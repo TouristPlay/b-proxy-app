@@ -64,9 +64,14 @@ pub(crate) async fn start<R: Runtime>(
     app: AppHandle<R>,
     config: String,
     notify_disconnect: Option<bool>,
+    kill_switch: Option<bool>,
 ) -> Result<(), String> {
     app.vpn()
-        .start(StartArgs { config, notify_disconnect: notify_disconnect.unwrap_or(false) })
+        .start(StartArgs {
+            config,
+            notify_disconnect: notify_disconnect.unwrap_or(false),
+            kill_switch: kill_switch.unwrap_or(false),
+        })
         .await
 }
 
@@ -131,4 +136,10 @@ pub(crate) async fn speed_test<R: Runtime>(app: AppHandle<R>, port: u16) -> Resu
         Err(e) => logs::error("speed", e),
     }
     res
+}
+
+/// Android: системные настройки VPN («Постоянная VPN», «Блокировать без VPN»).
+#[command]
+pub(crate) async fn open_vpn_settings<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    app.vpn().open_vpn_settings().await
 }

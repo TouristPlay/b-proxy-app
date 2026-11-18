@@ -169,6 +169,12 @@ export function buildConfig(
   if (core.noLimitMode) env.BPROXY_AGGRESSIVE_GC = "1";
   // Базы geoip/geosite профиля маршрутизации ядро ищет в этой папке.
   if (profile && geoDir) env["xray.location.asset"] = geoDir;
+  // Kill switch на Linux и macOS ставит само ядро (core/runner/killswitch_*.go).
+  if (s.killSwitch && (platform === "linux" || platform === "macos")) {
+    env.BPROXY_KILL_SWITCH = "1";
+    env.BPROXY_KILL_SWITCH_LAN = s.network.lanDirect ? "1" : "0";
+    env.BPROXY_TUN = TUN_NAME[platform];
+  }
 
   // Outbound'ы провайдера плюс наши служебные, если их нет.
   const outbounds: Outbound[] = node.outbounds.map((raw) => {
@@ -287,7 +293,10 @@ function tunInbound(s: Settings, platform: Platform) {
     settings.gateway = [TUN_GATEWAY4, ...(s.ipv6 ? [TUN_GATEWAY6] : [])];
     settings.dns = [TUN_DNS];
     settings.autoSystemRoutingTable = ["0.0.0.0/0", ...(s.ipv6 ? ["::/0"] : [])];
-    if (platform === "windows") settings.autoSystemWfpBlockLeak = ["dns", "misconfigtun"];
+    // Windows: фильтры WFP не выпускают трафик мимо туннеля; с kill switch — весь, без него — DNS.
+    if (platform === "windows") {
+      settings.autoSystemWfpBlockLeak = s.killSwitch ? [s.network.lanDirect ? "allexceptlan" : "all"] : ["dns", "misconfigtun"];
+    }
   }
   return {
     tag: "tun-in",

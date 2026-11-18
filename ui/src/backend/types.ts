@@ -270,6 +270,12 @@ export interface Settings {
   sendHwid: boolean;
   /** Подключаться сразу после запуска приложения. */
   autoConnect: boolean;
+  /**
+   * Kill switch: при обрыве VPN интернет закрыт, пока туннель не поднимется или его не выключат.
+   * Linux — nftables, macOS — pf, Windows — фильтры WFP, iOS — includeAllNetworks,
+   * Android — туннель остаётся поднятым без ядра (плюс системная «Блокировать без VPN»).
+   */
+  killSwitch: boolean;
   /** iOS: «Живая активность» — статус VPN на экране блокировки и в Dynamic Island. */
   liveActivity: boolean;
   /** Порядок серверов в списке. */
@@ -404,6 +410,8 @@ export interface Backend {
   requestVpnPermission(): Promise<boolean>;
   /** Разрешение на уведомления. */
   requestNotifications(): Promise<boolean>;
+  /** Android: системные настройки VPN (там «Блокировать соединения без VPN»). */
+  openVpnSettings(): Promise<void>;
   /** Знакомство пройдено — больше не показывать. */
   finishOnboarding(): void;
   /** Проверить скорость через выбранный сервер (только при включённом VPN). */
