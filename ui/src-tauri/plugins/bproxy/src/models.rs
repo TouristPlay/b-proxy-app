@@ -14,6 +14,9 @@ pub struct FetchResult {
 pub struct StartArgs {
     /// Полный конфиг Xray в JSON.
     pub config: String,
+    /// Телефоны: служба VPN сама сообщит, если туннель оборвался не по команде пользователя.
+    #[serde(default)]
+    pub notify_disconnect: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

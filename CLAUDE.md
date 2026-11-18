@@ -135,6 +135,10 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   `libayatana-appindicator3-dev`.
 - Уведомления — `tauri-plugin-notification`: VPN отключился, срок подписки (3 дня, 1 день, закончилась),
   90% трафика, новое объявление провайдера. Что уже показано — `b-proxy.alerts` в localStorage.
+  На телефонах «VPN отключился» шлёт сама служба VPN (`BProxyVpnService.alertDisconnected`, в iOS —
+  `PacketTunnelProvider.stopTunnel`), флаг `notifyDisconnect` приходит в команде `start`. Напоминания о сроке
+  ставятся в расписание системы (`planExpiry`, id в `b-proxy.planned`), их показывает система при закрытом приложении.
+  Пушей с сервера нет.
 - В приложении и демо нет связи с конкретным VPN-сервисом: демо на вымышленном «Demo VPN», example.com.
 - Подписки понимают те же заголовки, что INCY/Happ: `profile-title`, `subscription-userinfo`, `announce`,
   `support-url`, `profile-web-page-url`, `hide-url`, `sort-order`, `new-url`, `fragmentation-*`, метаданные `#key:` в теле.

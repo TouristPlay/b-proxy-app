@@ -1,6 +1,7 @@
 import Foundation
 import NetworkExtension
 import LibXray
+import UserNotifications
 
 /// Расширение Network Extension: здесь работает ядро Xray.
 ///
@@ -19,8 +20,15 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private let tunDns = "172.19.0.2"
     private let tunAddress6 = "fdfe:dcba:9876::1"
 
+    /// Сообщать ли об обрыве (настройка «Уведомления → VPN отключился»).
+    private var notifyDisconnect = false
+
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         Shared.defaults?.removeObject(forKey: Shared.lastErrorKey)
+        let providerConfig = (protocolConfiguration as? NETunnelProviderProtocol)?.providerConfiguration
+        notifyDisconnect = (options?["notifyDisconnect"] as? NSNumber)?.boolValue
+            ?? (providerConfig?["notifyDisconnect"] as? NSNumber)?.boolValue
+            ?? false
 
         // Конфиг приходит в options при ручном запуске и лежит в профиле VPN
         // на случай, если система перезапускает туннель сама (Connect On Demand).
@@ -87,7 +95,33 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
         _ = XrayInvoke.call(#"{"apiVersion":3,"method":"stopXray"}"#)
-        completionHandler()
+        if notifyDisconnect, let text = Self.disconnectReason(reason) {
+            Self.alertDisconnected(text, then: completionHandler)
+        } else {
+            completionHandler()
+        }
+    }
+
+    /// Причина обрыва для уведомления; nil — отключили сами (кнопкой, в Настройках) или это сон.
+    private static func disconnectReason(_ reason: NEProviderStopReason) -> String? {
+        switch reason {
+        case .superceded: return "Включён другой VPN"
+        case .providerFailed, .connectionFailed: return "Туннель перестал работать"
+        case .noNetworkAvailable, .unrecoverableNetworkChange: return "Пропала сеть"
+        case .idleTimeout: return "Соединение простаивало слишком долго"
+        default: return nil
+        }
+    }
+
+    /// Уведомление «VPN отключился» из расширения: приложение в этот момент может быть закрыто.
+    /// Разрешение на уведомления запрашивает приложение при подключении.
+    private static func alertDisconnected(_ reason: String, then done: @escaping () -> Void) {
+        let content = UNMutableNotificationContent()
+        content.title = "VPN отключился"
+        content.body = "\(reason). Откройте B-Proxy, чтобы подключиться снова"
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: "bproxy.disconnect", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { _ in done() }
     }
 
     override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {

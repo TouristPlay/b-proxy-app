@@ -11,6 +11,7 @@ class InvokeCoreArgs: Decodable {
 
 class StartArgs: Decodable {
     let config: String
+    let notifyDisconnect: Bool?
 }
 
 /// Мост между интерфейсом (Tauri) и iOS.
@@ -54,12 +55,13 @@ class BProxyPlugin: Plugin {
     @objc public func start(_ invoke: Invoke) throws {
         let args = try invoke.parseArgs(StartArgs.self)
         let config = args.config
+        let notify = (args.notifyDisconnect ?? false) as NSNumber
         loadManager { existing in
             let manager = existing ?? NETunnelProviderManager()
             let proto = (manager.protocolConfiguration as? NETunnelProviderProtocol) ?? NETunnelProviderProtocol()
             proto.providerBundleIdentifier = Shared.extensionBundleId
             proto.serverAddress = "B-Proxy"
-            proto.providerConfiguration = ["config": config]
+            proto.providerConfiguration = ["config": config, "notifyDisconnect": notify]
             proto.disconnectOnSleep = false
             manager.protocolConfiguration = proto
             manager.localizedDescription = "B-Proxy"
@@ -82,7 +84,7 @@ class BProxyPlugin: Plugin {
                     do {
                         self.pendingStart?.reject("Подключение начато заново")
                         self.pendingStart = invoke
-                        try manager.connection.startVPNTunnel(options: ["config": config as NSString])
+                        try manager.connection.startVPNTunnel(options: ["config": config as NSString, "notifyDisconnect": notify])
                     } catch {
                         self.pendingStart = nil
                         invoke.reject(Self.describe(error))

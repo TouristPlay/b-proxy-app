@@ -27,9 +27,12 @@ class BProxyVpnService : VpnService() {
         const val ACTION_START = "com.baobabproxy.bproxy.START"
         const val ACTION_STOP = "com.baobabproxy.bproxy.STOP"
         const val EXTRA_CONFIG = "config"
+        const val EXTRA_NOTIFY = "notifyDisconnect"
         private const val TAG = "BProxyVpn"
         private const val CHANNEL_ID = "vpn"
         private const val NOTIFICATION_ID = 1
+        private const val ALERT_CHANNEL_ID = "alerts"
+        private const val ALERT_ID = 2
 
         // Адреса совпадают с конфигом из ui/src/backend/xray.ts.
         private const val TUN_ADDRESS = "172.19.0.1"
@@ -52,10 +55,11 @@ class BProxyVpnService : VpnService() {
             listener?.invoke(value)
         }
 
-        fun start(context: Context, config: String) {
+        fun start(context: Context, config: String, notifyDisconnect: Boolean) {
             val intent = Intent(context, BProxyVpnService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_CONFIG, config)
+                .putExtra(EXTRA_NOTIFY, notifyDisconnect)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -73,14 +77,27 @@ class BProxyVpnService : VpnService() {
     private val worker = Executors.newSingleThreadExecutor()
     private var tun: ParcelFileDescriptor? = null
 
+    /** Сообщать ли об обрыве (настройка «Уведомления → VPN отключился»). */
+    @Volatile
+    private var notifyDisconnect = false
+
+    /** Отключение по команде пользователя: из приложения или кнопкой в шторке. */
+    @Volatile
+    private var userStop = false
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
                 val config = intent.getStringExtra(EXTRA_CONFIG) ?: return START_NOT_STICKY
+                notifyDisconnect = intent.getBooleanExtra(EXTRA_NOTIFY, false)
+                userStop = false
                 startForegroundCompat()
                 worker.execute { startCore(config) }
             }
-            ACTION_STOP -> worker.execute { stopCore(); stopSelfCompat() }
+            ACTION_STOP -> {
+                userStop = true
+                worker.execute { stopCore(); stopSelfCompat() }
+            }
             // Система перезапустила сервис без команды (например, «Постоянная VPN»).
             else -> if (state == "disconnected") stopSelfCompat()
         }
@@ -88,11 +105,14 @@ class BProxyVpnService : VpnService() {
     }
 
     override fun onRevoke() {
-        // Пользователь включил другой VPN или отозвал разрешение.
+        // Включили другой VPN или отозвали разрешение — туннель оборвался не по нашей кнопке.
+        if (state == "connected") alertDisconnected("Включён другой VPN или отозвано разрешение")
         worker.execute { stopCore(); stopSelfCompat() }
     }
 
     override fun onDestroy() {
+        // Систему вынудили остановить службу, пока VPN работал.
+        if (state == "connected" && !userStop) alertDisconnected("Система остановила VPN")
         stopCore()
         worker.shutdown()
         super.onDestroy()
@@ -241,6 +261,44 @@ class BProxyVpnService : VpnService() {
             )
         } else {
             startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    /**
+     * Уведомление «VPN отключился» прямо из службы: приходит, даже если интерфейс
+     * приложения выгружен из памяти. Канал «Предупреждения» — со звуком, в отличие от «VPN».
+     */
+    private fun alertDisconnected(reason: String) {
+        if (!notifyDisconnect || userStop) return
+        notifyDisconnect = false // одно уведомление на обрыв
+        try {
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                nm.getNotificationChannel(ALERT_CHANNEL_ID) == null
+            ) {
+                nm.createNotificationChannel(
+                    NotificationChannel(ALERT_CHANNEL_ID, "Предупреждения", NotificationManager.IMPORTANCE_DEFAULT)
+                )
+            }
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(this, ALERT_CHANNEL_ID)
+            } else {
+                @Suppress("DEPRECATION")
+                Notification.Builder(this)
+            }
+            nm.notify(
+                ALERT_ID,
+                builder
+                    .setSmallIcon(R.drawable.ic_bproxy_vpn)
+                    .setContentTitle("VPN отключился")
+                    .setContentText("$reason. Откройте B-Proxy, чтобы подключиться снова")
+                    .setAutoCancel(true)
+                    .setContentIntent(openAppIntent())
+                    .build()
+            )
+        } catch (e: Throwable) {
+            // Нет разрешения на уведомления (Android 13+) — молча пропускаем.
+            Log.w(TAG, "alert failed", e)
         }
     }
 

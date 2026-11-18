@@ -1,6 +1,6 @@
 import { addPluginListener, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
+import { cancel, isPermissionGranted, requestPermission, Schedule, sendNotification } from "@tauri-apps/plugin-notification";
 import { defaultAppearance, defaultSettings } from "./demo";
 import { checkUrl, mainOutbound, parseSubscription, type FetchResult, type NodeConfig, type Outbound, type StoredSubscription } from "./subscription";
 import {
@@ -29,11 +29,15 @@ const PING_BATCH = 5;
 const STATE_KEY = "b-proxy.state";
 /** Какие уведомления о подписках уже показаны. */
 const ALERTS_KEY = "b-proxy.alerts";
+/** id уведомлений о сроке, которые B-Proxy поставил в расписание телефона. */
+const PLANNED_KEY = "b-proxy.planned";
 
 interface AlertMarks {
   expireAt?: number | null;
   /** Последний порог срока, о котором предупредили: 3, 1 или 0 дней. */
   expiry?: number;
+  /** Телефон: пороги срока, поставленные в расписание системы, и когда они сработают. */
+  planned?: Record<string, number>;
   traffic?: boolean;
   announce?: string;
 }
@@ -295,6 +299,11 @@ export class TauriBackend implements Backend {
       if (m.expireAt !== sub.expireAt) {
         m.expireAt = sub.expireAt;
         m.expiry = undefined;
+        m.planned = undefined;
+      }
+      // Запланированное уведомление уже сработало без нас — второй раз не повторяем.
+      for (const [level, at] of Object.entries(m.planned ?? {})) {
+        if (at <= Date.now()) m.expiry = Math.min(m.expiry ?? 99, Number(level));
       }
       const days = sub.expireAt ? Math.ceil((sub.expireAt - Date.now()) / 86_400_000) : null;
       if (days != null && days <= 3) {
@@ -324,10 +333,69 @@ export class TauriBackend implements Backend {
       m.announce = announce;
       marks[sub.url] = m;
     }
+    if (isMobile(this.platform)) void this.planExpiry(marks);
     try {
       localStorage.setItem(ALERTS_KEY, JSON.stringify(marks));
     } catch {
       // Хранилище недоступно — в худшем случае уведомление придёт ещё раз.
+    }
+  }
+
+  /**
+   * Телефон: напоминания о сроке ставим в расписание системы (за 3 дня, за день, в день окончания,
+   * в 12:00). Их покажет сама система, даже если приложение выгружено. Прежнее расписание
+   * B-Proxy снимаем и ставим заново: срок могли продлить, а уведомления — выключить.
+   */
+  private async planExpiry(marks: Record<string, AlertMarks>) {
+    const n = this.s.settings.notifications;
+    const ids = readJson<number[]>(PLANNED_KEY) ?? [];
+    try {
+      if (ids.length) await cancel(ids);
+    } catch {
+      // Нечего снимать.
+    }
+    const next: number[] = [];
+    if (n.enabled && n.expiry && (await this.ensureNotifyPermission(false))) {
+      this.subs.forEach((sub, i) => {
+        const m = marks[sub.url];
+        if (!sub.expireAt || !m) return;
+        m.planned = {};
+        for (const level of [3, 1, 0]) {
+          // Уже предупредили об этом пороге (или более позднем) — не повторяем.
+          if (m.expiry != null && m.expiry <= level) continue;
+          const at = new Date(sub.expireAt - level * 86_400_000);
+          at.setHours(12, 0, 0, 0);
+          if (at.getTime() <= Date.now() + 60_000) continue;
+          const id = 7000 + i * 10 + level;
+          sendNotification({
+            id,
+            title: level === 0 ? `Подписка «${sub.title}» закончилась` : `Подписка «${sub.title}» заканчивается`,
+            body:
+              level === 0
+                ? "Серверы перестанут работать. Продлите подписку у провайдера"
+                : `Осталось ${level} ${plural(level, "день", "дня", "дней")}. Продлите, чтобы VPN не отключился`,
+            schedule: Schedule.at(at, false, true),
+          });
+          m.planned[level] = at.getTime();
+          next.push(id);
+        }
+      });
+    }
+    try {
+      localStorage.setItem(PLANNED_KEY, JSON.stringify(next));
+      localStorage.setItem(ALERTS_KEY, JSON.stringify(marks));
+    } catch {
+      // Не сохранилось — при следующем запуске расписание просто поставится заново.
+    }
+  }
+
+  /** Разрешение на уведомления; ask=false — только проверить, не спрашивая. */
+  private async ensureNotifyPermission(ask = true) {
+    try {
+      if (await isPermissionGranted()) return true;
+      return ask ? (await requestPermission()) === "granted" : false;
+    } catch {
+      return false;
     }
   }
 
@@ -518,7 +586,11 @@ export class TauriBackend implements Backend {
           `MTU ${set.core.mtu || 1500}, журнал ${set.core.logLevel}`,
       );
       if (this.cancelled) return;
-      await invoke("plugin:bproxy|start", { config });
+      const n = this.s.settings.notifications;
+      const notifyDisconnect = isMobile(this.platform) && n.enabled && n.disconnect;
+      // Служба VPN шлёт уведомление сама, поэтому разрешение спрашиваем заранее, при подключении.
+      if (notifyDisconnect) await this.ensureNotifyPermission();
+      await invoke("plugin:bproxy|start", { config, notifyDisconnect });
       if (this.cancelled) {
         // Отменили, пока ядро запускалось: гасим то, что успело подняться.
         await invoke("plugin:bproxy|stop").catch(() => undefined);
@@ -575,7 +647,8 @@ export class TauriBackend implements Backend {
     else if (state === "disconnected" && this.s.state !== "disconnected") {
       // Туннель выключила система или кнопка в уведомлении.
       const server = this.s.current?.node.name;
-      void this.notify(
+      // На телефоне об обрыве сообщает сама служба VPN (работает и при закрытом приложении).
+      if (!isMobile(this.platform)) void this.notify(
         "disconnect",
         "VPN отключился",
         error ?? `Соединение${server ? ` с «${server.replace(/^\p{RI}{2}\s*/u, "")}»` : ""} прервано. Откройте B-Proxy, чтобы подключиться снова`,
@@ -846,6 +919,8 @@ export class TauriBackend implements Backend {
   async updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>) {
     this.emit({ settings: { ...this.s.settings, ...patch } });
     this.settingsChanged();
+    // Включили или выключили уведомления о сроке — переставим расписание на телефоне.
+    if (patch.notifications && isMobile(this.platform)) this.checkAlerts();
   }
 
   async updateCore(patch: Partial<CoreSettings>) {

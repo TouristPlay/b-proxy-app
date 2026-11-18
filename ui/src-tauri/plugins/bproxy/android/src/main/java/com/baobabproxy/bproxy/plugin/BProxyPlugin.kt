@@ -28,6 +28,7 @@ class InvokeCoreArgs {
 @InvokeArg
 class StartArgs {
     lateinit var config: String
+    var notifyDisconnect: Boolean = false
 }
 
 /**
@@ -87,7 +88,7 @@ class BProxyPlugin(private val activity: Activity) : Plugin(activity) {
         val args = invoke.parseArgs(StartArgs::class.java)
         pendingStart?.reject("Подключение начато заново")
         pendingStart = invoke
-        BProxyVpnService.start(activity, args.config)
+        BProxyVpnService.start(activity, args.config, args.notifyDisconnect)
     }
 
     @Command
