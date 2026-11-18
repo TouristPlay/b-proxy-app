@@ -122,7 +122,7 @@ export function HomeScreen({
             speed={s.downSpeed}
             onToggle={hasServers ? () => void backend.toggle() : onAdd}
             label={hasServers ? undefined : t("Добавить подписку")}
-            size={`clamp(140px, min(72vw, 100dvh - ${hasServers ? 674 : 460}px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 320px)`}
+            size={`clamp(112px, min(72vw, 100dvh - ${hasServers ? 674 : 460}px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 320px)`}
           />
         </div>
 
@@ -231,7 +231,7 @@ export function HomeScreen({
               <span className="block truncate font-medium">
                 {splitFlag(s.current.node.name).name}
               </span>
-              <span className="block text-[13px] text-ink-2">
+              <span className="block truncate text-[13px] text-ink-2">
                 {s.selected
                   ? t("Выбран вручную · сменить")
                   : s.pinging

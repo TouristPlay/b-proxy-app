@@ -95,7 +95,7 @@ export function DesktopLayout({ onAdd }: { onAdd: () => void }) {
           </span>
         </header>
 
-        <div key={tab} className="scroll-area mt-5 min-h-0 flex-1 pr-1">
+        <div key={tab} className="scroll-area mt-5 min-h-0 flex-1 pr-1 short:mt-3">
           {tab === "home" ? (
             <DesktopHome now={now} onAdd={onAdd} />
           ) : (
@@ -118,7 +118,7 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
   const status = on ? t("Защищено") : s.state === "connecting" ? t("Подключаемся") : s.state === "disconnecting" ? t("Отключаемся") : t("Не защищено");
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 pb-4 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 pb-4 short:gap-3.5 short:pb-1 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
       <section className="flex items-center gap-8 xl:col-span-2">
         <div className="min-w-0 flex-1">
           <p className={cn("flex items-center gap-2 text-[14px] font-medium", on ? "text-good" : "text-ink-2")} aria-live="polite">
@@ -167,16 +167,16 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
           speed={s.downSpeed}
           onToggle={node ? () => void backend.toggle() : onAdd}
           label={node ? undefined : t("Добавить подписку")}
-          size="clamp(160px, 17vw, 240px)"
+          size="clamp(140px, min(17vw, 100dvh - 520px), 240px)"
           className="shrink-0"
         />
       </section>
 
       <Tile title={t("Время")}>
-        <p className="font-display text-[44px] leading-none font-semibold tracking-[-0.02em] tabular-nums">
+        <p className="font-display text-[44px] leading-none font-semibold tracking-[-0.02em] tabular-nums short:text-[36px]">
           {s.connectedAt ? formatDuration(now - s.connectedAt) : "00:00:00"}
         </p>
-        <p className="mt-3 text-[14px] text-ink-2">{on ? t("Сеанс идёт") : t("VPN выключен")}</p>
+        <p className="mt-3 text-[14px] text-ink-2 short:mt-2">{on ? t("Сеанс идёт") : t("VPN выключен")}</p>
       </Tile>
 
       <Tile title={t("Скорость")}>
@@ -200,12 +200,12 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
           </span>
           {node && <Tags tags={node.tags} />}
         </div>
-        <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
+        <div className="mt-4 flex flex-wrap gap-2 text-[13px] short:mt-3">
           <Chip icon={<Lock className="size-3.5" />} text={s.settings.ipv6 ? t("IPv6 через VPN") : t("IPv6 закрыт")} />
           <Chip icon={<Globe2 className="size-3.5" />} text={t("DNS в туннеле")} />
           {s.settings.tlsFragment && <Chip icon={<ShieldCheck className="size-3.5" />} text={t("Обход DPI")} />}
         </div>
-        <p className="mt-4 text-[14px] text-ink-2 tabular-nums">
+        <p className="mt-4 text-[14px] text-ink-2 tabular-nums short:mt-3">
           {t("↓ {0} ↑ {1} за сеанс", [formatBytes(s.downTotal), formatBytes(s.upTotal)])}
         </p>
       </Tile>
@@ -217,8 +217,8 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
 
 function Tile({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="glass rounded-[28px] p-5" aria-label={title}>
-      <h2 className="mb-4 text-[13px] font-medium text-ink-3">{title}</h2>
+    <section className="glass rounded-[28px] p-5 short:px-5 short:py-4" aria-label={title}>
+      <h2 className="mb-4 text-[13px] font-medium text-ink-3 short:mb-2.5">{title}</h2>
       {children}
     </section>
   );
@@ -235,5 +235,5 @@ function Chip({ icon, text }: { icon: ReactNode; text: string }) {
 
 /** Маленький график скорости загрузки за последние 40 секунд. */
 function Sparkline({ values }: { values: number[] }) {
-  return <SmoothChart values={values} color="var(--color-amber)" className="mt-4 h-16 w-full" />;
+  return <SmoothChart values={values} color="var(--color-amber)" className="mt-4 h-16 w-full short:mt-3 short:h-11" />;
 }

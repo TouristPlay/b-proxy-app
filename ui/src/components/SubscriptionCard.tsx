@@ -17,7 +17,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
   return (
     <section
       className={cn(
-        "glass relative overflow-hidden rounded-[28px] border-amber/20 p-4",
+        "glass relative overflow-hidden rounded-[28px] border-amber/20 p-4 short:px-4 short:py-3",
         "bg-[radial-gradient(120%_90%_at_100%_0%,color-mix(in_srgb,var(--color-amber)_13%,transparent),transparent_60%)]",
         className,
       )}
@@ -44,14 +44,14 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
       </div>
 
       {/* Подпись «дней осталось / до …» — по центру высоты числа. */}
-      <div className="mt-2 flex items-center gap-3">
+      <div className="mt-2 flex items-center gap-3 short:mt-1">
         {days == null ? (
           <span className="font-display text-[34px] font-semibold">{t("Бессрочно")}</span>
         ) : (
           <>
             <span
               className={cn(
-                "font-display text-[52px] leading-none font-bold tracking-[-0.04em]",
+                "font-display text-[52px] leading-none font-bold tracking-[-0.04em] short:text-[42px]",
                 ending ? "text-bad" : "bg-gradient-to-b from-amber-2 to-amber bg-clip-text text-transparent",
               )}
             >
@@ -65,7 +65,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
         )}
       </div>
 
-      <div className="mt-3">
+      <div className="mt-3 short:mt-2">
         <div className="flex items-baseline justify-between text-[13.5px]">
           <span className="text-ink-2">{t("Трафик")}</span>
           <span className="tabular-nums">
@@ -95,7 +95,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
         </div>
       </div>
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex gap-2 short:mt-2.5">
         {sub.webPageUrl && (
           <a href={sub.webPageUrl} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "amber", className: "flex-1" })}>
             <ExternalLink />

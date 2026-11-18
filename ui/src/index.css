@@ -5,6 +5,8 @@
 @import "@fontsource/golos-text/500.css";
 @import "@fontsource/golos-text/600.css";
 @import "tailwindcss";
+/* Короткие экраны (телефоны ~760 px, ноутбуки ~700 px): компактнее отступы и крупные числа. */
+@custom-variant short (@media (max-height: 820px));
 
 /*
  * B-Proxy — тёмное матовое стекло на ночном фоне с живыми пятнами света.

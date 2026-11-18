@@ -34,7 +34,28 @@ pub fn show_main<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Размер окна при запуске: 1280×820 (раскладка для компьютера), но не больше рабочей
+const WINDOW_FLAGS: fn() -> tauri_plugin_window_state::StateFlags = || {
+    use tauri_plugin_window_state::StateFlags;
+    // Видимость не восстанавливаем: окно показывает setup (или не показывает при автозапуске).
+    StateFlags::all() - StateFlags::VISIBLE
+};
+
+fn restore_or_fit<R: Runtime>(app: &AppHandle<R>) {
+    use tauri_plugin_window_state::{AppHandleExt, WindowExt};
+    let saved = app
+        .path()
+        .app_config_dir()
+        .map(|d| d.join(app.filename()).exists())
+        .unwrap_or(false);
+    match app.get_webview_window("main") {
+        Some(w) if saved => {
+            let _ = w.restore_state(WINDOW_FLAGS());
+        }
+        _ => fit_to_screen(app),
+    }
+}
+
+/// Размер окна при первом запуске: 1280×820 (раскладка для компьютера), но не больше рабочей
 /// области экрана. Без этого на скрытом окне Linux и маленьких экранах окно открывалось
 /// узким — с раскладкой для телефона.
 fn fit_to_screen<R: Runtime>(app: &AppHandle<R>) {
@@ -58,6 +79,12 @@ fn fit_to_screen<R: Runtime>(app: &AppHandle<R>) {
 
 pub fn setup(builder: Builder<Wry>) -> Builder<Wry> {
     builder
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(WINDOW_FLAGS())
+                .skip_initial_state("main")
+                .build(),
+        )
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec![MINIMIZED]),
@@ -111,7 +138,8 @@ pub fn setup(builder: Builder<Wry>) -> Builder<Wry> {
                 }
             }
 
-            fit_to_screen(app.handle());
+            // Размер и место окна с прошлого раза; при первом запуске — по размеру экрана.
+            restore_or_fit(app.handle());
 
             // Окно создаётся скрытым, чтобы при автозапуске не мелькать на экране.
             let minimized = std::env::args().any(|a| a == MINIMIZED);
