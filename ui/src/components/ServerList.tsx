@@ -92,7 +92,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
           onKeyDown={(e) => e.key === "Escape" && setQuery("")}
           placeholder={t("Страна, город или протокол…")}
           aria-label={t("Поиск сервера")}
-          className="min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-ink-3 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+          className="min-w-0 flex-1 bg-transparent text-[16px] text-ink placeholder:text-ink-3 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
         />
         {query && (
           <button
@@ -132,10 +132,14 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
           <button
             type="button"
             onClick={() => setCollapsed(allClosed ? [] : collapsible)}
-            className="flex min-h-11 items-center gap-2 rounded-full px-3 text-[14px] font-medium text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink"
+            aria-label={allClosed ? t("Развернуть все") : t("Свернуть все")}
+            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink"
           >
             {allClosed ? <ChevronsUpDown className="size-4" aria-hidden /> : <ChevronsDownUp className="size-4" aria-hidden />}
-            {allClosed ? t("Развернуть все") : t("Свернуть все")}
+            {/* На самых узких экранах остаётся только значок: подпись есть в aria-label. */}
+            <span className="hidden min-[360px]:inline" aria-hidden>
+              {allClosed ? t("Развернуть все") : t("Свернуть все")}
+            </span>
           </button>
         )}
       </div>
@@ -180,8 +184,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                   <li className="px-3 py-4 text-[14px] text-ink-2">
                     {query.trim() ? (
                       <>
-                        
-                        {t("Нет серверов по запросу «")}{query.trim()}».{" "}
+                        {t("Нет серверов по запросу «{0}».", [query.trim()])}{" "}
                         <button type="button" onClick={() => setQuery("")} className="font-medium text-amber underline-offset-4 hover:underline">
                           
                           {t("Показать все")}
@@ -205,15 +208,9 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                   const key = nodeKey(sub.url, node.id);
                   const active = s.current?.node.id === node.id && s.current.sub.url === sub.url;
                   const fav = s.favorites.includes(key);
+                  const menuProps = { sub, node, fav, canPing: s.state === "disconnected" && !s.pinging, onRename: () => setRenaming({ sub, node }) };
                   return (
-                    <NodeMenu
-                      key={node.id}
-                      sub={sub}
-                      node={node}
-                      fav={fav}
-                      canPing={s.state === "disconnected" && !s.pinging}
-                      onRename={() => setRenaming({ sub, node })}
-                    >
+                    <NodeMenu key={node.id} {...menuProps}>
                     <li className={cn("group relative", node.hidden && "opacity-55")}>
                       <button
                         onClick={() => {
@@ -222,9 +219,9 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         }}
                         aria-current={active ? "true" : undefined}
                         className={cn(
-                          "relative flex w-full items-center gap-3 overflow-hidden rounded-[18px] text-left transition-[background-color,box-shadow,transform] duration-[var(--dur)] hover:bg-glass-2 active:scale-[0.985]",
-                          // Справа место под звёздочку «В избранное».
-                          compact ? "py-2.5 pr-12 pl-2.5" : "py-3 pr-12 pl-3",
+                          "relative flex w-full items-center gap-3 overflow-hidden rounded-[18px] text-left transition-[background-color,box-shadow,transform] duration-[var(--dur)] hover:bg-glass-2 active:scale-[0.98]",
+                          // Справа место под звёздочку «В избранное» и кнопку «⋯».
+                          compact ? "py-2.5 pr-[84px] pl-2.5" : "py-3 pr-[84px] pl-3",
                           active && "bg-amber/[0.08] ring-1 ring-amber/45 ring-inset hover:bg-amber/[0.11]",
                         )}
                       >
@@ -244,17 +241,20 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         </span>
                         <SignalPing ms={node.pingMs} measuring={s.pingingSub === sub.url} order={i} className="shrink-0" />
                       </button>
-                      <button
-                        onClick={() => backend.toggleFavorite(key)}
-                        aria-label={fav ? t("Убрать из избранного") : t("В избранное")}
-                        aria-pressed={fav}
-                        className={cn(
-                          "absolute top-1/2 right-0.5 flex size-11 -translate-y-1/2 items-center justify-center rounded-full transition-opacity",
-                          fav ? "text-amber" : "text-ink-3/70 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100",
-                        )}
-                      >
-                        <FavStar key={String(fav)} fav={fav} />
-                      </button>
+                      <div className="absolute top-1/2 right-0.5 flex -translate-y-1/2 items-center">
+                        <button
+                          onClick={() => backend.toggleFavorite(key)}
+                          aria-label={fav ? t("Убрать из избранного") : t("В избранное")}
+                          aria-pressed={fav}
+                          className={cn(
+                            "flex size-10 items-center justify-center rounded-full transition-opacity",
+                            fav ? "text-amber" : "text-ink-3 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100",
+                          )}
+                        >
+                          <FavStar key={String(fav)} fav={fav} />
+                        </button>
+                        <NodeMenuButton {...menuProps} />
+                      </div>
                     </li>
                     </NodeMenu>
                   );
@@ -305,9 +305,9 @@ const menuItem =
 function SortMenu({ value }: { value: ServerSort }) {
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger className="flex min-h-11 items-center gap-2 rounded-full px-3 text-[14px] font-medium text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink">
-        <ArrowUpDown className="size-4" aria-hidden />
-        {sorts.find((x) => x.value === value)?.title}
+      <DropdownMenu.Trigger className="flex min-h-11 min-w-0 items-center gap-2 rounded-full px-3 text-[14px] font-medium text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink">
+        <ArrowUpDown className="size-4 shrink-0" aria-hidden />
+        <span className="truncate">{sorts.find((x) => x.value === value)?.title}</span>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="start" sideOffset={6} className={menuBox}>
@@ -328,55 +328,79 @@ function SortMenu({ value }: { value: ServerSort }) {
  * Меню сервера: правая кнопка мыши на компьютере, долгое нажатие на телефоне.
  * Пинг одного сервера, своё название, избранное, скрыть.
  */
-function NodeMenu({
-  sub,
-  node,
-  fav,
-  canPing,
-  onRename,
-  children,
-}: {
+type NodeMenuProps = {
   sub: Subscription;
   node: ServerNode;
   fav: boolean;
   canPing: boolean;
   onRename: () => void;
-  children: React.ReactNode;
-}) {
+};
+
+/** Пункты меню сервера — общие для кнопки «⋯» и правой кнопки / долгого нажатия. */
+type MenuKit = Pick<typeof DropdownMenu, "Item" | "Label" | "Separator">;
+
+function NodeMenuItems({ M, sub, node, fav, canPing, onRename }: NodeMenuProps & { M: MenuKit }) {
+  return (
+    <>
+      {/* Полное название: в строке списка оно может быть обрезано. */}
+      <M.Label className="max-w-72 px-3 pt-1.5 pb-1 text-[13px] leading-snug break-words text-ink-2">{splitFlag(node.name).name}</M.Label>
+      <M.Item className={menuItem} disabled={!canPing} onSelect={() => void backend.pingNode(sub.url, node.id)}>
+        <Gauge className="size-[18px]" aria-hidden />
+        {canPing ? t("Проверить пинг") : t("Пинг — при выключенном VPN")}
+      </M.Item>
+      <M.Item className={menuItem} onSelect={onRename}>
+        <Pencil className="size-[18px]" aria-hidden />
+        {t("Переименовать")}
+      </M.Item>
+      {node.originalName && (
+        <M.Item className={menuItem} onSelect={() => backend.renameNode(sub.url, node.id, null)}>
+          <RotateCcw className="size-[18px]" aria-hidden />
+          {t("Вернуть название из подписки")}
+        </M.Item>
+      )}
+      <M.Item className={menuItem} onSelect={() => backend.toggleFavorite(nodeKey(sub.url, node.id))}>
+        <Star className="size-[18px]" aria-hidden fill={fav ? "currentColor" : "none"} />
+        {fav ? t("Убрать из избранного") : t("В избранное")}
+      </M.Item>
+      <M.Separator className="my-1 h-px bg-edge" />
+      <M.Item className={menuItem} onSelect={() => backend.setNodeHidden(sub.url, node.id, !node.hidden)}>
+        {node.hidden ? <Eye className="size-[18px]" aria-hidden /> : <EyeOff className="size-[18px]" aria-hidden />}
+        {node.hidden ? t("Показывать в списке") : t("Скрыть сервер")}
+      </M.Item>
+    </>
+  );
+}
+
+/** Правая кнопка мыши и долгое нажатие на строке — то же меню, что у кнопки «⋯». */
+function NodeMenu({ children, ...props }: NodeMenuProps & { children: React.ReactNode }) {
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
         <ContextMenu.Content className={menuBox}>
-          <ContextMenu.Label className="max-w-64 truncate px-3 pt-1.5 pb-1 text-[13px] text-ink-3">{splitFlag(node.name).name}</ContextMenu.Label>
-          <ContextMenu.Item className={menuItem} disabled={!canPing} onSelect={() => void backend.pingNode(sub.url, node.id)}>
-            <Gauge className="size-[18px]" aria-hidden />
-            {canPing ? t("Проверить пинг") : t("Пинг — при выключенном VPN")}
-          </ContextMenu.Item>
-          <ContextMenu.Item className={menuItem} onSelect={onRename}>
-            <Pencil className="size-[18px]" aria-hidden />
-            
-            {t("Переименовать")}
-          </ContextMenu.Item>
-          {node.originalName && (
-            <ContextMenu.Item className={menuItem} onSelect={() => backend.renameNode(sub.url, node.id, null)}>
-              <RotateCcw className="size-[18px]" aria-hidden />
-              
-              {t("Вернуть название из подписки")}
-            </ContextMenu.Item>
-          )}
-          <ContextMenu.Item className={menuItem} onSelect={() => backend.toggleFavorite(nodeKey(sub.url, node.id))}>
-            <Star className="size-[18px]" aria-hidden fill={fav ? "currentColor" : "none"} />
-            {fav ? t("Убрать из избранного") : t("В избранное")}
-          </ContextMenu.Item>
-          <ContextMenu.Separator className="my-1 h-px bg-edge" />
-          <ContextMenu.Item className={menuItem} onSelect={() => backend.setNodeHidden(sub.url, node.id, !node.hidden)}>
-            {node.hidden ? <Eye className="size-[18px]" aria-hidden /> : <EyeOff className="size-[18px]" aria-hidden />}
-            {node.hidden ? t("Показывать в списке") : t("Скрыть сервер")}
-          </ContextMenu.Item>
+          <NodeMenuItems M={ContextMenu as unknown as MenuKit} {...props} />
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>
+  );
+}
+
+/** Видимая кнопка «⋯» у сервера: меню доступно с клавиатуры и без долгого нажатия. */
+function NodeMenuButton(props: NodeMenuProps) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        aria-label={t("Действия с сервером {0}", [splitFlag(props.node.name).name])}
+        className="flex size-10 items-center justify-center rounded-full text-ink-3 transition-[opacity,background-color] hover:bg-glass-2 hover:text-ink lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 lg:data-[state=open]:opacity-100"
+      >
+        <MoreHorizontal className="size-[18px]" />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="end" sideOffset={4} className={menuBox}>
+          <NodeMenuItems M={DropdownMenu} {...props} />
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 
@@ -545,8 +569,9 @@ function ProviderHeader({
 
       <p className="text-[13px] text-ink-2 tabular-nums" title={updatedFmt.format(sub.updatedAt)}>
         {sub.plan ? `${sub.plan} · ` : ""}
-        {count} {plural(count, t("сервер"), t("сервера"), t("серверов"))} {" "}{t("· обновлена")}{" "}{updated}
-        {updated === t("сейчас") ? "" : t(" назад")}
+        {updated === t("сейчас")
+          ? t("{0} {1} · обновлена сейчас", [count, plural(count, t("сервер"), t("сервера"), t("серверов"))])
+          : t("{0} {1} · обновлена {2} назад", [count, plural(count, t("сервер"), t("сервера"), t("серверов")), updated])}
       </p>
 
       {/* Срок и трафик — две строки с полосами, как на главной, только компактнее. */}
@@ -556,7 +581,7 @@ function ProviderHeader({
             <span className="text-ink-2">{t("Срок")}</span>
             <span className={cn("tabular-nums", days != null && days <= 3 ? "text-bad" : "text-ink")}>
               {days == null ? t("бессрочно") : days > 0 ? t("осталось {0} {1}", [days, plural(days, t("день"), t("дня"), t("дней"))]) : t("закончилась")}
-              {sub.expireAt ? <span className="text-ink-3"> {" "}{t("· до")}{" "}{expireFmt.format(sub.expireAt)}</span> : null}
+              {sub.expireAt ? <span className="text-ink-3"> {t("· до {0}", [expireFmt.format(sub.expireAt)])}</span> : null}
             </span>
           </div>
           <Bar value={days == null ? 1 : Math.max(0, days) / termDays(days)} className={days != null && days <= 3 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber"} label={t("Осталось дней подписки")} />
@@ -566,7 +591,7 @@ function ProviderHeader({
             <span className="text-ink-2">{t("Трафик")}</span>
             <span className="tabular-nums">
               {formatBytes(sub.usedBytes)}
-              {unlimited ? <span className="text-ink-3"> {" "}{t("· не ограничен")}</span> : <span className="text-ink-3"> {" "}{t("из")}{" "}{formatBytes(sub.totalBytes)}</span>}
+              {unlimited ? <span className="text-ink-3"> {t("· не ограничен")}</span> : <span className="text-ink-3"> {t("из {0}", [formatBytes(sub.totalBytes)])}</span>}
             </span>
           </div>
           <Bar

@@ -2,7 +2,7 @@ import type { ToastActionId, ToastMessage } from "./types";
 
 /**
  * Короткие уведомления с необязательной кнопкой («Вернуть», «Переподключить»).
- * Без кнопки висит 4 секунды, с кнопкой — 6, чтобы успеть нажать.
+ * Без кнопки висит 4 секунды, с кнопкой — пока её не нажмут или не закроют уведомление.
  */
 export class Toaster {
   private timer: number | undefined;
@@ -14,7 +14,8 @@ export class Toaster {
     window.clearTimeout(this.timer);
     this.run = action?.run ?? null;
     this.set({ text, action: action && { id: action.id, label: action.label } });
-    this.timer = window.setTimeout(() => this.dismiss(), action ? 6000 : 4000);
+    // С кнопкой («Вернуть», «Переподключить») не прячем по таймеру: висит, пока не нажмут или не закроют.
+    if (!action) this.timer = window.setTimeout(() => this.dismiss(), 4000);
   }
 
   act() {

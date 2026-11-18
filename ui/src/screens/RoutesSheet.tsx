@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { ArrowDownUp, Ban, Database, Globe, House, ListX, Map as MapIcon, Network, Plus, RefreshCw, Route, Scissors, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { backend, useSnapshot, type NetworkSettings, type Settings } from "@/backend";
-import { formatBytes } from "@/lib/format";
+import { formatBytes, plural } from "@/lib/format";
 import { Group, IconTile, Row, type Tone } from "@/components/bits";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -59,7 +59,7 @@ export function RoutesSheet({ open, onOpenChange }: { open: boolean; onOpenChang
     }
   }, [s.settings.dnsServer]);
 
-  const field = "w-full bg-transparent text-[15px] text-ink placeholder:text-ink-3 focus:outline-none";
+  const field = "w-full bg-transparent text-[16px] text-ink placeholder:text-ink-3 focus:outline-none";
   const profileOn = s.settings.routing.enabled && s.settings.routing.profiles.some((p) => p.id === s.settings.routing.activeId);
 
   return (
@@ -121,7 +121,7 @@ export function RoutesSheet({ open, onOpenChange }: { open: boolean; onOpenChang
         </Group>
 
         <Group title={t("Исключения — напрямую, мимо VPN")}>
-          <label className="block px-4 py-3.5">
+          <label className="block px-4 py-3.5 focus-within:ring-2 focus-within:ring-amber/50 focus-within:ring-inset">
             <span className="mb-2 flex items-center gap-2.5 text-[13.5px] text-ink-2">
               <ListX className="size-4 shrink-0" aria-hidden />
               
@@ -143,7 +143,7 @@ export function RoutesSheet({ open, onOpenChange }: { open: boolean; onOpenChang
               autoComplete="off"
               placeholder={"example.com\n192.168.50.0/24\n203.0.113.7"}
               aria-label={t("Исключения: сайты и адреса, которые идут напрямую")}
-              className={`${field} min-h-24 resize-y font-mono text-[14px] leading-relaxed`}
+              className={`${field} min-h-24 resize-y font-mono text-[16px] leading-relaxed md:text-[14px]`}
             />
           </label>
         </Group>
@@ -274,7 +274,9 @@ function ProfilesGroup() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{p.name}</span>
                       <span className="block truncate text-[13px] text-ink-2">
-                        {count} {" "}{t("правил · остальное")}{" "}{p.globalProxy ? t("через VPN") : t("напрямую")}
+                        {p.globalProxy
+                          ? t("{0} {1} · остальное через VPN", [count, plural(count, t("правило"), t("правила"), t("правил"))])
+                          : t("{0} {1} · остальное напрямую", [count, plural(count, t("правило"), t("правила"), t("правил"))])}
                         {p.source ? t(" · по ссылке") : ""}
                       </span>
                     </span>
@@ -336,7 +338,7 @@ function ProfilesGroup() {
             placeholder={"happ://routing/onadd/eyJOYW1lIjoi…\nhttps://…/DEFAULT.JSON"}
             aria-label={t("Профиль маршрутизации")}
             aria-invalid={error ? true : undefined}
-            className="glass min-h-32 w-full resize-y rounded-2xl px-4 py-3 font-mono text-[13.5px] leading-relaxed text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-amber/40"
+            className="glass min-h-32 w-full resize-y rounded-2xl px-4 py-3 font-mono text-[16px] leading-relaxed md:text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-amber/40"
           />
           {error && (
             <p className="px-1 text-[14px] text-bad" role="alert">

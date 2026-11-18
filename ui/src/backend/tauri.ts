@@ -79,7 +79,14 @@ function readJson<T>(key: string): T | null {
 function message(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
-  return t("Что-то пошло не так. Попробуйте ещё раз");
+  // Неизвестный ответ: показываем, что пришло, и куда смотреть — пустая «что-то пошло не так» не помогает.
+  try {
+    const text = JSON.stringify(e);
+    if (text && text !== "{}") return t("Неожиданный ответ приложения: {0}. Подробности — в «Технических журналах»", [text.slice(0, 160)]);
+  } catch {
+    // Не сериализуется — общий текст ниже.
+  }
+  return t("Неизвестная ошибка. Повторите действие, а если не поможет — отправьте «Технические журналы» в поддержку");
 }
 
 /**

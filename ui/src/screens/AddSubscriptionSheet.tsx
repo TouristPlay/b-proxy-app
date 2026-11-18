@@ -86,7 +86,7 @@ export function AddSubscriptionSheet({ open, onOpenChange }: { open: boolean; on
             placeholder="https://example.com/sub/…"
             aria-invalid={Boolean(error)}
             aria-describedby={hintId}
-            className="h-14 min-w-0 flex-1 bg-transparent px-4 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none"
+            className="h-14 min-w-0 flex-1 bg-transparent px-4 text-[16px] text-ink placeholder:text-ink-3 focus:outline-none"
           />
           <button
             type="button"

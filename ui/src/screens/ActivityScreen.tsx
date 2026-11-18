@@ -313,11 +313,10 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
                 </button>
                 <div className="flex min-w-0 flex-1 flex-col items-center">
                   <span className="text-[14px] font-medium tabular-nums">
-                    {current + 1} {" "}{t("из")}{" "}{pages}
+                    {t("{0} из {1}", [current + 1, pages])}
                   </span>
                   <span className="text-[12px] text-ink-3 tabular-nums">
-                    
-                    {t("записи")}{" "}{current * JOURNAL_PAGE + 1}–{Math.min((current + 1) * JOURNAL_PAGE, journalAll.length)} {" "}{t("из")}{" "}{journalAll.length}
+                    {t("записи {0}–{1} из {2}", [current * JOURNAL_PAGE + 1, Math.min((current + 1) * JOURNAL_PAGE, journalAll.length), journalAll.length])}
                   </span>
                 </div>
                 <button

@@ -198,7 +198,7 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
                 <label className="flex items-center gap-3.5 px-4 py-3.5">
                   <span className="min-w-0 flex-1">
                     <span className="block text-[16px] font-medium">{t("Порт SOCKS5")}</span>
-                    <span className="block text-[13.5px] text-ink-2">{t("HTTP — на следующем,")}{" "}{lp.port + 1}</span>
+                    <span className="block text-[13.5px] text-ink-2">{t("HTTP — на следующем, {0}", [lp.port + 1])}</span>
                   </span>
                   <input
                     type="number"

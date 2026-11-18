@@ -73,7 +73,7 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
 
         {p.method !== "tcp" && (
           <Group title={t("Проверочный адрес")}>
-            <label className="block px-4 py-3.5">
+            <label className="block px-4 py-3.5 focus-within:ring-2 focus-within:ring-amber/50 focus-within:ring-inset">
               <input
                 type="url"
                 inputMode="url"
@@ -81,7 +81,7 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
                 spellCheck={false}
                 value={p.url}
                 onChange={(e) => set({ url: e.target.value.trim() })}
-                className="w-full bg-transparent text-[15px] text-ink focus:outline-none"
+                className="w-full bg-transparent text-[16px] text-ink focus:outline-none"
                 aria-label={t("Проверочный адрес для реальной задержки")}
               />
               <span className="mt-1 block text-[13px] text-ink-3">
@@ -167,7 +167,7 @@ export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
           />
         </Group>
         <Group title="User-Agent">
-          <label className="block px-4 py-3.5">
+          <label className="block px-4 py-3.5 focus-within:ring-2 focus-within:ring-amber/50 focus-within:ring-inset">
             <input
               defaultValue={settings.userAgent}
               key={settings.userAgent}
@@ -177,7 +177,7 @@ export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
               autoComplete="off"
               spellCheck={false}
               aria-label={t("Свой User-Agent для загрузки подписок")}
-              className="w-full bg-transparent font-mono text-[14px] text-ink placeholder:font-sans placeholder:text-ink-3 focus:outline-none"
+              className="w-full bg-transparent font-mono text-[16px] text-ink md:text-[14px] placeholder:font-sans placeholder:text-ink-3 focus:outline-none"
             />
             <span className="mt-1 block text-[13px] text-ink-3">
               

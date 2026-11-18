@@ -39,7 +39,7 @@ export function ProviderSheet({ url, onOpenChange }: { url: string | null; onOpe
     >
       <div className="flex flex-col gap-6">
         <Group title={t("Название")}>
-          <label className="flex items-center gap-3.5 px-4 py-3.5">
+          <label className="flex items-center gap-3.5 px-4 py-3.5 focus-within:ring-2 focus-within:ring-amber/50 focus-within:ring-inset">
             <Pencil className="size-[18px] shrink-0 text-ink-3" aria-hidden />
             <input
               value={title}
@@ -53,7 +53,7 @@ export function ProviderSheet({ url, onOpenChange }: { url: string | null; onOpe
             />
           </label>
         </Group>
-        <p className="-mt-4 px-2 text-[13px] text-ink-3">{t("Пусто — название из подписки: «")}{sub.providerTitle}»</p>
+        <p className="-mt-4 px-2 text-[13px] text-ink-3">{t("Пусто — название из подписки: «{0}»", [sub.providerTitle])}</p>
 
         <Group title={t("Список серверов")}>
           <Row
@@ -90,7 +90,7 @@ export function ProviderSheet({ url, onOpenChange }: { url: string | null; onOpe
         </Group>
 
         <Group title={t("DNS для серверов провайдера")}>
-          <label className="flex items-center gap-3.5 px-4 py-3.5">
+          <label className="flex items-center gap-3.5 px-4 py-3.5 focus-within:ring-2 focus-within:ring-amber/50 focus-within:ring-inset">
             <Globe className="size-[18px] shrink-0 text-ink-3" aria-hidden />
             <input
               value={dns}

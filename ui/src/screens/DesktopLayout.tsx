@@ -203,7 +203,7 @@ function DesktopHome({ now, onAdd }: { now: number; onAdd: () => void }) {
           {s.settings.tlsFragment && <Chip icon={<ShieldCheck className="size-3.5" />} text={t("Обход DPI")} />}
         </div>
         <p className="mt-4 text-[14px] text-ink-2 tabular-nums">
-          ↓ {formatBytes(s.downTotal)} ↑ {formatBytes(s.upTotal)} {" "}{t("за сеанс")}
+          {t("↓ {0} ↑ {1} за сеанс", [formatBytes(s.downTotal), formatBytes(s.upTotal)])}
         </p>
       </Tile>
 

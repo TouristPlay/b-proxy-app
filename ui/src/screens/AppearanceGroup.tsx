@@ -107,8 +107,7 @@ export function AppearanceGroup() {
         </div>
         {a.accent && (
           <p className="mt-2.5 text-[13px] text-ink-3">
-            
-            {t("Свой цвет")}{" "}{a.accent.toUpperCase()} {" "}{t("поверх темы.")}{" "}
+            {t("Свой цвет {0} поверх темы.", [a.accent.toUpperCase()])}{" "}
             <button className="text-amber underline-offset-2 hover:underline" onClick={() => set({ accent: null })}>
               
               {t("Вернуть цвет темы")}

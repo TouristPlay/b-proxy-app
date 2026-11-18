@@ -59,7 +59,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
             </span>
             <span className="text-[15px] text-ink-2">
               {plural(days, t("день остался"), t("дня осталось"), t("дней осталось"))}
-              {sub.expireAt && <span className="block text-[13px] text-ink-3">{t("до")}{" "}{formatDate(sub.expireAt)}</span>}
+              {sub.expireAt && <span className="block text-[13px] text-ink-3">{t("до {0}", [formatDate(sub.expireAt)])}</span>}
             </span>
           </>
         )}
@@ -75,7 +75,7 @@ export function SubscriptionCard({ sub, className }: { sub: Subscription; classN
               </>
             ) : (
               <>
-                {formatBytes(sub.usedBytes)} <span className="text-ink-3">{t("из")}{" "}{formatBytes(sub.totalBytes)}</span>
+                {formatBytes(sub.usedBytes)} <span className="text-ink-3">{t("из {0}", [formatBytes(sub.totalBytes)])}</span>
               </>
             )}
           </span>

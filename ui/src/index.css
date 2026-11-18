@@ -25,8 +25,8 @@
   --color-on-accent: #241606;
 
   --color-ink: #eef1f5;
-  --color-ink-2: #a3acb8;
-  --color-ink-3: #7d8794;
+  --color-ink-2: #b6bec9;
+  --color-ink-3: #97a0ac;
 
   --color-amber: #f2b04b;
   --color-amber-2: #ffd387;
@@ -119,7 +119,7 @@
   --color-disc: rgb(255 255 255 / 0.9);
   --color-ink: #121820;
   --color-ink-2: #4b5562;
-  --color-ink-3: #5f6976;
+  --color-ink-3: #566070;
   --color-good: #17945a;
   --color-warn: #b98a0f;
   --color-bad: #d6453a;
@@ -157,6 +157,20 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Без движения состояние «меряем пинг» остаётся видно: ровная подсветка вместо бегущего блика. */
+@media (prefers-reduced-motion: reduce) {
+  .ping-shimmer,
+  .ping-sweep {
+    animation: none !important;
+    background: color-mix(in srgb, var(--color-amber) 14%, transparent) !important;
+  }
+}
+:root[data-motion="off"] .ping-shimmer,
+:root[data-motion="off"] .ping-sweep {
+  animation: none !important;
+  background: color-mix(in srgb, var(--color-amber) 14%, transparent) !important;
 }
 
 @keyframes drift-a {
