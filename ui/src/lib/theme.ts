@@ -101,6 +101,10 @@ export function useApplyAppearance(a: Appearance) {
     const adjusted = accent !== raw;
     const textOnAccent = adjusted ? (mode === "light" ? "#ffffff" : "#1b1408") : isDark(raw) ? "#ffffff" : "#1b1408";
     root.dataset.mode = mode;
+    // Рамка окна и системные элементы — в цвет режима (компьютер; на телефонах нет такого окна).
+    if ("__TAURI_INTERNALS__" in window) {
+      void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => getCurrentWindow().setTheme(mode).catch(() => {}));
+    }
     root.dataset.motion = a.motion ? "on" : "off";
     const vars: Record<string, string> = {
       "--color-amber": accent,
