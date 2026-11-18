@@ -7,6 +7,7 @@ import {
   type ActivityEntry,
   type DesktopSettings,
   type DeviceInfo,
+  type SubPrefs,
   type Appearance,
   type Backend,
   type CoreSettings,
@@ -18,6 +19,7 @@ import {
 } from "./types";
 import { plural } from "@/lib/format";
 import { loadActivity, newId, saveActivity } from "./activity";
+import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
 import { Toaster } from "./toaster";
 import { buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
 
@@ -26,6 +28,8 @@ const APP_VERSION = "0.1.0";
 const USER_AGENT = "v2rayNG/1.9.30";
 /** libXray меряет не больше 5 серверов за вызов. */
 const PING_BATCH = 5;
+/** Настройки самого приложения: их смена не требует переподключения VPN. */
+const APP_ONLY = new Set(["autoConnect", "serverSort", "sendHwid", "updates", "ping", "notifications", "desktop"]);
 
 const STATE_KEY = "b-proxy.state";
 /** Какие уведомления о подписках уже показаны. */
@@ -115,6 +119,7 @@ export class TauriBackend implements Backend {
         core: { ...defaultSettings.core, ...(saved?.settings?.core ?? {}) },
         ping: migratePing({ ...defaultSettings.ping, ...(saved?.settings?.ping ?? {}) }),
         updates: { ...defaultSettings.updates, ...(saved?.settings?.updates ?? {}) },
+        serverSort: saved?.settings?.serverSort ?? defaultSettings.serverSort,
         notifications: { ...defaultSettings.notifications, ...(saved?.settings?.notifications ?? {}) },
         desktop: { ...defaultSettings.desktop, ...(saved?.settings?.desktop ?? {}) },
         appearance,
@@ -214,6 +219,15 @@ export class TauriBackend implements Backend {
     if (ping.onStart && this.s.state === "disconnected" && this.subs.length) void this.ping(undefined, true);
     // Раз в 15 минут проверяем, не пора ли обновить какую-то подписку.
     window.setInterval(() => void this.refreshDue(), 15 * 60_000);
+
+    // «Подключаться при запуске»: после обновления и пинга, чтобы автовыбор взял лучший сервер.
+    if (this.s.settings.autoConnect && this.s.state === "disconnected" && this.subs.length) {
+      while (this.s.pinging) await new Promise((r) => setTimeout(r, 300));
+      if (this.s.state === "disconnected") {
+        this.writeLog("info", "Автоподключение при запуске");
+        void this.toggle();
+      }
+    }
   }
 
   // ---------- Хранилище и снимок ----------
@@ -424,21 +438,9 @@ export class TauriBackend implements Backend {
   }
 
   private recompute() {
-    const all = this.s.subscriptions.flatMap((sub) =>
-      sub.nodes.filter((node) => !node.divider).map((node) => ({ sub, node })),
-    );
-    const sel = this.s.selected;
-    let current: Snapshot["current"] = sel
-      ? (all.find((p) => p.sub.url === sel.subUrl && p.node.id === sel.nodeId) ?? null)
-      : null;
-    if (!current) {
-      const measured = all
-        .filter((p) => p.node.pingMs != null && p.node.pingMs > 0)
-        .sort((a, b) => a.node.pingMs! - b.node.pingMs!);
-      current = measured[0] ?? all[0] ?? null;
-    }
-    this.s = { ...this.s, current };
+    this.s = { ...this.s, current: pickCurrent(this.s.subscriptions, this.s.selected) };
   }
+
 
   // ---------- Ядро ----------
 
@@ -588,8 +590,9 @@ export class TauriBackend implements Backend {
       if (!permission.granted) throw new Error("Разрешите B-Proxy создать VPN, чтобы подключиться");
 
       const coreLog = this.platform === "ios" ? null : (this.logPaths?.coreLog ?? null);
-      const config = buildConfig(node, this.s.settings, this.platform, stored.fragment, coreLog);
-      const set = this.s.settings;
+      // Свой DNS провайдера (если задан) вместо общего.
+      const set = { ...this.s.settings, dnsServer: stored.prefs?.dns?.trim() || this.s.settings.dnsServer };
+      const config = buildConfig(node, set, this.platform, stored.fragment, coreLog);
       this.writeLog(
         "info",
         `Подключение: ${target.node.name} [${target.node.tags.join("/")}], ` +
@@ -745,7 +748,9 @@ export class TauriBackend implements Backend {
       userAgent: USER_AGENT,
       hwid: this.s.settings.sendHwid,
     });
-    return parseSubscription(url, res, (text) => this.convertLinks(text), previous);
+    const fresh = await parseSubscription(url, res, (text) => this.convertLinks(text), previous);
+    // Свои настройки провайдера переживают обновление подписки.
+    return previous?.prefs ? { ...fresh, prefs: previous.prefs } : fresh;
   }
 
   async addSubscription(raw: string) {
@@ -763,7 +768,8 @@ export class TauriBackend implements Backend {
 
   /** Часы между обновлениями подписки по настройке; null — только вручную. */
   private intervalHours(sub: StoredSubscription): number | null {
-    const interval = this.s.settings.updates.interval;
+    const own = sub.prefs?.interval ?? "global";
+    const interval = own === "global" ? this.s.settings.updates.interval : own;
     if (interval === "off") return null;
     if (interval === "provider") return sub.updateIntervalHours ?? 12;
     return interval;
@@ -787,6 +793,7 @@ export class TauriBackend implements Backend {
       this.setSubs(this.subs.map((x) => (x.url === url ? fresh : x)));
       this.writeLog("info", `Подписка «${fresh.title}» обновлена${silent ? " (авто)" : ""}: ${fresh.nodes.filter((n) => !n.divider).length} серв.`);
       if (!silent) this.toast(`Подписка «${fresh.title}» обновлена`);
+      this.pingAfterUpdate([url]);
     } catch (e) {
       this.logError(`Подписка не обновилась — ${sub.title}: ${message(e)}`);
       if (!silent) this.emit({ error: `Не удалось обновить «${sub.title}»: ${message(e)}` });
@@ -820,6 +827,7 @@ export class TauriBackend implements Backend {
       this.log({ kind: "subscription", id: newId(), at: Date.now(), text: silent ? "Подписки обновлены автоматически" : "Подписки обновлены" });
     }
     this.emit({ refreshingSub: null });
+    this.pingAfterUpdate(next.map((x) => x.url));
     if (errors.length && !silent) this.emit({ error: errors.join("\n") });
     else if (!silent) this.toast("Подписки обновлены");
   }
@@ -854,14 +862,66 @@ export class TauriBackend implements Backend {
    * TCP — время соединения с адресом сервера (быстро, без ядра);
    * «реальная задержка» — запрос через ядро к проверочному адресу (pingBatch, по 5 за вызов).
    */
-  async ping(subUrl?: string, quiet = false) {
+  /** «Пинг после обновления»: по очереди меряем обновлённых провайдеров (без VPN). */
+  private pingAfterUpdate(urls: string[]) {
+    if (!this.s.settings.updates.pingAfter || this.s.state !== "disconnected") return;
+    void (async () => {
+      for (const url of urls) {
+        while (this.s.pinging) await new Promise((r) => setTimeout(r, 300));
+        if (this.s.state !== "disconnected") return;
+        await this.ping(url, true);
+      }
+    })();
+  }
+
+  async pingNode(subUrl: string, nodeId: string) {
+    if (this.s.state !== "disconnected") {
+      this.toast("Пинг проверяется при выключенном VPN");
+      return;
+    }
+    await this.ping(subUrl, true, [nodeId]);
+    const node = this.s.subscriptions.find((x) => x.url === subUrl)?.nodes.find((n) => n.id === nodeId);
+    if (node) this.toast(node.pingMs && node.pingMs > 0 ? `${node.name}: ${node.pingMs} мс` : `${node.name}: нет связи`);
+  }
+
+  // ---------- Свои настройки провайдера ----------
+
+  private patchPrefs(subUrl: string, fn: (p: SubPrefs) => Partial<SubPrefs>) {
+    this.setSubs(
+      this.subs.map((x) => (x.url === subUrl ? { ...x, prefs: mergePrefs(x.prefs, fn(mergePrefs(x.prefs, {}))) } : x)),
+    );
+  }
+
+  updateSubPrefs(subUrl: string, patch: Partial<SubPrefs>) {
+    const before = this.subs.find((x) => x.url === subUrl)?.prefs?.dns ?? "";
+    this.patchPrefs(subUrl, () => patch);
+    // Сменили DNS провайдера, к чьему серверу подключены, — предложим переподключиться.
+    if (patch.dns !== undefined && patch.dns !== before && this.s.current?.sub.url === subUrl) this.offerReconnect();
+  }
+
+  renameNode(subUrl: string, nodeId: string, name: string | null) {
+    this.patchPrefs(subUrl, (p) => {
+      const renames = { ...p.renames };
+      if (name?.trim()) renames[nodeId] = name.trim();
+      else delete renames[nodeId];
+      return { renames };
+    });
+  }
+
+  setNodeHidden(subUrl: string, nodeId: string, hidden: boolean) {
+    this.patchPrefs(subUrl, (p) => ({
+      hidden: hidden ? [...new Set([...p.hidden, nodeId])] : p.hidden.filter((x) => x !== nodeId),
+    }));
+  }
+
+  async ping(subUrl?: string, quiet = false, only?: string[]) {
     const sub = this.subs.find((x) => x.url === (subUrl ?? this.s.current?.sub.url)) ?? this.subs[0];
     // Под VPN замер пошёл бы через туннель и показал неправду.
     if (!sub || this.s.pinging || (!quiet && this.s.state !== "disconnected")) return;
     const { method, timeoutSec, url } = this.s.settings.ping;
     this.emit({ pinging: true, pingingSub: sub.url });
     try {
-      const nodes = sub.nodes.filter((n) => !n.divider && sub.outbounds[n.id]);
+      const nodes = sub.nodes.filter((n) => !n.divider && sub.outbounds[n.id] && (!only || only.includes(n.id)));
       const results = new Map<string, number>();
 
       if (method === "tcp") {
@@ -908,7 +968,7 @@ export class TauriBackend implements Backend {
       const ok = [...results.values()].filter((v) => v > 0);
       this.writeLog(
         ok.length ? "info" : "warn",
-        `Пинг (${method.toUpperCase()}) «${sub.title}»: ответили ${ok.length} из ${results.size}` +
+        `Пинг (${method.toUpperCase()}) «${sub.title}»${only ? ` (${only.length} серв.)` : ""}: ответили ${ok.length} из ${results.size}` +
           (ok.length ? `, лучший ${Math.min(...ok)} мс` : ""),
       );
       this.setSubs(
@@ -931,7 +991,9 @@ export class TauriBackend implements Backend {
 
   async updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>) {
     this.emit({ settings: { ...this.s.settings, ...patch } });
-    this.settingsChanged();
+    // Переподключение нужно, только если настройка меняет конфиг ядра.
+    if (Object.keys(patch).some((k) => !APP_ONLY.has(k))) this.settingsChanged();
+    else this.persist();
     // Включили или выключили уведомления о сроке — переставим расписание на телефоне.
     if (patch.notifications && isMobile(this.platform)) this.checkAlerts();
   }
@@ -981,7 +1043,7 @@ export class TauriBackend implements Backend {
 /** Интерфейсу не нужны outbound'ы с ключами — отдаём только поля Subscription. */
 function publicSub(s: StoredSubscription): Subscription {
   const { outbounds: _o, fragment: _f, hideUrl: _h, updateIntervalHours: _u, ...rest } = s;
-  return rest;
+  return applyPrefs({ ...rest, providerTitle: rest.title });
 }
 
 /** Адрес и порт сервера из outbound'а — для TCP-пинга. */

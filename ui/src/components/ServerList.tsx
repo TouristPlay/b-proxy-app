@@ -1,7 +1,17 @@
 import { useEntrance } from "@/lib/motion";
+import * as ContextMenu from "@radix-ui/react-context-menu";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
+  ArrowUpDown,
+  Check,
   ChevronDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Eye,
+  EyeOff,
+  Pencil,
+  RotateCcw,
+  Settings2,
   Gauge,
   Megaphone,
   MessageCircle,
@@ -14,8 +24,11 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { backend, nodeKey, useSnapshot, type Subscription } from "@/backend";
+import { useEffect, useMemo, useState } from "react";
+import { backend, nodeKey, useSnapshot, type ServerNode, type ServerSort, type Subscription } from "@/backend";
+import { Button } from "@/components/ui/button";
+import { Sheet } from "@/components/ui/sheet";
+import { ProviderSheet } from "@/screens/ProviderSheet";
 import { Flag, SignalPing, Tags } from "@/components/bits";
 import { Switch } from "@/components/ui/switch";
 import { daysLeft, formatBytes, plural, splitFlag } from "@/lib/format";
@@ -30,23 +43,38 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
   const s = useSnapshot();
   const [query, setQuery] = useState("");
   const [onlyFav, setOnlyFav] = useState(false);
-  const [collapsed, setCollapsed] = useState<string[]>([]);
+  const [collapsed, setCollapsed] = useState<string[]>(readCollapsed);
+  // Провайдеры, у которых сейчас видны скрытые серверы.
+  const [showHidden, setShowHidden] = useState<string[]>([]);
+  const [renaming, setRenaming] = useState<{ sub: Subscription; node: ServerNode } | null>(null);
+  const [settingsOf, setSettingsOf] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify(collapsed));
+    } catch {
+      // Не сохранилось — свёрнутые провайдеры вспомнятся только до перезапуска.
+    }
+  }, [collapsed]);
+  const sort = s.settings.serverSort;
   const auto = s.selected == null;
   const total = s.subscriptions.reduce((n, x) => n + x.nodes.filter((v) => !v.divider).length, 0);
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return s.subscriptions.map((sub) => ({
-      sub,
-      nodes: sub.nodes.filter((n) =>
-        // Разделители показываем, только когда список не отфильтрован.
+    return s.subscriptions.map((sub) => {
+      const nodes = sub.nodes.filter((n) =>
+        // Разделители показываем, только когда список не отфильтрован и идёт в порядке провайдера.
         n.divider
-          ? !q && !onlyFav
-          : (!q || n.name.toLowerCase().includes(q) || n.tags.some((t) => t.toLowerCase().includes(q))) &&
+          ? !q && !onlyFav && sort === "provider"
+          : (!n.hidden || showHidden.includes(sub.url)) &&
+            (!q || n.name.toLowerCase().includes(q) || n.tags.some((t) => t.toLowerCase().includes(q))) &&
             (!onlyFav || s.favorites.includes(nodeKey(sub.url, n.id))),
-      ),
-    }));
-  }, [s.subscriptions, s.favorites, query, onlyFav]);
+      );
+      return { sub, nodes: sortNodes(nodes, sort), hiddenCount: sub.nodes.filter((n) => n.hidden).length };
+    });
+  }, [s.subscriptions, s.favorites, query, onlyFav, sort, showHidden]);
+  const collapsible = s.subscriptions.filter((x) => !x.prefs.keepOpen).map((x) => x.url);
+  const allClosed = collapsible.length > 0 && collapsible.every((u) => collapsed.includes(u));
 
   return (
     <div className="flex flex-col gap-3">
@@ -97,6 +125,20 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
         ))}
       </div>
 
+      <div className="flex items-center justify-between gap-2">
+        <SortMenu value={sort} />
+        {collapsible.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setCollapsed(allClosed ? [] : collapsible)}
+            className="flex min-h-11 items-center gap-2 rounded-full px-3 text-[14px] font-medium text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink"
+          >
+            {allClosed ? <ChevronsUpDown className="size-4" aria-hidden /> : <ChevronsDownUp className="size-4" aria-hidden />}
+            {allClosed ? "Развернуть все" : "Свернуть все"}
+          </button>
+        )}
+      </div>
+
       <label className="glass flex cursor-pointer items-center gap-3.5 rounded-[20px] px-4 py-3">
         <span className="flex size-10 items-center justify-center rounded-[13px] border border-amber/25 bg-amber/12 text-amber" aria-hidden>
           <Zap className="size-[19px]" />
@@ -115,8 +157,9 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
         />
       </label>
 
-      {groups.map(({ sub, nodes }) => {
-        const closed = collapsed.includes(sub.url);
+      {groups.map(({ sub, nodes, hiddenCount }) => {
+        const closed = !sub.prefs.keepOpen && collapsed.includes(sub.url);
+        const hiddenShown = showHidden.includes(sub.url);
         return (
           <section key={sub.url} className="glass mt-1 overflow-hidden rounded-[26px]">
             <ProviderHeader
@@ -125,6 +168,10 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
               compact={compact}
               hideNote={!!query.trim()}
               onToggle={() => setCollapsed((c) => (closed ? c.filter((x) => x !== sub.url) : [...c, sub.url]))}
+              hiddenCount={hiddenCount}
+              hiddenShown={hiddenShown}
+              onToggleHidden={() => setShowHidden((h) => (hiddenShown ? h.filter((x) => x !== sub.url) : [...h, sub.url]))}
+              onSettings={() => setSettingsOf(sub.url)}
             />
             {!closed && (
               <ul className={cn("flex flex-col gap-0.5 border-t border-edge", compact ? "p-1.5" : "p-2")} aria-label={`Серверы ${sub.title}`}>
@@ -156,7 +203,15 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                   const active = s.current?.node.id === node.id && s.current.sub.url === sub.url;
                   const fav = s.favorites.includes(key);
                   return (
-                    <li key={node.id} className="group relative">
+                    <NodeMenu
+                      key={node.id}
+                      sub={sub}
+                      node={node}
+                      fav={fav}
+                      canPing={s.state === "disconnected" && !s.pinging}
+                      onRename={() => setRenaming({ sub, node })}
+                    >
+                    <li className={cn("group relative", node.hidden && "opacity-55")}>
                       <button
                         onClick={() => {
                           void backend.select({ subUrl: sub.url, nodeId: node.id });
@@ -176,8 +231,11 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         )}
                         <Flag name={node.name} size={compact ? "sm" : "md"} />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[14.5px] leading-snug font-medium" title={splitFlag(node.name).name}>
-                            {splitFlag(node.name).name}
+                          <span className="flex items-center gap-1.5">
+                            <span className="truncate text-[14.5px] leading-snug font-medium" title={node.originalName ? `В подписке: ${node.originalName}` : splitFlag(node.name).name}>
+                              {splitFlag(node.name).name}
+                            </span>
+                            {node.hidden && <EyeOff className="size-3.5 shrink-0 text-ink-3" aria-label="Скрыт" />}
                           </span>
                           <Tags tags={node.tags} className="mt-1" />
                         </span>
@@ -195,6 +253,7 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         <FavStar key={String(fav)} fav={fav} />
                       </button>
                     </li>
+                    </NodeMenu>
                   );
                 })}
               </ul>
@@ -202,7 +261,163 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
           </section>
         );
       })}
+
+      <RenameSheet target={renaming} onClose={() => setRenaming(null)} />
+      <ProviderSheet url={settingsOf} onOpenChange={(o) => !o && setSettingsOf(null)} />
     </div>
+  );
+}
+
+const COLLAPSED_KEY = "b-proxy.collapsed";
+
+function readCollapsed(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Порядок серверов: как в подписке, по пингу (без связи — в конце) или по названию. */
+function sortNodes(nodes: ServerNode[], sort: ServerSort): ServerNode[] {
+  if (sort === "provider") return nodes;
+  const list = nodes.filter((n) => !n.divider);
+  if (sort === "name") return [...list].sort((a, b) => splitFlag(a.name).name.localeCompare(splitFlag(b.name).name, "ru"));
+  const rank = (n: ServerNode) => (n.pingMs == null ? 1e9 : n.pingMs < 0 ? 2e9 : n.pingMs);
+  return [...list].sort((a, b) => rank(a) - rank(b));
+}
+
+const sorts: { value: ServerSort; title: string }[] = [
+  { value: "provider", title: "Как у провайдера" },
+  { value: "ping", title: "По пингу" },
+  { value: "name", title: "По названию" },
+];
+
+const menuBox =
+  "z-50 min-w-56 rounded-[18px] border border-edge-2 bg-panel p-1.5 shadow-[0_18px_40px_-16px_rgb(0_0_0/0.7)] data-[state=open]:animate-[dialog-in_var(--dur-fast)_var(--ease-out)]";
+const menuItem =
+  "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-[15px] outline-none data-[disabled]:cursor-default data-[disabled]:opacity-45 data-[highlighted]:bg-glass-2";
+
+function SortMenu({ value }: { value: ServerSort }) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger className="flex min-h-11 items-center gap-2 rounded-full px-3 text-[14px] font-medium text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink">
+        <ArrowUpDown className="size-4" aria-hidden />
+        {sorts.find((x) => x.value === value)?.title}
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="start" sideOffset={6} className={menuBox}>
+          <DropdownMenu.Label className="px-3 pt-1.5 pb-1 text-[13px] text-ink-3">Порядок серверов</DropdownMenu.Label>
+          {sorts.map((x) => (
+            <DropdownMenu.Item key={x.value} className={menuItem} onSelect={() => void backend.updateSettings({ serverSort: x.value })}>
+              <span className="flex-1">{x.title}</span>
+              {x.value === value && <Check className="size-4 text-amber" aria-hidden />}
+            </DropdownMenu.Item>
+          ))}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
+/**
+ * Меню сервера: правая кнопка мыши на компьютере, долгое нажатие на телефоне.
+ * Пинг одного сервера, своё название, избранное, скрыть.
+ */
+function NodeMenu({
+  sub,
+  node,
+  fav,
+  canPing,
+  onRename,
+  children,
+}: {
+  sub: Subscription;
+  node: ServerNode;
+  fav: boolean;
+  canPing: boolean;
+  onRename: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
+      <ContextMenu.Portal>
+        <ContextMenu.Content className={menuBox}>
+          <ContextMenu.Label className="max-w-64 truncate px-3 pt-1.5 pb-1 text-[13px] text-ink-3">{splitFlag(node.name).name}</ContextMenu.Label>
+          <ContextMenu.Item className={menuItem} disabled={!canPing} onSelect={() => void backend.pingNode(sub.url, node.id)}>
+            <Gauge className="size-[18px]" aria-hidden />
+            {canPing ? "Проверить пинг" : "Пинг — при выключенном VPN"}
+          </ContextMenu.Item>
+          <ContextMenu.Item className={menuItem} onSelect={onRename}>
+            <Pencil className="size-[18px]" aria-hidden />
+            Переименовать
+          </ContextMenu.Item>
+          {node.originalName && (
+            <ContextMenu.Item className={menuItem} onSelect={() => backend.renameNode(sub.url, node.id, null)}>
+              <RotateCcw className="size-[18px]" aria-hidden />
+              Вернуть название из подписки
+            </ContextMenu.Item>
+          )}
+          <ContextMenu.Item className={menuItem} onSelect={() => backend.toggleFavorite(nodeKey(sub.url, node.id))}>
+            <Star className="size-[18px]" aria-hidden fill={fav ? "currentColor" : "none"} />
+            {fav ? "Убрать из избранного" : "В избранное"}
+          </ContextMenu.Item>
+          <ContextMenu.Separator className="my-1 h-px bg-edge" />
+          <ContextMenu.Item className={menuItem} onSelect={() => backend.setNodeHidden(sub.url, node.id, !node.hidden)}>
+            {node.hidden ? <Eye className="size-[18px]" aria-hidden /> : <EyeOff className="size-[18px]" aria-hidden />}
+            {node.hidden ? "Показывать в списке" : "Скрыть сервер"}
+          </ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu.Portal>
+    </ContextMenu.Root>
+  );
+}
+
+/** Своё название сервера. Пустое поле — название из подписки. */
+function RenameSheet({ target, onClose }: { target: { sub: Subscription; node: ServerNode } | null; onClose: () => void }) {
+  const [name, setName] = useState("");
+  useEffect(() => {
+    if (target) setName(target.node.originalName ? target.node.name : "");
+  }, [target]);
+  const original = target ? (target.node.originalName ?? target.node.name) : "";
+  const save = () => {
+    if (target) backend.renameNode(target.sub.url, target.node.id, name.trim() || null);
+    onClose();
+  };
+  return (
+    <Sheet
+      open={target != null}
+      onOpenChange={(o) => !o && onClose()}
+      title="Переименовать сервер"
+      description={`В подписке: ${original}`}
+      icon={<span className="flex size-11 items-center justify-center rounded-[14px] border border-edge-2 bg-glass-2 text-ink-2"><Pencil className="size-5" /></span>}
+    >
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <label className="glass flex h-14 items-center rounded-2xl px-4 focus-within:ring-2 focus-within:ring-amber/40">
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={original}
+            maxLength={60}
+            aria-label="Новое название сервера"
+            className="w-full bg-transparent text-[16px] text-ink placeholder:text-ink-3 focus:outline-none"
+          />
+        </label>
+        <p className="px-1 text-[13px] text-ink-3">Название меняется только у вас. Пустое поле — как в подписке.</p>
+        <Button type="submit" variant="amber" className="min-h-12 w-full">
+          Сохранить
+        </Button>
+      </form>
+    </Sheet>
   );
 }
 
@@ -241,12 +456,20 @@ function ago(t: number, now: number) {
  */
 function ProviderHeader({
   sub,
+  hiddenCount,
+  hiddenShown,
+  onToggleHidden,
+  onSettings,
   closed,
   compact,
   hideNote,
   onToggle,
 }: {
   sub: Subscription;
+  hiddenCount: number;
+  hiddenShown: boolean;
+  onToggleHidden: () => void;
+  onSettings: () => void;
   closed: boolean;
   compact?: boolean;
   hideNote: boolean;
@@ -277,10 +500,12 @@ function ProviderHeader({
           className="flex min-w-0 flex-1 items-center gap-1.5 rounded-xl py-1.5 text-left"
         >
           <span className={cn("truncate font-display font-semibold", compact ? "text-[16px]" : "text-[18px]")}>{sub.title}</span>
-          <ChevronDown
-            className={cn("size-4 shrink-0 text-ink-3 transition-transform duration-[var(--dur)]", !closed && "rotate-180")}
-            aria-hidden
-          />
+          {!sub.prefs.keepOpen && (
+            <ChevronDown
+              className={cn("size-4 shrink-0 text-ink-3 transition-transform duration-[var(--dur)]", !closed && "rotate-180")}
+              aria-hidden
+            />
+          )}
         </button>
         <button
           type="button"
@@ -302,7 +527,14 @@ function ProviderHeader({
         >
           <RefreshCw className={cn("size-[17px]", refreshing && "animate-spin")} />
         </button>
-        <ProviderMenu sub={sub} className={seg} />
+        <ProviderMenu
+          sub={sub}
+          className={seg}
+          hiddenCount={hiddenCount}
+          hiddenShown={hiddenShown}
+          onToggleHidden={onToggleHidden}
+          onSettings={onSettings}
+        />
       </div>
 
       <p className="text-[13px] text-ink-2 tabular-nums" title={updatedFmt.format(sub.updatedAt)}>
@@ -388,9 +620,22 @@ function ProviderHeader({
 
 
 /** Меню «⋯» провайдера: удалить подписку (с «Вернуть» в уведомлении). */
-function ProviderMenu({ sub, className }: { sub: Subscription; className: string }) {
-  const item =
-    "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-[15px] outline-none data-[highlighted]:bg-glass-2";
+function ProviderMenu({
+  sub,
+  className,
+  hiddenCount,
+  hiddenShown,
+  onToggleHidden,
+  onSettings,
+}: {
+  sub: Subscription;
+  className: string;
+  hiddenCount: number;
+  hiddenShown: boolean;
+  onToggleHidden: () => void;
+  onSettings: () => void;
+}) {
+  const item = menuItem;
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger className={className} aria-label={`Ещё: ${sub.title}`} title="Ещё">
@@ -402,6 +647,17 @@ function ProviderMenu({ sub, className }: { sub: Subscription; className: string
           sideOffset={6}
           className="z-50 min-w-52 rounded-[18px] border border-edge-2 bg-panel p-1.5 shadow-[0_18px_40px_-16px_rgb(0_0_0/0.7)] data-[state=open]:animate-[dialog-in_var(--dur-fast)_var(--ease-out)]"
         >
+          <DropdownMenu.Item className={item} onSelect={onSettings}>
+            <Settings2 className="size-[18px]" aria-hidden />
+            Настройки провайдера
+          </DropdownMenu.Item>
+          {hiddenCount > 0 && (
+            <DropdownMenu.Item className={item} onSelect={onToggleHidden}>
+              {hiddenShown ? <EyeOff className="size-[18px]" aria-hidden /> : <Eye className="size-[18px]" aria-hidden />}
+              {hiddenShown ? "Не показывать скрытые" : `Показать скрытые (${hiddenCount})`}
+            </DropdownMenu.Item>
+          )}
+          <DropdownMenu.Separator className="my-1 h-px bg-edge" />
           <DropdownMenu.Item className={cn(item, "text-bad")} onSelect={() => void backend.removeSubscription(sub.url)}>
             <Trash2 className="size-[18px]" aria-hidden />
             Удалить подписку

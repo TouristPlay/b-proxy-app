@@ -106,7 +106,7 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
-const intervals: { value: UpdateInterval; title: string }[] = [
+export const intervals: { value: UpdateInterval; title: string }[] = [
   { value: "provider", title: "Как просит провайдер" },
   { value: 1, title: "Каждый час" },
   { value: 3, title: "Каждые 3 часа" },
@@ -156,6 +156,13 @@ export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
             title="Обновлять при запуске"
             hint="Свежие серверы сразу после открытия приложения"
             aside={<Switch id="upd-start" checked={u.onStart} onCheckedChange={(onStart) => set({ onStart })} />}
+          />
+          <Row
+            htmlFor="upd-ping"
+            icon={<IconTile icon={Gauge} tone="amber" />}
+            title="Пинг после обновления"
+            hint="Сразу проверить серверы провайдера, когда пришёл свежий список"
+            aside={<Switch id="upd-ping" checked={u.pingAfter} onCheckedChange={(pingAfter) => set({ pingAfter })} />}
           />
         </Group>
         <p className="px-2 text-[13px] text-ink-3">

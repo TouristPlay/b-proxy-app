@@ -1,4 +1,5 @@
 import { newId } from "./activity";
+import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
 import { Toaster } from "./toaster";
 import {
   nodeKey,
@@ -8,6 +9,7 @@ import {
   type Backend,
   type CoreSettings,
   type ServerNode,
+  type SubPrefs,
   type Settings,
   type Snapshot,
   type Subscription,
@@ -43,9 +45,9 @@ const demoNodes: ServerNode[] = [
   v("m-nl", "🇳🇱 Нидерланды | Мобильная сеть", "XHTTP", "TLS"),
 ];
 
-const demoSub: Subscription = {
+const demoSub: Subscription = applyPrefs({
   url: "https://example.com/sub/demo",
-  title: "Demo VPN",
+  providerTitle: "Demo VPN",
   plan: "Безлимит",
   nodes: demoNodes,
   usedBytes: 128_402_113_536,
@@ -56,7 +58,7 @@ const demoSub: Subscription = {
   supportUrl: "https://example.com/support",
   webPageUrl: "https://example.com/account",
   updatedAt: Date.now() - 3 * 3600_000,
-};
+});
 
 export const defaultCore: CoreSettings = {
   memoryLimitMb: 30,
@@ -87,7 +89,9 @@ export const defaultSettings: Settings = {
   dnsServer: "1.1.1.1",
   sendHwid: true,
   ping: { method: "tcp", timeoutSec: 5, url: "https://www.gstatic.com/generate_204", onStart: true },
-  updates: { interval: "provider", onStart: true },
+  updates: { interval: "provider", onStart: true, pingAfter: false },
+  autoConnect: false,
+  serverSort: "provider",
   notifications: { enabled: true, disconnect: true, expiry: true, traffic: true, announce: true },
   desktop: { closeToTray: true },
   core: defaultCore,
@@ -179,21 +183,9 @@ export class DemoBackend implements Backend {
   }
 
   private recompute() {
-    const all = this.s.subscriptions.flatMap((sub) =>
-      sub.nodes.filter((node) => !node.divider).map((node) => ({ sub, node })),
-    );
-    const sel = this.s.selected;
-    let current: Snapshot["current"] = sel
-      ? (all.find((p) => p.sub.url === sel.subUrl && p.node.id === sel.nodeId) ?? null)
-      : null;
-    if (!current) {
-      const measured = all
-        .filter((p) => p.node.pingMs != null && p.node.pingMs > 0)
-        .sort((a, b) => a.node.pingMs! - b.node.pingMs!);
-      current = measured[0] ?? all[0] ?? null;
-    }
-    this.s = { ...this.s, current };
+    this.s = { ...this.s, current: pickCurrent(this.s.subscriptions, this.s.selected) };
   }
+
 
   async toggle() {
     if (this.s.state === "connected" || this.s.state === "connecting") {
@@ -320,7 +312,38 @@ export class DemoBackend implements Backend {
   }
 
   /** Пинг одного провайдера (по умолчанию — того, чей сервер выбран). */
-  async ping(subUrl?: string, quiet = false) {
+  async pingNode(subUrl: string, nodeId: string) {
+    await this.ping(subUrl, true, [nodeId]);
+    const node = this.s.subscriptions.find((x) => x.url === subUrl)?.nodes.find((n) => n.id === nodeId);
+    if (node) this.toast(node.pingMs && node.pingMs > 0 ? `${node.name}: ${node.pingMs} мс` : `${node.name}: нет связи`);
+  }
+
+  private patchPrefs(subUrl: string, fn: (p: SubPrefs) => Partial<SubPrefs>) {
+    this.emit({
+      subscriptions: this.s.subscriptions.map((x) => (x.url === subUrl ? applyPrefs({ ...x, prefs: mergePrefs(x.prefs, fn(x.prefs)) }) : x)),
+    });
+  }
+
+  updateSubPrefs(subUrl: string, patch: Partial<SubPrefs>) {
+    this.patchPrefs(subUrl, () => patch);
+  }
+
+  renameNode(subUrl: string, nodeId: string, name: string | null) {
+    this.patchPrefs(subUrl, (p) => {
+      const renames = { ...p.renames };
+      if (name?.trim()) renames[nodeId] = name.trim();
+      else delete renames[nodeId];
+      return { renames };
+    });
+  }
+
+  setNodeHidden(subUrl: string, nodeId: string, hidden: boolean) {
+    this.patchPrefs(subUrl, (p) => ({
+      hidden: hidden ? [...new Set([...p.hidden, nodeId])] : p.hidden.filter((x) => x !== nodeId),
+    }));
+  }
+
+  async ping(subUrl?: string, quiet = false, only?: string[]) {
     const url = subUrl ?? this.s.current?.sub.url ?? this.s.subscriptions[0]?.url;
     if (!url || this.s.state !== "disconnected" || this.s.pinging) return;
     this.emit({ pinging: true, pingingSub: url });
@@ -333,7 +356,7 @@ export class DemoBackend implements Backend {
         : {
             ...sub,
             nodes: sub.nodes.map((n) =>
-              n.divider ? n : { ...n, pingMs: n.id === "jp" ? -1 : Math.round((tcp ? 8 : get ? 40 : 15) + Math.random() * (tcp ? 90 : get ? 260 : 180)) },
+              n.divider || (only && !only.includes(n.id)) ? n : { ...n, pingMs: n.id === "jp" ? -1 : Math.round((tcp ? 8 : get ? 40 : 15) + Math.random() * (tcp ? 90 : get ? 260 : 180)) },
             ),
           },
     );
@@ -343,7 +366,8 @@ export class DemoBackend implements Backend {
 
   async updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>) {
     this.emit({ settings: { ...this.s.settings, ...patch } });
-    this.offerReconnect();
+    const appOnly = ["autoConnect", "serverSort", "sendHwid", "updates", "ping", "notifications", "desktop"];
+    if (Object.keys(patch).some((k) => !appOnly.includes(k))) this.offerReconnect();
   }
 
   async updateCore(patch: Partial<CoreSettings>) {

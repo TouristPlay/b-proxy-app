@@ -14,11 +14,50 @@ export interface ServerNode {
    * «⬇️ Обходы глушилок | LTE ⬇️», чтобы разбить список на разделы.
    */
   divider?: boolean;
+  /** Пользователь скрыл сервер: в списке только по «Показать скрытые», в автовыбор не идёт. */
+  hidden?: boolean;
+  /** Название из подписки, если пользователь переименовал сервер. */
+  originalName?: string;
 }
+
+/** Свои настройки провайдера: хранятся на устройстве и переживают обновление подписки. */
+export interface SubPrefs {
+  /** Своё название вместо названия из подписки; null — как у провайдера. */
+  title: string | null;
+  /** Список серверов всегда раскрыт. */
+  keepOpen: boolean;
+  /** Серверы провайдера участвуют в автовыборе. */
+  autoSelect: boolean;
+  /** Интервал обновления; "global" — как в общих настройках. */
+  interval: UpdateInterval | "global";
+  /** Свой DNS для серверов провайдера; пусто — общий. */
+  dns: string;
+  /** Свои названия серверов: id → название. */
+  renames: Record<string, string>;
+  /** Скрытые серверы (id). */
+  hidden: string[];
+}
+
+export const defaultSubPrefs: SubPrefs = {
+  title: null,
+  keepOpen: false,
+  autoSelect: true,
+  interval: "global",
+  dns: "",
+  renames: {},
+  hidden: [],
+};
+
+/** Порядок серверов внутри провайдера. */
+export type ServerSort = "provider" | "ping" | "name";
 
 export interface Subscription {
   url: string;
+  /** Название для показа: своё, если задано, иначе из подписки. */
   title: string;
+  /** Название из подписки. */
+  providerTitle: string;
+  prefs: SubPrefs;
   /** Название тарифа, если панель его передаёт. */
   plan: string | null;
   nodes: ServerNode[];
@@ -90,6 +129,8 @@ export type UpdateInterval = "provider" | "off" | 1 | 3 | 6 | 12 | 24;
 export interface UpdateSettings {
   interval: UpdateInterval;
   onStart: boolean;
+  /** Мерить пинг провайдера сразу после обновления его подписки. */
+  pingAfter: boolean;
 }
 
 /** Системные уведомления: общий выключатель и по типам. */
@@ -126,6 +167,10 @@ export interface Settings {
   dnsServer: string;
   /** Отправлять провайдеру HWID и сведения об устройстве (лимит устройств в панели). */
   sendHwid: boolean;
+  /** Подключаться сразу после запуска приложения. */
+  autoConnect: boolean;
+  /** Порядок серверов в списке. */
+  serverSort: ServerSort;
   ping: PingSettings;
   updates: UpdateSettings;
   notifications: NotificationSettings;
@@ -212,6 +257,13 @@ export interface Backend {
   removeSubscription(url: string): Promise<void>;
   /** Пинг серверов одного провайдера; без адреса — того, чей сервер выбран. */
   ping(subUrl?: string): Promise<void>;
+  /** Пинг одного сервера. */
+  pingNode(subUrl: string, nodeId: string): Promise<void>;
+  /** Свои настройки провайдера (название, DNS, интервал…). */
+  updateSubPrefs(subUrl: string, patch: Partial<SubPrefs>): void;
+  /** Своё название сервера; null — вернуть название из подписки. */
+  renameNode(subUrl: string, nodeId: string, name: string | null): void;
+  setNodeHidden(subUrl: string, nodeId: string, hidden: boolean): void;
   updateSettings(patch: Partial<Omit<Settings, "core" | "appearance">>): Promise<void>;
   updateCore(patch: Partial<CoreSettings>): Promise<void>;
   updateAppearance(patch: Partial<Appearance>): void;

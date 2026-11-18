@@ -107,6 +107,13 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
             aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
           />
           <Row
+            htmlFor="set-autoconnect"
+            icon={<IconTile icon={Power} tone="green" />}
+            title="Подключаться при запуске"
+            hint="B-Proxy включит VPN сразу после открытия"
+            aside={<Switch id="set-autoconnect" checked={s.settings.autoConnect} onCheckedChange={(v) => void backend.updateSettings({ autoConnect: v })} />}
+          />
+          <Row
             htmlFor="set-hwid"
             icon={<IconTile icon={Fingerprint} tone="violet" />}
             title="Отправлять HWID"

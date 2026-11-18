@@ -1,4 +1,4 @@
-import type { ServerNode, Subscription } from "./types";
+import type { ServerNode, SubPrefs, Subscription } from "./types";
 
 /**
  * Разбор подписки Remnawave. Понимает те же заголовки, что INCY и Happ:
@@ -31,7 +31,9 @@ export interface ProviderFragment {
 }
 
 /** То, что приложение хранит о подписке сверх полей для интерфейса. */
-export interface StoredSubscription extends Subscription {
+export interface StoredSubscription extends Omit<Subscription, "prefs" | "providerTitle"> {
+  /** Свои настройки провайдера; title здесь — всегда название из подписки. */
+  prefs?: SubPrefs;
   /** Конфигурация ядра по id сервера (с ключами — интерфейсу не отдаётся). */
   outbounds: Record<string, NodeConfig>;
   fragment: ProviderFragment | null;
