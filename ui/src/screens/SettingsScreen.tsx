@@ -1,4 +1,4 @@
-import { AppWindow, RadioTower, Plug, Wifi, Bell, ChevronRight, Copy, Fingerprint, FileText, Gauge, Power, Info, Palette, Plus, RefreshCw, RotateCcw, Route, Server, Trash2 } from "lucide-react";
+import { AppWindow, RadioTower, Plug, Wifi, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import { detectPlatform } from "@/backend/xray";
@@ -8,7 +8,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { AppearanceSheet } from "./AppearanceGroup";
 import { CoreSettingsSheet } from "./CoreSettingsSheet";
-import { intervalTitle, NotificationsSheet, PingSheet, UpdatesSheet } from "./PingUpdateSheets";
+import { intervalTitle, NotificationsSheet, PingSheet, ProvidersSheet } from "./PingUpdateSheets";
 import { LogsSheet } from "./LogsSheet";
 import { dnsPresets as dns, routes, RoutesSheet } from "./RoutesSheet";
 import { themeById } from "@/lib/theme";
@@ -16,17 +16,6 @@ import { t } from "@/lib/i18n";
 
 export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd: () => void }) {
   const s = useSnapshot();
-  // Подсказка под HWID: «скопирован» на пару секунд вместо самого идентификатора.
-  const [hwidNote, setHwidNote] = useState<string | null>(null);
-  async function copyHwid(hwid: string) {
-    try {
-      await navigator.clipboard.writeText(hwid);
-      setHwidNote(t("Скопирован — отправьте его в поддержку провайдера"));
-    } catch {
-      setHwidNote(hwid);
-    }
-    window.setTimeout(() => setHwidNote(null), 3000);
-  }
   const [core, setCore] = useState(false);
   const [ping, setPing] = useState(false);
   const [updates, setUpdates] = useState(false);
@@ -65,7 +54,18 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
           />
         </Group>
 
-        <Group title={t("Серверы и подписки")}>
+        <Group title={t("Провайдеры")}>
+          <Row
+            onClick={() => setUpdates(true)}
+            icon={<IconTile icon={Server} tone="teal" />}
+            title={t("Настройки провайдеров")}
+            hint={[
+              intervalTitle(s.settings.updates.interval),
+              s.settings.updates.onStart && t("при запуске"),
+              s.settings.sendHwid ? "HWID" : t("без HWID"),
+            ].filter(Boolean).join(", ")}
+            aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
+          />
           <Row
             onClick={() => setPing(true)}
             icon={<IconTile icon={Gauge} tone="amber" />}
@@ -73,13 +73,9 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
             hint={t("{0}, ожидание {1} с", [{ tcp: "TCP", head: "HTTP HEAD", get: "HTTP GET" }[s.settings.ping.method], s.settings.ping.timeoutSec])}
             aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
           />
-          <Row
-            onClick={() => setUpdates(true)}
-            icon={<IconTile icon={RefreshCw} tone="teal" />}
-            title={t("Обновление подписок")}
-            hint={intervalTitle(s.settings.updates.interval) + (s.settings.updates.onStart ? t(", при запуске") : "")}
-            aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
-          />
+        </Group>
+
+        <Group title={t("Подключение")}>
           <Row
             htmlFor="set-autoconnect"
             icon={<IconTile icon={Power} tone="green" />}
@@ -94,26 +90,6 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
               title={t("Живая активность")}
               hint={t("Статус VPN и время сеанса на экране блокировки и в Dynamic Island")}
               aside={<Switch id="set-live" checked={s.settings.liveActivity} onCheckedChange={(v) => void backend.updateSettings({ liveActivity: v })} />}
-            />
-          )}
-          <Row
-            htmlFor="set-hwid"
-            icon={<IconTile icon={Fingerprint} tone="violet" />}
-            title={t("Отправлять HWID")}
-            hint={
-              s.settings.sendHwid
-                ? t("Провайдер видит устройство и считает лимит устройств подписки")
-                : t("Подписки с лимитом устройств не обновятся")
-            }
-            aside={<Switch id="set-hwid" checked={s.settings.sendHwid} onCheckedChange={(v) => void backend.updateSettings({ sendHwid: v })} />}
-          />
-          {s.device && (
-            <Row
-              onClick={() => void copyHwid(s.device!.hwid)}
-              icon={<IconTile icon={Copy} tone="gray" />}
-              title={t("HWID устройства")}
-              hint={hwidNote ?? `${s.device.hwid.slice(0, 8)}… · ${[s.device.os, s.device.model].filter(Boolean).join(", ")}`}
-              aside={<span className="text-[14px] text-ink-2">{t("Скопировать")}</span>}
             />
           )}
         </Group>
@@ -263,7 +239,7 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
 
       <CoreSettingsSheet open={core} onOpenChange={setCore} />
       <PingSheet open={ping} onOpenChange={setPing} />
-      <UpdatesSheet open={updates} onOpenChange={setUpdates} />
+      <ProvidersSheet open={updates} onOpenChange={setUpdates} />
       <NotificationsSheet open={notifications} onOpenChange={setNotifications} />
       <LogsSheet open={logs} onOpenChange={setLogs} />
       <AppearanceSheet open={look} onOpenChange={setLook} />

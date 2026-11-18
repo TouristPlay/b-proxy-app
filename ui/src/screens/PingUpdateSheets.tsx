@@ -1,4 +1,5 @@
-import { Bell, BellRing, Gauge, Minus, Plus, Power, RefreshCw } from "lucide-react";
+import { Bell, BellRing, Copy, Fingerprint, Gauge, Minus, Plus, Power, RefreshCw, Server } from "lucide-react";
+import { useState } from "react";
 import {
   backend,
   useSnapshot,
@@ -93,15 +94,6 @@ export function PingSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
           </Group>
         )}
 
-        <Group>
-          <Row
-            htmlFor="ping-start"
-            icon={<IconTile icon={Power} tone="green" />}
-            title={t("Мерить при запуске")}
-            hint={t("Пинг выбранного провайдера — чтобы автовыбор сразу взял быстрый сервер")}
-            aside={<Switch id="ping-start" checked={p.onStart} onCheckedChange={(onStart) => set({ onStart })} />}
-          />
-        </Group>
       </div>
     </Sheet>
   );
@@ -119,22 +111,34 @@ export const intervals: { value: UpdateInterval; title: string }[] = [
 
 export const intervalTitle = (v: UpdateInterval) => intervals.find((i) => i.value === v)?.title ?? "";
 
-/** Настройки обновления подписок: как часто и при запуске. */
-export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { settings } = useSnapshot();
+/** Настройки провайдеров: обновление подписок, действия при запуске и что уходит провайдеру. */
+export function ProvidersSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { settings, device } = useSnapshot();
   const u = settings.updates;
   const set = (patch: Partial<UpdateSettings>) => void backend.updateSettings({ updates: { ...u, ...patch } });
+  const setPing = (patch: Partial<PingSettings>) => void backend.updateSettings({ ping: { ...settings.ping, ...patch } });
+  // Подсказка под HWID: «скопирован» на пару секунд вместо самого идентификатора.
+  const [hwidNote, setHwidNote] = useState<string | null>(null);
+  async function copyHwid(hwid: string) {
+    try {
+      await navigator.clipboard.writeText(hwid);
+      setHwidNote(t("Скопирован — отправьте его в поддержку провайдера"));
+    } catch {
+      setHwidNote(hwid);
+    }
+    window.setTimeout(() => setHwidNote(null), 3000);
+  }
 
   return (
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title={t("Обновление подписок")}
-      description={t("Списки серверов, трафик и сроки от провайдеров")}
-      icon={<IconTile icon={RefreshCw} tone="teal" />}
+      title={t("Настройки провайдеров")}
+      description={t("Для всех подписок сразу")}
+      icon={<IconTile icon={Server} tone="teal" />}
     >
       <div className="flex flex-col gap-6">
-        <Group title={t("Обновлять автоматически")}>
+        <Group title={t("Обновление")}>
           <RadioGroup
             value={String(u.interval)}
             onValueChange={(v) => set({ interval: (/^\d+$/.test(v) ? Number(v) : v) as UpdateInterval })}
@@ -150,13 +154,21 @@ export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
             ))}
           </RadioGroup>
         </Group>
-        <Group>
+
+        <Group title={t("При запуске")}>
           <Row
             htmlFor="upd-start"
-            icon={<IconTile icon={Power} tone="green" />}
-            title={t("Обновлять при запуске")}
+            icon={<IconTile icon={RefreshCw} tone="teal" />}
+            title={t("Обновлять подписки")}
             hint={t("Свежие серверы сразу после открытия приложения")}
             aside={<Switch id="upd-start" checked={u.onStart} onCheckedChange={(onStart) => set({ onStart })} />}
+          />
+          <Row
+            htmlFor="ping-start"
+            icon={<IconTile icon={Power} tone="green" />}
+            title={t("Мерить пинг")}
+            hint={t("Пинг выбранного провайдера — чтобы автовыбор сразу взял быстрый сервер")}
+            aside={<Switch id="ping-start" checked={settings.ping.onStart} onCheckedChange={(onStart) => setPing({ onStart })} />}
           />
           <Row
             htmlFor="upd-ping"
@@ -166,8 +178,30 @@ export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
             aside={<Switch id="upd-ping" checked={u.pingAfter} onCheckedChange={(pingAfter) => set({ pingAfter })} />}
           />
         </Group>
-        <Group title="User-Agent">
+
+        <Group title={t("Что получает провайдер")}>
+          <Row
+            htmlFor="set-hwid"
+            icon={<IconTile icon={Fingerprint} tone="violet" />}
+            title={t("Отправлять HWID")}
+            hint={
+              settings.sendHwid
+                ? t("Провайдер видит устройство и считает лимит устройств подписки")
+                : t("Подписки с лимитом устройств не обновятся")
+            }
+            aside={<Switch id="set-hwid" checked={settings.sendHwid} onCheckedChange={(v) => void backend.updateSettings({ sendHwid: v })} />}
+          />
+          {device && (
+            <Row
+              onClick={() => void copyHwid(device.hwid)}
+              icon={<IconTile icon={Copy} tone="gray" />}
+              title={t("HWID устройства")}
+              hint={hwidNote ?? `${device.hwid.slice(0, 8)}… · ${[device.os, device.model].filter(Boolean).join(", ")}`}
+              aside={<span className="text-[14px] text-ink-2">{t("Скопировать")}</span>}
+            />
+          )}
           <label className="block px-4 py-3.5 focus-within:ring-2 focus-within:ring-amber/50 focus-within:ring-inset">
+            <span className="mb-1 block font-medium">User-Agent</span>
             <input
               defaultValue={settings.userAgent}
               key={settings.userAgent}
@@ -180,14 +214,15 @@ export function UpdatesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
               className="w-full bg-transparent font-mono text-[16px] text-ink md:text-[14px] placeholder:font-sans placeholder:text-ink-3 focus:outline-none"
             />
             <span className="mt-1 block text-[13px] text-ink-3">
-              
               {t("Меняйте, только если провайдер просит. Пусто — стандартный: панель отдаёт полный конфиг серверов")}
             </span>
           </label>
         </Group>
         <p className="px-2 text-[13px] text-ink-3">
-          
-          {t("Обновить одного провайдера вручную — кнопкой рядом с его названием в «Серверах».")}
+          {t("Своё название, DNS и интервал для одного провайдера — в его меню в «Серверах».")}
+        </p>
+        <p className="px-2 text-[13px] text-ink-3">
+          {t("HWID — обезличенный номер устройства: по нему панель провайдера считает, сколько устройств подключено к подписке. Вместе с ним уходят система и модель устройства. Имя, контакты и история сайтов не передаются.")}
         </p>
       </div>
     </Sheet>
