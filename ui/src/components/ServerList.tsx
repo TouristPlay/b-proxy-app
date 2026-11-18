@@ -220,8 +220,8 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                         aria-current={active ? "true" : undefined}
                         className={cn(
                           "relative flex w-full items-center gap-3 overflow-hidden rounded-[18px] text-left transition-[background-color,box-shadow,transform] duration-[var(--dur)] hover:bg-glass-2 active:scale-[0.98]",
-                          // Справа место под звёздочку «В избранное» и кнопку «⋯».
-                          compact ? "py-2.5 pr-[84px] pl-2.5" : "py-3 pr-[84px] pl-3",
+                          // Справа место под звёздочку «В избранное», кнопку «⋯» и пинг.
+                          compact ? "py-2.5 pr-[140px] pl-2.5 lg:pr-[152px]" : "py-3 pr-[140px] pl-3 lg:pr-[152px]",
                           active && "bg-amber/[0.08] ring-1 ring-amber/45 ring-inset hover:bg-amber/[0.11]",
                         )}
                       >
@@ -237,9 +237,8 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                             </span>
                             {node.hidden && <EyeOff className="size-3.5 shrink-0 text-ink-3" aria-label={t("Скрыт")} />}
                           </span>
-                          <Tags tags={node.tags} className="mt-1" />
+                          <Tags tags={node.tags} className="mt-1 h-[18px] flex-nowrap overflow-hidden [mask-image:linear-gradient(to_right,black_85%,transparent)]" />
                         </span>
-                        <SignalPing ms={node.pingMs} measuring={s.pingingSub === sub.url} order={i} className="shrink-0" />
                       </button>
                       <div className="absolute top-1/2 right-0.5 flex -translate-y-1/2 items-center">
                         <button
@@ -247,13 +246,17 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
                           aria-label={fav ? t("Убрать из избранного") : t("В избранное")}
                           aria-pressed={fav}
                           className={cn(
-                            "flex size-10 items-center justify-center rounded-full transition-opacity",
+                            "flex size-9 items-center justify-center rounded-full transition-opacity lg:size-10",
                             fav ? "text-amber" : "text-ink-3 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100",
                           )}
                         >
                           <FavStar key={String(fav)} fav={fav} />
                         </button>
                         <NodeMenuButton {...menuProps} />
+                        {/* Пинг — у самого правого края; нажатие проходит сквозь него на строку. */}
+                        <span className="pointer-events-none flex min-w-[64px] justify-end pr-2">
+                          <SignalPing ms={node.pingMs} measuring={s.pingingSub === sub.url} order={i} className="shrink-0" />
+                        </span>
                       </div>
                     </li>
                     </NodeMenu>
@@ -424,7 +427,7 @@ function NodeMenuButton(props: NodeMenuProps) {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
         aria-label={t("Действия с сервером {0}", [splitFlag(props.node.name).name])}
-        className="flex size-10 items-center justify-center rounded-full text-ink-3 transition-[opacity,background-color] hover:bg-glass-2 hover:text-ink lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 lg:data-[state=open]:opacity-100"
+        className="flex size-9 items-center justify-center rounded-full text-ink-3 transition-[opacity,background-color] hover:bg-glass-2 lg:size-10 hover:text-ink lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 lg:data-[state=open]:opacity-100"
       >
         <MoreHorizontal className="size-[18px]" />
       </DropdownMenu.Trigger>

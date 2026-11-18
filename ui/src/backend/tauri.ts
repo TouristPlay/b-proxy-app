@@ -467,6 +467,12 @@ export class TauriBackend implements Backend {
         run: () => void this.installAppUpdate(),
       });
     } catch (e) {
+      // Релиза с файлом обновления ещё нет (404) — это «обновлений нет», а не ошибка сети.
+      if (/404|not found|valid release json/i.test(message(e))) {
+        this.emit({ appUpdate: { state: "none" } });
+        if (manual) this.toast(t("У вас последняя версия B-Proxy"));
+        return;
+      }
       this.writeLog("warn", `Проверка обновлений: ${message(e)}`);
       this.emit({ appUpdate: { state: "error", error: t("Не удалось проверить обновления — проверьте интернет") } });
       if (manual) this.toast(t("Не удалось проверить обновления — проверьте интернет"));
