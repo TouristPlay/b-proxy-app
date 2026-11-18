@@ -27,13 +27,15 @@ import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
 import { parseLink } from "./links";
 import { decodeProfile, needsGeo } from "./routing";
 import { Toaster } from "./toaster";
+import { getVersion } from "@tauri-apps/api/app";
 import { CATALOG_URL, parseCatalog } from "./catalog";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { activeProfile, buildConfig, buildPingConfig, detectPlatform, isMobile } from "./xray";
 import { t } from "@/lib/i18n";
 
-const APP_VERSION = "0.1.0";
+// Настоящая версия приходит из сборки (getVersion в init) — версия из тега релиза.
+let APP_VERSION = "0.2.0";
 /** Remnawave отдаёт список серверов только приложениям; с этим заголовком приходят ссылки. */
 const USER_AGENT = "v2rayNG/1.9.30";
 /** libXray меряет не больше 5 серверов за вызов. */
@@ -201,6 +203,8 @@ export class TauriBackend implements Backend {
   }
 
   private async init() {
+    APP_VERSION = await getVersion().catch(() => APP_VERSION);
+    this.emit({ version: { ...this.s.version, app: APP_VERSION } });
     this.logPaths = await invoke<{ dir: string; appLog: string; coreLog: string } | null>("plugin:bproxy|log_info").catch(() => null);
     const sub = this.subs.map((x) => `«${x.title}» (${x.nodes.filter((n) => !n.divider).length})`).join(", ");
     this.writeLog("info", `Интерфейс ${APP_VERSION}, ${this.platform}; подписки: ${sub || "нет"}`);
