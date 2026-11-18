@@ -125,6 +125,10 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   Swift-плагин берёт `CGoInvoke`/`CGoFree` через `dlsym` — иначе Xcode падает с
   «Redefinition of module 'LibXray'». На iOS расширению доступно ~50 МБ памяти: лимит Go по умолчанию 30 МБ,
   меняется в «Ядро Xray» (env `BPROXY_MEMORY_LIMIT_MB`, `BPROXY_AGGRESSIVE_GC`).
+- «Живая активность» iOS (16.1+): расширение-виджет `apple/LiveActivity` (добавляет `scripts/tauri_ios_extension.py`),
+  управляет приложение командой плагина `live_activity` (start/update/end) при смене состояния туннеля.
+  Структура `BProxyActivityAttributes` объявлена и в плагине, и в расширении — поля должны совпадать.
+  Если приложение выгружено, активность обновится при следующем открытии.
 - Идентификатор приложения `com.baobabproxy.bproxy`, расширения — `.PacketTunnel`, группа — `group.com.baobabproxy.bproxy`.
 - Windows: libXray.dll внутри приложения + Wintun, приложение просит права администратора.
 - Linux и macOS: процесс `bproxy-core` с правами администратора (pkexec / osascript), копия лежит в папке

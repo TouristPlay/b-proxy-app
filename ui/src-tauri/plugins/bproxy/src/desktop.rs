@@ -119,6 +119,10 @@ impl<R: Runtime> Vpn<R> {
             .map_err(|e| e.to_string())?
     }
 
+    pub async fn live_activity(&self, _args: serde_json::Value) -> Result<(), String> {
+        Ok(())
+    }
+
     pub async fn geo_dir(&self) -> Result<PathBuf, String> {
         Ok(self.data_dir()?.join("geo"))
     }

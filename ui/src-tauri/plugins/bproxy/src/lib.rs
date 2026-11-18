@@ -58,7 +58,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::tcp_ping,
             commands::device_info,
             commands::geo_info,
-            commands::download_geo
+            commands::download_geo,
+            commands::live_activity
         ])
         .setup(|app, api| {
             if let Ok(dir) = app.path().app_local_data_dir() {

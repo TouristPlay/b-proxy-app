@@ -101,6 +101,7 @@ export const defaultSettings: Settings = {
   ping: { method: "tcp", timeoutSec: 5, url: "https://www.gstatic.com/generate_204", onStart: true },
   updates: { interval: "provider", onStart: true, pingAfter: false },
   autoConnect: false,
+  liveActivity: true,
   serverSort: "provider",
   notifications: { enabled: true, disconnect: true, expiry: true, traffic: true, announce: true },
   desktop: { closeToTray: true },

@@ -34,7 +34,7 @@ const USER_AGENT = "v2rayNG/1.9.30";
 /** libXray меряет не больше 5 серверов за вызов. */
 const PING_BATCH = 5;
 /** Настройки самого приложения: их смена не требует переподключения VPN. */
-const APP_ONLY = new Set(["autoConnect", "serverSort", "sendHwid", "updates", "ping", "notifications", "desktop"]);
+const APP_ONLY = new Set(["liveActivity", "autoConnect", "serverSort", "sendHwid", "updates", "ping", "notifications", "desktop"]);
 
 const STATE_KEY = "b-proxy.state";
 /** Какие уведомления о подписках уже показаны. */
@@ -198,6 +198,9 @@ export class TauriBackend implements Backend {
       this.writeLog("info", `Устройство: ${device.os} ${device.osVersion}, ${device.model}, HWID ${device.hwid}`);
     }
 
+    // «Живая активность» могла остаться от прошлого запуска — приводим к текущему состоянию.
+    this.syncLiveActivity();
+
     // Ссылки bproxy://: та, с которой приложение запустили, и все следующие.
     void onOpenUrl((urls) => urls.forEach((u) => void this.openLink(u))).catch(() => undefined);
     void getDeepLinks()
@@ -270,7 +273,9 @@ export class TauriBackend implements Backend {
   }
 
   private emit(patch: Partial<Snapshot> = {}) {
+    const before = this.s.state;
     this.s = { ...this.s, ...patch };
+    if (patch.state && patch.state !== before) this.syncLiveActivity();
     this.recompute();
     for (const l of this.listeners) l(this.s);
   }
@@ -951,6 +956,25 @@ export class TauriBackend implements Backend {
     }
   }
 
+  // ---------- «Живая активность» (iOS) ----------
+
+  /** Статус VPN на экране блокировки: показываем при подключении, убираем при отключении. */
+  private syncLiveActivity() {
+    if (this.platform !== "ios") return;
+    const { state, current, connectedAt, settings } = this.s;
+    const show = settings.liveActivity && (state === "connecting" || state === "connected");
+    const args = show
+      ? {
+          action: "update",
+          status: state,
+          server: current ? current.node.name : "",
+          label: state === "connected" ? t("Защищено") : t("Подключаемся"),
+          since: connectedAt ?? Date.now(),
+        }
+      : { action: "end" };
+    void invoke("plugin:bproxy|live_activity", { args }).catch((e) => this.writeLog("warn", `Живая активность: ${message(e)}`));
+  }
+
   // ---------- Профили маршрутизации ----------
 
   private geoDir: string | null = null;
@@ -1174,6 +1198,7 @@ export class TauriBackend implements Backend {
     // Переподключение нужно, только если настройка меняет конфиг ядра.
     if (Object.keys(patch).some((k) => !APP_ONLY.has(k))) this.settingsChanged();
     else this.persist();
+    if (patch.liveActivity !== undefined) this.syncLiveActivity();
     // Включили или выключили уведомления о сроке — переставим расписание на телефоне.
     if (patch.notifications && isMobile(this.platform)) this.checkAlerts();
   }

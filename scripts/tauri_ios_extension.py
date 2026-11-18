@@ -3,7 +3,8 @@
 
 - расширение PacketTunnel (ui/src-tauri/apple/PacketTunnel), в нём работает ядро;
 - ядро LibXray.xcframework в приложение (разбор ссылок, пинг) и в расширение;
-- права Network Extension и общую группу приложений.
+- права Network Extension и общую группу приложений;
+- расширение LiveActivity (ui/src-tauri/apple/LiveActivity) — «Живая активность» на iOS 16.1+.
 
 Запуск после `tauri ios init`, затем `xcodegen generate` в gen/apple.
 С флагом --unsigned отключает подпись (сборка в CI без аккаунта Apple).
@@ -23,6 +24,7 @@ GROUP = f"group.{BUNDLE_ID}"
 IOS_VERSION = "15.0"
 XCFRAMEWORK = "../../resources/ios/LibXray.xcframework"
 EXTENSION_DIR = "../../apple/PacketTunnel"
+ACTIVITY_DIR = "../../apple/LiveActivity"
 # Не дают компоновщику выбросить C-интерфейс ядра: плагин находит его через dlsym.
 LINKER_FLAGS = ["$(inherited)", "-lresolv", "-Wl,-u,_CGoInvoke", "-Wl,-u,_CGoFree"]
 VPN_ENTITLEMENTS = {
@@ -56,6 +58,17 @@ def main() -> int:
     add_dependency(app, {"framework": XCFRAMEWORK, "embed": False})
     add_dependency(app, {"sdk": "NetworkExtension.framework"})
     add_dependency(app, {"target": "PacketTunnel", "embed": True, "codeSign": True})
+    add_dependency(app, {"target": "LiveActivity", "embed": True, "codeSign": True})
+    # «Живая активность»: без этого ключа iOS не даст приложению её показать.
+    info = app.setdefault("info", {})
+    info.setdefault("properties", {})["NSSupportsLiveActivities"] = True
+    plist_path = info.get("path")
+    if plist_path and (GEN / plist_path).exists():
+        import plistlib
+
+        data = plistlib.loads((GEN / plist_path).read_bytes())
+        data["NSSupportsLiveActivities"] = True
+        (GEN / plist_path).write_bytes(plistlib.dumps(data))
     base = app.setdefault("settings", {}).setdefault("base", {})
     base["OTHER_LDFLAGS"] = LINKER_FLAGS
     entitlements = app.setdefault("entitlements", {"path": f"{app_name}/{app_name}.entitlements"})
@@ -95,8 +108,36 @@ def main() -> int:
         ],
     }
 
+    # --- Расширение LiveActivity (виджет «Живой активности») ---
+    targets["LiveActivity"] = {
+        "type": "app-extension",
+        "platform": "iOS",
+        "deploymentTarget": "16.1",
+        "sources": [{"path": ACTIVITY_DIR}],
+        "info": {"path": f"{ACTIVITY_DIR}/Info.plist"},
+        "settings": {
+            "base": {
+                "PRODUCT_NAME": "LiveActivity",
+                "PRODUCT_BUNDLE_IDENTIFIER": f"{BUNDLE_ID}.LiveActivity",
+                "INFOPLIST_FILE": f"{ACTIVITY_DIR}/Info.plist",
+                "SWIFT_VERSION": "5.0",
+                "ARCHS": archs,
+                "SKIP_INSTALL": True,
+                "MARKETING_VERSION": base.get("MARKETING_VERSION", "$(MARKETING_VERSION)"),
+                "CURRENT_PROJECT_VERSION": base.get(
+                    "CURRENT_PROJECT_VERSION", "$(CURRENT_PROJECT_VERSION)"
+                ),
+            }
+        },
+        "dependencies": [
+            {"sdk": "WidgetKit.framework"},
+            {"sdk": "SwiftUI.framework"},
+            {"sdk": "ActivityKit.framework"},
+        ],
+    }
+
     if "--unsigned" in sys.argv:
-        for target in (app, targets["PacketTunnel"]):
+        for target in (app, targets["PacketTunnel"], targets["LiveActivity"]):
             target_base = target.setdefault("settings", {}).setdefault("base", {})
             target_base.update(
                 {
@@ -107,7 +148,7 @@ def main() -> int:
             )
 
     PROJECT.write_text(yaml.safe_dump(project, sort_keys=False, allow_unicode=True))
-    print(f"PacketTunnel добавлен в {PROJECT.relative_to(ROOT)} (приложение {app_name})")
+    print(f"PacketTunnel и LiveActivity добавлены в {PROJECT.relative_to(ROOT)} (приложение {app_name})")
     return 0
 
 

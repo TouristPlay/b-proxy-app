@@ -10,6 +10,18 @@ class InvokeCoreArgs: Decodable {
     let request: String
 }
 
+class LiveActivityArgs: Decodable {
+    /// start | update | end
+    let action: String
+    /// connecting | connected
+    let status: String?
+    let server: String?
+    /// Подпись статуса на языке интерфейса: «Защищено», «Подключаемся».
+    let label: String?
+    /// Начало сеанса, мс с 1970 года — от него идёт таймер.
+    let since: Double?
+}
+
 class StartArgs: Decodable {
     let config: String
     let notifyDisconnect: Bool?
@@ -48,7 +60,16 @@ class BProxyPlugin: Plugin {
         }
     }
 
-    /// Разрешение система спросит сама при первом сохранении профиля VPN.
+    /// «Живая активность» (iOS 16.1+): статус VPN на экране блокировки и в Dynamic Island.
+    /// Таймер в ней считает сама система, поэтому обновлять её каждую секунду не нужно.
+    @objc public func liveActivity(_ invoke: Invoke) throws {
+        let args = try invoke.parseArgs(LiveActivityArgs.self)
+        if #available(iOS 16.1, *) {
+            LiveActivityController.handle(args)
+        }
+        invoke.resolve()
+    }
+
     /// Папка баз geoip/geosite в общем контейнере App Group: её читает расширение PacketTunnel.
     @objc public func geoDir(_ invoke: Invoke) {
         let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Shared.appGroup)
@@ -97,6 +118,7 @@ class BProxyPlugin: Plugin {
         return id
     }
 
+    /// Разрешение система спросит сама при первом сохранении профиля VPN.
     @objc public func prepare(_ invoke: Invoke) {
         invoke.resolve(["granted": true])
     }

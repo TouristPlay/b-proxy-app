@@ -18,6 +18,7 @@
 - `allow-device-info`
 - `allow-geo-info`
 - `allow-download-geo`
+- `allow-live-activity`
 
 ## Permission Table
 
@@ -154,6 +155,32 @@ Enables the invoke_core command without any pre-configured scope.
 <td>
 
 Denies the invoke_core command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-live-activity`
+
+</td>
+<td>
+
+Enables the live_activity command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-live-activity`
+
+</td>
+<td>
+
+Denies the live_activity command without any pre-configured scope.
 
 </td>
 </tr>

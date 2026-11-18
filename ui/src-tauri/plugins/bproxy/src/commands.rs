@@ -40,6 +40,12 @@ pub(crate) async fn download_geo<R: Runtime>(app: AppHandle<R>, name: String, ur
     file
 }
 
+/// «Живая активность» iOS: start | update | end. На других платформах ничего не делает.
+#[command]
+pub(crate) async fn live_activity<R: Runtime>(app: AppHandle<R>, args: serde_json::Value) -> Result<(), String> {
+    app.vpn().live_activity(args).await
+}
+
 /// HWID и сведения об устройстве — те же, что уходят провайдеру с подпиской.
 #[command]
 pub(crate) async fn device_info<R: Runtime>(app: AppHandle<R>) -> Result<DeviceInfo, String> {

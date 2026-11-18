@@ -17,4 +17,5 @@ permissions = [
   "allow-device-info",
   "allow-geo-info",
   "allow-download-geo",
+  "allow-live-activity",
 ]

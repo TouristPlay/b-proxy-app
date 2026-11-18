@@ -243,6 +243,8 @@ export interface Settings {
   sendHwid: boolean;
   /** Подключаться сразу после запуска приложения. */
   autoConnect: boolean;
+  /** iOS: «Живая активность» — статус VPN на экране блокировки и в Dynamic Island. */
+  liveActivity: boolean;
   /** Порядок серверов в списке. */
   serverSort: ServerSort;
   ping: PingSettings;

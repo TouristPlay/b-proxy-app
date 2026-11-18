@@ -559,4 +559,6 @@ export const en: Record<string, string> = {
   "Версия Xray": "Xray version",
   "Как в системе": "System default",
   "Язык": "Language",
+  "Живая активность": "Live Activity",
+  "Статус VPN и время сеанса на экране блокировки и в Dynamic Island": "VPN status and session time on the Lock Screen and in the Dynamic Island",
 };

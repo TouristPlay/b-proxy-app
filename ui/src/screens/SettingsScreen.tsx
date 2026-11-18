@@ -1,6 +1,7 @@
-import { AppWindow, Plug, Wifi, Bell, ChevronRight, Copy, Fingerprint, FileText, Gauge, Power, Info, Palette, Plus, RefreshCw, RotateCcw, Route, Server, Trash2 } from "lucide-react";
+import { AppWindow, RadioTower, Plug, Wifi, Bell, ChevronRight, Copy, Fingerprint, FileText, Gauge, Power, Info, Palette, Plus, RefreshCw, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
+import { detectPlatform } from "@/backend/xray";
 import { Group, IconTile, Row } from "@/components/bits";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
@@ -86,6 +87,15 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
             hint={t("B-Proxy включит VPN сразу после открытия")}
             aside={<Switch id="set-autoconnect" checked={s.settings.autoConnect} onCheckedChange={(v) => void backend.updateSettings({ autoConnect: v })} />}
           />
+          {detectPlatform() === "ios" && (
+            <Row
+              htmlFor="set-live"
+              icon={<IconTile icon={RadioTower} tone="green" />}
+              title={t("Живая активность")}
+              hint={t("Статус VPN и время сеанса на экране блокировки и в Dynamic Island")}
+              aside={<Switch id="set-live" checked={s.settings.liveActivity} onCheckedChange={(v) => void backend.updateSettings({ liveActivity: v })} />}
+            />
+          )}
           <Row
             htmlFor="set-hwid"
             icon={<IconTile icon={Fingerprint} tone="violet" />}
