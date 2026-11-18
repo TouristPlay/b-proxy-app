@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useSnapshot } from "@/backend";
 import { Backdrop } from "@/components/Backdrop";
 import { LinkConfirm } from "@/components/LinkConfirm";
+import { Onboarding } from "@/components/Onboarding";
 import { Toast } from "@/components/Toast";
 import { useIsDesktop } from "@/lib/useMedia";
 import { useApplyAppearance } from "@/lib/theme";
@@ -44,6 +45,7 @@ export default function App() {
       <Backdrop state={s.state} appearance={s.settings.appearance} mode={mode} />
       <Toast />
       <LinkConfirm />
+      {!s.onboarded && <Onboarding onAdd={() => setAdding(true)} />}
 
       {desktop ? (
         <DesktopLayout onAdd={() => setAdding(true)} />

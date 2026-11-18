@@ -1,3 +1,4 @@
+import { demoFlag } from "@/lib/demoHash";
 import { newId } from "./activity";
 import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
 import { parseLink } from "./links";
@@ -153,6 +154,8 @@ export class DemoBackend implements Backend {
       autostart: false,
       appUpdate: { state: "idle" },
       speedTest: null,
+      // #welcome в адресе — показать знакомство (первый запуск).
+      onboarded: !demoFlag("welcome"),
       geo: { files: [], downloading: false },
       pendingLink: null,
       device: { hwid: "3F2A9C1E-7B4D-4E8A-9C21-5D6E7F8A9B0C", os: "Linux", osVersion: "Ubuntu 24.04 LTS", model: "Demo PC" },
@@ -522,6 +525,20 @@ export class DemoBackend implements Backend {
 
   updateDesktop(patch: Partial<DesktopSettings>) {
     this.emit({ settings: { ...this.s.settings, desktop: { ...this.s.settings.desktop, ...patch } } });
+  }
+
+  async requestVpnPermission() {
+    await wait(500);
+    return true;
+  }
+
+  async requestNotifications() {
+    await wait(400);
+    return true;
+  }
+
+  finishOnboarding() {
+    this.emit({ onboarded: true });
   }
 
   async runSpeedTest() {

@@ -310,6 +310,8 @@ export interface Snapshot {
   autostart: boolean | null;
   /** HWID и устройство — то, что уходит провайдеру; null — ещё не узнали. */
   device: DeviceInfo | null;
+  /** Знакомство при первом запуске пройдено (или подписки уже есть). */
+  onboarded: boolean;
   /** Последняя проверка скорости в этом сеансе; null — не проверяли. */
   speedTest: SpeedTest | null;
   /** Обновление приложения; null — платформа не умеет (телефон, демо без компьютера). */
@@ -398,6 +400,12 @@ export interface Backend {
   openLogsFolder(): Promise<boolean>;
   /** Пример уведомления — проверить, что система их показывает. */
   testNotification(): Promise<void>;
+  /** Разрешение системы на VPN (Android, iOS); на компьютере всегда true. */
+  requestVpnPermission(): Promise<boolean>;
+  /** Разрешение на уведомления. */
+  requestNotifications(): Promise<boolean>;
+  /** Знакомство пройдено — больше не показывать. */
+  finishOnboarding(): void;
   /** Проверить скорость через выбранный сервер (только при включённом VPN). */
   runSpeedTest(): Promise<void>;
   /** Проверить, вышла ли новая версия B-Proxy (компьютер). */

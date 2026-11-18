@@ -55,6 +55,7 @@ interface AlertMarks {
   announce?: string;
 }
 const APPEARANCE_KEY = "b-proxy.appearance";
+const ONBOARDED_KEY = "b-proxy.onboarded";
 
 interface Persisted {
   subscriptions: StoredSubscription[];
@@ -156,6 +157,7 @@ export class TauriBackend implements Backend {
       autostart: null,
       appUpdate: null,
       speedTest: null,
+      onboarded: localStorage.getItem(ONBOARDED_KEY) === "1" || this.subs.length > 0,
       device: null,
       geo: null,
       pendingLink: null,
@@ -354,6 +356,27 @@ export class TauriBackend implements Backend {
     this.emit({ settings: { ...this.s.settings, desktop } });
     this.persist();
     void invoke("set_close_to_tray", { enabled: desktop.closeToTray }).catch(() => undefined);
+  }
+
+  // ---------- Первый запуск ----------
+
+  async requestVpnPermission() {
+    if (!isMobile(this.platform)) return true;
+    try {
+      return (await invoke<{ granted: boolean }>("plugin:bproxy|prepare")).granted;
+    } catch (e) {
+      this.writeLog("warn", `Разрешение на VPN: ${message(e)}`);
+      return false;
+    }
+  }
+
+  async requestNotifications() {
+    return this.ensureNotifyPermission(true);
+  }
+
+  finishOnboarding() {
+    localStorage.setItem(ONBOARDED_KEY, "1");
+    this.emit({ onboarded: true });
   }
 
   // ---------- Проверка скорости ----------
