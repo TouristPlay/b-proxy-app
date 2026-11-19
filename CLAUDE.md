@@ -10,7 +10,6 @@ VPN-клиент сервиса BaobabVPN (сайт baobabproxy.com) на ядр
 - `ui/` — приложение на **Tauri 2**: интерфейс React 19 + TypeScript + Tailwind CSS v4 + shadcn/ui (Radix),
   `ui/src-tauri/` — оболочка на Rust и плагин `bproxy` (ядро Xray и VPN на всех платформах).
   В приложении работает `TauriBackend`, в браузере (демо дизайна) — `DemoBackend` с тестовыми данными.
-- `app/` — первая версия на Flutter, больше не собирается. Оставлена как справка.
 - Дальше: подпись iOS/macOS (TestFlight), проверка VPN на устройствах → QR, kill switch,
   VPN по приложениям, разделы «Тарифы» и «Баланс» (нужен API панели/бота).
 
@@ -43,7 +42,6 @@ core/
   runner/main.go        bproxy-core — ядро отдельным процессом для Linux и macOS (caps_linux.go — права в ambient)
   nodep/measure.go      замена nodep/measure.go: «реальная задержка» запросом HEAD или GET (#bproxy-method= в адресе)
 scripts/                build_core.sh (linux | windows | macos | android | ios), tauri_ios_extension.py
-app/                    Flutter-версия (не собирается)
 .github/workflows/      build.yml — демо интерфейса, Linux, Windows, Android (APK) на каждый пуш; iOS без подписи — только
                         в релиз; macOS — только вручную (Run workflow → «Собрать и macOS»). Ядро кэшируется по core/** и build_core.sh
 ```

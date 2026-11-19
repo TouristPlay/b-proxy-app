@@ -1,7 +1,6 @@
 name: Сборка B-Proxy
 
 # Приложение на Tauri 2: интерфейс из ui/, ядро libXray из scripts/build_core.sh.
-# Flutter-версия (app/) больше не собирается.
 
 on:
   push:
