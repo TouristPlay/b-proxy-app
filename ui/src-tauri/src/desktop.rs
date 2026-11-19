@@ -7,10 +7,12 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use serde::Deserialize;
 use tauri::{
-    menu::{Menu, MenuItem, PredefinedMenuItem},
+    image::Image,
+    menu::{CheckMenuItem, IsMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Builder, Manager, Runtime, WindowEvent, Wry,
+    AppHandle, Builder, Emitter, Manager, Runtime, WindowEvent, Wry,
 };
 use tauri_plugin_autostart::MacosLauncher;
 
@@ -23,6 +25,77 @@ static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(true);
 #[tauri::command]
 pub fn set_close_to_tray(enabled: bool) {
     CLOSE_TO_TRAY.store(enabled, Ordering::Relaxed);
+}
+
+// ---------- Меню в трее ----------
+//
+// Меню строит интерфейс (тексты на языке приложения, список серверов) и присылает командой
+// `update_tray`; нажатия приходят обратно событием `tray-action` с id пункта:
+// toggle, ping, refresh, auto, server:<номер>, open — сами по себе, quit — выход.
+
+static TRAY_ON: &[u8] = include_bytes!("../tray/on.png");
+static TRAY_OFF: &[u8] = include_bytes!("../tray/off.png");
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrayModel {
+    /// «Подключено · Нидерланды» — строка состояния (не нажимается).
+    status: String,
+    connected: bool,
+    /// «Подключить» / «Отключить».
+    toggle: String,
+    tooltip: String,
+    servers_title: String,
+    auto: Option<TrayCheck>,
+    servers: Vec<TrayCheck>,
+    ping: String,
+    refresh: String,
+    open: String,
+    quit: String,
+}
+
+#[derive(Deserialize)]
+pub struct TrayCheck {
+    label: String,
+    checked: bool,
+}
+
+#[tauri::command]
+pub fn update_tray(app: AppHandle, model: TrayModel) -> Result<(), String> {
+    let tray = app.tray_by_id("main").ok_or("нет значка в трее")?;
+    let menu = build_menu(&app, &model).map_err(|e| e.to_string())?;
+    tray.set_menu(Some(menu)).map_err(|e| e.to_string())?;
+    let _ = tray.set_tooltip(Some(&model.tooltip));
+    if let Ok(icon) = Image::from_bytes(if model.connected { TRAY_ON } else { TRAY_OFF }) {
+        let _ = tray.set_icon(Some(icon));
+    }
+    Ok(())
+}
+
+fn build_menu<R: Runtime>(app: &AppHandle<R>, m: &TrayModel) -> tauri::Result<Menu<R>> {
+    let status = MenuItem::with_id(app, "status", &m.status, false, None::<&str>)?;
+    let toggle = MenuItem::with_id(app, "toggle", &m.toggle, true, None::<&str>)?;
+    let sep = || PredefinedMenuItem::separator(app);
+
+    let mut server_items: Vec<Box<dyn IsMenuItem<R>>> = Vec::new();
+    if let Some(auto) = &m.auto {
+        server_items.push(Box::new(CheckMenuItem::with_id(app, "auto", &auto.label, true, auto.checked, None::<&str>)?));
+        server_items.push(Box::new(sep()?));
+    }
+    for (i, s) in m.servers.iter().enumerate() {
+        server_items.push(Box::new(CheckMenuItem::with_id(app, format!("server:{i}"), &s.label, true, s.checked, None::<&str>)?));
+    }
+    let refs: Vec<&dyn IsMenuItem<R>> = server_items.iter().map(|b| b.as_ref()).collect();
+    let servers = Submenu::with_id_and_items(app, "servers", &m.servers_title, !m.servers.is_empty(), &refs)?;
+
+    let ping = MenuItem::with_id(app, "ping", &m.ping, true, None::<&str>)?;
+    let refresh = MenuItem::with_id(app, "refresh", &m.refresh, true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", &m.open, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", &m.quit, true, None::<&str>)?;
+    Menu::with_items(
+        app,
+        &[&status, &toggle, &sep()?, &servers, &ping, &refresh, &sep()?, &open, &quit],
+    )
 }
 
 /// Показать главное окно и вывести его поверх остальных.
@@ -98,6 +171,7 @@ pub fn setup(builder: Builder<Wry>) -> Builder<Wry> {
             }
         })
         .setup(|app| {
+            // Меню до загрузки интерфейса; дальше его присылает интерфейс (update_tray).
             let open = MenuItem::with_id(app, "open", "Открыть B-Proxy", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Выйти", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &PredefinedMenuItem::separator(app)?, &quit])?;
@@ -110,7 +184,11 @@ pub fn setup(builder: Builder<Wry>) -> Builder<Wry> {
                     "open" => show_main(app),
                     // Выход по-настоящему: плагин bproxy на RunEvent::Exit остановит VPN.
                     "quit" => app.exit(0),
-                    _ => {}
+                    "status" => {}
+                    // Остальное делает интерфейс: подключение, выбор сервера, пинг.
+                    id => {
+                        let _ = app.emit("tray-action", id.to_string());
+                    }
                 })
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click {
@@ -122,8 +200,13 @@ pub fn setup(builder: Builder<Wry>) -> Builder<Wry> {
                         show_main(tray.app_handle());
                     }
                 });
-            if let Some(icon) = app.default_window_icon() {
-                tray = tray.icon(icon.clone());
+            match Image::from_bytes(TRAY_OFF) {
+                Ok(icon) => tray = tray.icon(icon),
+                Err(_) => {
+                    if let Some(icon) = app.default_window_icon() {
+                        tray = tray.icon(icon.clone());
+                    }
+                }
             }
             tray.build(app)?;
 

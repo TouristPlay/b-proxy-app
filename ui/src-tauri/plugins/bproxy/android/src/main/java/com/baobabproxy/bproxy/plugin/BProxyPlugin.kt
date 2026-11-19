@@ -46,6 +46,29 @@ class BProxyPlugin(private val activity: Activity) : Plugin(activity) {
 
     init {
         BProxyVpnService.listener = { state -> main.post { onVpnState(state) } }
+        addShortcuts()
+    }
+
+    /**
+     * Ярлык при долгом нажатии на значок приложения: «Включить или выключить VPN».
+     * Открывает ссылку bproxy://toggle — её разбирает интерфейс (backend/links.ts).
+     */
+    private fun addShortcuts() {
+        if (Build.VERSION.SDK_INT < 25) return
+        try {
+            val sm = activity.getSystemService(android.content.pm.ShortcutManager::class.java) ?: return
+            val toggle = android.content.pm.ShortcutInfo.Builder(activity, "toggle")
+                .setShortLabel("VPN вкл/выкл")
+                .setLongLabel("Включить или выключить VPN")
+                .setIcon(android.graphics.drawable.Icon.createWithResource(activity, R.drawable.ic_bproxy_vpn))
+                .setIntent(
+                    android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("bproxy://toggle"))
+                        .setPackage(activity.packageName)
+                )
+                .build()
+            sm.dynamicShortcuts = listOf(toggle)
+        } catch (_: Throwable) {
+        }
     }
 
     /** Прямой вызов libXray: разбор ссылок, пинг, версия ядра. */

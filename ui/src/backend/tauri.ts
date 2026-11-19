@@ -16,6 +16,7 @@ import {
   type SessionEnd,
   type Settings,
   type Snapshot,
+  nodeKey,
   type SpeedTest,
   type AppEntry,
   type Subscription,
@@ -205,6 +206,10 @@ export class TauriBackend implements Backend {
 
   private async init() {
     APP_VERSION = await getVersion().catch(() => APP_VERSION);
+    if (!isMobile(this.platform)) {
+      void listen<string>("tray-action", (e) => this.onTrayAction(e.payload));
+      this.scheduleTray();
+    }
     this.emit({ version: { ...this.s.version, app: APP_VERSION } });
     this.syncCrashReports();
     this.logPaths = await invoke<{ dir: string; appLog: string; coreLog: string } | null>("plugin:bproxy|log_info").catch(() => null);
@@ -313,6 +318,77 @@ export class TauriBackend implements Backend {
     if (patch.state && patch.state !== before) this.syncLiveActivity();
     this.recompute();
     for (const l of this.listeners) l(this.s);
+    if ("state" in patch || "subscriptions" in patch || "selected" in patch || "favorites" in patch || "current" in patch) this.scheduleTray();
+  }
+
+  // ---------- Меню в трее (компьютер) ----------
+
+  private trayServers: { subUrl: string; nodeId: string }[] = [];
+  private trayTimer: number | null = null;
+  private trayKey = "";
+
+  private scheduleTray() {
+    if (isMobile(this.platform) || this.trayTimer != null) return;
+    this.trayTimer = window.setTimeout(() => {
+      this.trayTimer = null;
+      void this.updateTray();
+    }, 150);
+  }
+
+  private async updateTray() {
+    const s = this.s;
+    const node = s.current?.node;
+    const name = (n: string) => n.replace(/^\p{RI}{2}\s*/u, "");
+    const on = s.state === "connected";
+    const busy = s.state === "connecting" || s.state === "disconnecting";
+    const status =
+      s.state === "connected"
+        ? t("Подключено · {0}", [name(node?.name ?? "")])
+        : s.state === "connecting"
+          ? t("Подключаемся…")
+          : s.state === "disconnecting"
+            ? t("Отключаемся…")
+            : t("Не подключено");
+    // В меню — избранные серверы, а без них — серверы текущего провайдера (до 15).
+    const all = s.subscriptions.flatMap((sub) => sub.nodes.filter((n) => !n.divider && !n.hidden).map((n) => ({ sub, n })));
+    const favs = all.filter(({ sub, n }) => s.favorites.includes(nodeKey(sub.url, n.id)));
+    const currentSub = s.current?.sub.url ?? s.subscriptions[0]?.url;
+    const list = (favs.length ? favs : all.filter(({ sub }) => sub.url === currentSub)).slice(0, 15);
+    this.trayServers = list.map(({ sub, n }) => ({ subUrl: sub.url, nodeId: n.id }));
+    const model = {
+      status,
+      connected: on,
+      toggle: on || busy ? t("Отключить") : t("Подключить"),
+      tooltip: `B-Proxy — ${status}`,
+      serversTitle: favs.length ? t("Избранные серверы") : t("Серверы"),
+      auto: list.length ? { label: t("Автовыбор по пингу"), checked: s.selected === null } : null,
+      servers: list.map(({ sub, n }) => ({
+        label: n.pingMs ? `${n.name}  ·  ${n.pingMs} ${t("мс")}` : n.name,
+        checked: s.selected !== null && s.current?.sub.url === sub.url && s.current.node.id === n.id,
+      })),
+      ping: t("Проверить пинг"),
+      refresh: t("Обновить подписки"),
+      open: t("Открыть B-Proxy"),
+      quit: t("Выйти"),
+    };
+    const key = JSON.stringify(model);
+    if (key === this.trayKey) return;
+    this.trayKey = key;
+    await invoke("update_tray", { model }).catch(() => {});
+  }
+
+  private onTrayAction(id: string) {
+    if (id === "toggle") void this.toggle();
+    else if (id === "ping") void this.pingAll();
+    else if (id === "refresh") void this.refreshSubscriptions();
+    else if (id === "auto") void this.select(null);
+    else if (id.startsWith("server:")) {
+      const target = this.trayServers[Number(id.slice(7))];
+      if (target) void this.select(target);
+    }
+    // Флажки в меню система переключает сама — возвращаем их к настоящему состоянию.
+    this.trayKey = "";
+    this.scheduleTray();
   }
 
   private persist() {
@@ -814,7 +890,13 @@ export class TauriBackend implements Backend {
       const set = { ...this.s.settings, dnsServer: stored.prefs?.dns?.trim() || this.s.settings.dnsServer };
       // Служебный вход для проверки скорости — свой порт на каждое подключение.
       this.probePort = 20000 + Math.floor(Math.random() * 40000);
-      const config = buildConfig(node, set, this.platform, stored.fragment, coreLog, this.geoDir, this.probePort);
+      let config = buildConfig(node, set, this.platform, stored.fragment, coreLog, this.geoDir, this.probePort);
+      // Телефон: название сервера — для уведомления службы VPN и плитки в шторке.
+      if (isMobile(this.platform)) {
+        const cfg = JSON.parse(config) as { env?: Record<string, string> };
+        cfg.env = { ...cfg.env, BPROXY_SERVER_NAME: target.node.name.replace(/^\p{RI}{2}\s*/u, "") };
+        config = JSON.stringify(cfg);
+      }
       this.writeLog(
         "info",
         `Подключение: ${target.node.name} [${target.node.tags.join("/")}], ` +

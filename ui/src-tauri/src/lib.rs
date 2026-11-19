@@ -28,7 +28,7 @@ pub fn run() {
 
     // Команды самого приложения (у плагина bproxy — свои).
     #[cfg(desktop)]
-    let builder = builder.invoke_handler(tauri::generate_handler![crash::set_crash_reports, desktop::set_close_to_tray]);
+    let builder = builder.invoke_handler(tauri::generate_handler![crash::set_crash_reports, desktop::set_close_to_tray, desktop::update_tray]);
     #[cfg(mobile)]
     let builder = builder.invoke_handler(tauri::generate_handler![crash::set_crash_reports]);
 

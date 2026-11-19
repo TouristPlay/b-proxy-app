@@ -51,9 +51,31 @@ class BProxyVpnService : VpnService() {
 
         var listener: ((String) -> Unit)? = null
 
+        /** Плитка в шторке, пока она видна. */
+        @Volatile
+        var tileListener: (() -> Unit)? = null
+
+        /** Название сервера (env BPROXY_SERVER_NAME в конфиге) — для уведомления и плитки. */
+        @Volatile
+        var serverName: String? = null
+
+        @Volatile
+        private var appContext: Context? = null
+
         private fun setState(value: String) {
             state = value
             listener?.invoke(value)
+            tileListener?.invoke()
+            appContext?.let { BProxyTileService.refresh(it) }
+        }
+
+        private const val PREFS = "bproxy"
+
+        /** Последний запуск из приложения: конфиг и флаг уведомления — для плитки в шторке. */
+        fun lastStart(context: Context): Pair<String, Boolean>? {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val config = prefs.getString("lastConfig", null) ?: return null
+            return config to prefs.getBoolean("lastNotify", false)
         }
 
         fun start(context: Context, config: String, notifyDisconnect: Boolean) {
@@ -91,6 +113,11 @@ class BProxyVpnService : VpnService() {
             ACTION_START -> {
                 val config = intent.getStringExtra(EXTRA_CONFIG) ?: return START_NOT_STICKY
                 notifyDisconnect = intent.getBooleanExtra(EXTRA_NOTIFY, false)
+                appContext = applicationContext
+                getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .putString("lastConfig", config)
+                    .putBoolean("lastNotify", notifyDisconnect)
+                    .apply()
                 userStop = false
                 startForegroundCompat()
                 worker.execute { startCore(config) }
@@ -180,8 +207,9 @@ class BProxyVpnService : VpnService() {
             if (!response.optBoolean("success")) {
                 throw IllegalStateException(response.optString("error", "Ядро не запустилось"))
             }
+            serverName = config.optJSONObject("env")?.optString("BPROXY_SERVER_NAME")?.takeIf { it.isNotEmpty() }
             setState("connected")
-            updateNotification("Подключено")
+            updateNotification(serverName?.let { "Подключено · $it" } ?: "Подключено")
         } catch (e: Throwable) {
             Log.e(TAG, "start failed", e)
             lastError = e.message ?: e.toString()

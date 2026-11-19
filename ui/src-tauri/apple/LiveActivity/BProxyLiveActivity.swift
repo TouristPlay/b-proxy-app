@@ -1,4 +1,5 @@
 import ActivityKit
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -20,6 +21,34 @@ private let amber = Color(red: 0.96, green: 0.69, blue: 0.25)
 struct BProxyWidgets: WidgetBundle {
     var body: some Widget {
         BProxyLiveActivity()
+        if #available(iOS 18.0, *) {
+            BProxyToggleControl()
+        }
+    }
+}
+
+/// Кнопка «B-Proxy» в Пункте управления (iOS 18+): открывает приложение ссылкой
+/// bproxy://toggle — оно включает или выключает VPN (backend/links.ts).
+@available(iOS 18.0, *)
+struct BProxyToggleControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "com.baobabproxy.bproxy.toggle") {
+            ControlWidgetButton(action: ToggleVPNIntent()) {
+                Label("B-Proxy", systemImage: "shield.lefthalf.filled")
+            }
+        }
+        .displayName("B-Proxy")
+        .description("Включить или выключить VPN")
+    }
+}
+
+@available(iOS 18.0, *)
+struct ToggleVPNIntent: AppIntent {
+    static let title: LocalizedStringResource = "Включить или выключить VPN"
+    static let openAppWhenRun = true
+
+    func perform() async throws -> some IntentResult & OpensIntent {
+        .result(opensIntent: OpenURLIntent(URL(string: "bproxy://toggle")!))
     }
 }
 

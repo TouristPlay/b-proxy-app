@@ -153,7 +153,13 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   выкидывая ссылки на geosite/geoip (их баз у нас нет), и ставим свой TUN, DNS и правила сверху.
 - libXray `pingBatch` принимает не больше 5 конфигов за вызов. Пинг меряется по одному провайдеру:
   TCP (команда плагина `tcp_ping`) по умолчанию, HTTP HEAD или GET — через ядро.
-- Компьютер (`ui/src-tauri/src/desktop.rs`): значок в трее (открыть / выйти), крестик прячет окно в трей
+- Меню в трее строит интерфейс (`updateTray` в tauri.ts → команда `update_tray`): состояние, подключить/отключить,
+  подменю серверов (избранные или текущий провайдер, автовыбор), пинг, обновить подписки, открыть, выйти;
+  нажатия приходят событием `tray-action`. Значок — `tray/on.png` / `tray/off.png` по состоянию VPN.
+  Android: плитка в шторке (`BProxyTileService`, последний конфиг из SharedPreferences), ярлык «VPN вкл/выкл»
+  у значка (bproxy://toggle), уведомление «Подключено · сервер» с кнопкой «Отключить» (env `BPROXY_SERVER_NAME`).
+  iOS 18: кнопка в Пункте управления (`BProxyToggleControl` в расширении LiveActivity, открывает bproxy://toggle).
+- Компьютер (`ui/src-tauri/src/desktop.rs`): значок в трее, крестик прячет окно в трей
   (настройка «Сворачивать в трей», команда `set_close_to_tray`), `tauri-plugin-single-instance` показывает окно
   при повторном запуске, `tauri-plugin-autostart` запускает при входе с `--minimized` (окно создаётся скрытым).
   Выход из трея — `app.exit`, плагин bproxy на `RunEvent::Exit` останавливает VPN. Для сборки на Linux нужен

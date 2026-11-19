@@ -24,5 +24,19 @@
                 <action android:name="android.net.VpnService" />
             </intent-filter>
         </service>
+        <!-- Плитка «B-Proxy» в быстрых настройках: включить и выключить VPN из шторки. -->
+        <service
+            android:name="com.baobabproxy.bproxy.plugin.BProxyTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_bproxy_vpn"
+            android:label="B-Proxy"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
     </application>
 </manifest>
