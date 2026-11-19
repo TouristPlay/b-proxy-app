@@ -1,85 +1,112 @@
 # B-Proxy
 
-VPN-клиент BaobabVPN на ядре [Xray-core](https://github.com/XTLS/Xray-core).
-Один код интерфейса на Flutter для Android, Windows, Linux, а позже iOS и macOS.
-Оформление взято с сайта [baobabproxy.com](https://baobabproxy.com): тёмная «ночная саванна»,
-янтарный закат, кольца вокруг логотипа с баобабом.
+VPN-клиент на ядре [Xray-core](https://github.com/XTLS/Xray-core) для Windows, Linux, Android, iOS и macOS.
+Добавляете ссылку на подписку от провайдера — серверы, срок и трафик приложение подтягивает само.
+Подписки в формате Remnawave, Marzban и других панелей, совместимые с Happ и INCY.
+
+## Скачать и установить
+
+Готовые сборки — в [релизах](https://github.com/TouristPlay/b-proxy-app/releases/latest).
+
+| Система | Файл | Как поставить |
+| --- | --- | --- |
+| Windows 10/11 | `B-Proxy_…_x64-setup.exe` | Запустить установщик. Он ставит службу «B-Proxy Helper», поэтому VPN включается без окна администратора. Пока у установщика нет подписи, Windows может показать «Неизвестный издатель» → «Подробнее» → «Выполнить в любом случае». |
+| Ubuntu, Debian, Mint | `B-Proxy_…_amd64.deb` | `sudo apt install ./B-Proxy_…_amd64.deb`. VPN включается без пароля. |
+| Fedora, openSUSE | `B-Proxy-…x86_64.rpm` | `sudo dnf install ./B-Proxy-…x86_64.rpm`. VPN включается без пароля. |
+| Другой Linux | `B-Proxy_…_amd64.AppImage` | `chmod +x` и запустить. При подключении попросит пароль администратора. |
+| Android 7+ | `b-proxy-arm64.apk` (почти все телефоны), `b-proxy-arm.apk` (старые), `b-proxy-x86_64.apk` (эмуляторы) | Открыть файл на телефоне и разрешить установку из этого источника. Сборки подписаны тестовым ключом. |
+| iOS | `b-proxy-ios-unsigned.ipa` | Без подписи Apple на iPhone не ставится — нужна учётная запись разработчика (TestFlight). |
+| macOS | — | Пока собирается только вручную (см. «Выпуск»). |
+
+Приложение на компьютере обновляется само: проверяет новую версию после запуска и раз в 12 часов,
+ставит её по кнопке.
 
 ## Что умеет
 
-- Добавление подписки Remnawave по ссылке. Приложение понимает те же заголовки подписки,
-  что INCY, Happ и другие клиенты: `profile-title`, `subscription-userinfo` (трафик и срок),
-  `announce`, `support-url`, `profile-web-page-url`, `hide-url`, `sort-order`, `new-url`
-  и `fragmentation-*`. Метаданные можно передать и строками в теле: `#profile-title: …`.
-  Поэтому одна подписка из панели одинаково работает в B-Proxy и в этих клиентах.
-- Протоколы, которые понимает Xray: VLESS (Reality, XHTTP, WS, gRPC), VMess, Trojan,
-  Shadowsocks, Hysteria2.
-- Весь трафик устройства через VPN (режим TUN).
-- Автовыбор сервера по пингу или ручной выбор.
-- Российские сайты напрямую, фрагментация TLS против DPI, блокировка рекламы, выбор DNS.
-- Тёмная и светлая тема.
+- **Подписки.** По ссылке, QR-коду (камера телефона, картинка или вставленный снимок экрана) и ссылкой
+  `bproxy://add/<ссылка>`. Срок, трафик, объявления и поддержка провайдера, автообновление по расписанию.
+- **Серверы.** Пинг (TCP или настоящий запрос через сервер), автовыбор самого быстрого, избранное, переименование и
+  скрытие, сортировка, проверка скорости через выбранный сервер.
+- **Маршруты.** Российские сайты напрямую, блокировка рекламы, свои исключения, профили маршрутизации в формате
+  Happ/INCY (например RoscomVPN) с базами geoip/geosite, свой DNS, фрагментация TLS против DPI.
+- **Защита.** Kill switch — при обрыве VPN интернет закрывается, пока туннель не поднимется. VPN по приложениям —
+  выбрать, какие программы идут через VPN (Android и компьютер).
+- **Компьютер.** Значок в трее, автозапуск, локальный прокси SOCKS5/HTTP для других программ.
+- **Телефон.** Уведомления об обрыве и сроке подписки, «Живая активность» на iOS.
+- Темы оформления, светлый и тёмный режим, русский и английский язык.
 
-## Как устроено
+## Для провайдеров
+
+B-Proxy понимает те же заголовки подписки, что Happ и INCY:
+`profile-title`, `subscription-userinfo`, `announce`, `support-url`, `profile-web-page-url`, `hide-url`,
+`sort-order`, `new-url`, `profile-update-interval`, `fragmentation-*`, а также строки `#ключ: значение` в теле.
+Для лимита устройств отправляет `x-hwid`, `x-device-os`, `x-ver-os`, `x-device-model`
+(пользователь может выключить в «Настройках провайдеров»).
+
+Ссылки для сайта и бота:
+
+| Ссылка | Что делает |
+| --- | --- |
+| `bproxy://add/https://…` | Добавить подписку (с подтверждением) |
+| `bproxy://routing/onadd/<base64>` | Добавить профиль маршрутизации |
+| `bproxy://connect`, `bproxy://disconnect`, `bproxy://toggle` | Включить / выключить VPN |
+
+## Где что лежит
 
 ```
-app/lib/
-  core/xray_bridge.dart        вызовы libXray (Invoke, apiVersion 3)
-  core/xray_bridge_ffi.dart    то же через FFI для Windows и Linux
-  core/config_builder.dart     сборка конфига Xray с TUN и маршрутами
-  core/vpn_tunnel.dart         запуск и остановка VPN на каждой платформе
-  core/app_controller.dart     состояние приложения
-  services/                    подписки и хранение настроек
-  screens/, widgets/           интерфейс
-app/android/.../BProxyVpnService.kt   VpnService: TUN → дескриптор в Xray
-app/android/.../MainActivity.kt       каналы между Flutter и Android
-scripts/prepare.sh             досоздаёт файлы платформ и подключает ядро
-scripts/build_libxray.sh       собирает libXray нужной версии
-.github/workflows/build.yml    автосборка APK, Windows и Linux
+ui/                     приложение: интерфейс React + TypeScript (src/), оболочка Tauri на Rust (src-tauri/)
+  src/backend/          подписки, маршруты, сборка конфига Xray, тесты (__tests__/)
+  src/screens/          экраны: главная, серверы, настройки и листы настроек
+  src-tauri/plugins/bproxy/   VPN на всех платформах: Rust, Kotlin (Android), Swift (iOS)
+  src-tauri/apple/      расширения iOS: туннель и «Живая активность»
+core/                   наши изменения ядра libXray (Go): процесс bproxy-core, помощник, kill switch
+scripts/                сборка ядра, файлы обновления, настройка проекта iOS
+catalog/                формат списка «Рекомендуемые VPN» и пример
+.github/workflows/      сборка всех платформ, тесты и релизы
 ```
 
-Ядро — [libXray](https://github.com/XTLS/libXray), официальная обёртка Xray-core для приложений.
-У Xray есть встроенный TUN, поэтому отдельный tun2socks не нужен:
+Подробности для разработки — в [CLAUDE.md](CLAUDE.md).
 
-- **Android.** `VpnService` создаёт туннель, его дескриптор уходит в Xray через `env["xray.tun.fd"]`.
-  Само приложение исключено из туннеля, поэтому соединения ядра идут напрямую.
-- **Windows.** Ядро работает внутри приложения через `libXray.dll`, адаптер создаёт Wintun.
-  Нужны права администратора, их приложение запрашивает при запуске.
-- **Linux.** Ядро запускается отдельным процессом через `pkexec`. При подключении система
-  спросит пароль.
+## Собрать самому
 
-## Где взять сборки
-
-Каждый пуш в `main` собирает приложение в GitHub Actions. Откройте вкладку **Actions**,
-выберите последнюю сборку и скачайте внизу файлы `b-proxy-android`, `b-proxy-windows`
-или `b-proxy-linux`.
-
-Чтобы выпустить версию с файлами на странице **Releases**, поставьте тег:
+Нужны Node 22, Rust, Go и для Linux — `libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev`.
 
 ```bash
-git tag v0.1.0 && git push origin v0.1.0
+./scripts/build_core.sh linux          # ядро Xray → ui/src-tauri/resources/linux
+cd ui
+npm install
+npx tauri icon src-tauri/app-icon.png
+npx tauri dev                          # приложение с горячей перезагрузкой
+npx tauri build                        # установщики → src-tauri/target/release/bundle
 ```
 
-Для Android ставьте файл `app-arm64-v8a-release.apk`: он подходит почти всем современным телефонам.
+Только интерфейс в браузере, на тестовых данных: `npm run dev` (http://localhost:1420).
 
-## Сборка у себя
-
-Нужны Flutter (stable), Go, Python 3, git. Для Android также Android SDK и NDK.
+## Тесты
 
 ```bash
-./scripts/prepare.sh
-./scripts/build_libxray.sh android    # или windows / linux
-cd app && flutter run
+cd ui && npm test                      # логика: подписки, маршруты, ссылки, конфиг Xray
+../scripts/build_core.sh test          # ядро (Go) и проверка конфигов самим Xray
+cd src-tauri && cargo test -p tauri-plugin-bproxy
 ```
 
-На Windows после `flutter build windows` положите `app/windows/deps/*.dll` рядом с `b_proxy.exe`.
-На Linux скопируйте `app/linux/deps/libXray.so` и `xray` в `bundle/lib/`.
+На GitHub тесты идут перед каждой сборкой.
 
-## Дальше по плану
+## Выпуск
 
-1. iOS и macOS: Network Extension. Нужен аккаунт Apple Developer.
-2. Импорт подписки по QR-коду и по ссылке `bproxy://import/…` с сайта и из бота.
-3. Kill switch: блокировать интернет, если VPN упал.
-4. Раздельный VPN по приложениям на Android.
-5. Иконка в трее на Windows и Linux.
-6. Шрифты в составе приложения, чтобы не грузить их из Google Fonts.
-7. Подпись релизных сборок: свой ключ для Android и сертификат для Windows.
+Релиз выходит коммитом в `main` с сообщением `Релиз vX.Y.Z` (или тегом `vX.Y.Z`): GitHub собирает Linux, Windows,
+Android и iOS, выкладывает релиз и файл обновления. macOS — вручную: Actions → «Сборка B-Proxy» →
+Run workflow → «Собрать и macOS».
+
+Настройки репозитория (Settings → Secrets and variables → Actions):
+
+| Имя | Вид | Зачем |
+| --- | --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | секрет | Подпись обновлений. Без него релиз выходит без автообновления. |
+| `SENTRY_DSN` | секрет | Сервер отчётов о сбоях (Sentry или свой GlitchTip). Без него отчёты не отправляются. |
+| `CATALOG_URL` | переменная | Адрес списка «Рекомендуемые VPN» (формат — `catalog/README.md`). Без него раздела нет. |
+
+## Благодарности
+
+Ядро — [Xray-core](https://github.com/XTLS/Xray-core) и [libXray](https://github.com/XTLS/libXray) (MPL-2.0),
+виртуальный адаптер Windows — [Wintun](https://www.wintun.net/), оболочка — [Tauri](https://tauri.app/).
