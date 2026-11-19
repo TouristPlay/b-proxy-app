@@ -689,3 +689,25 @@ fn is_system_path(path: &str) -> bool {
         .iter()
         .any(|prefix| p.starts_with(prefix))
 }
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn file_without_caps() {
+        let file = std::env::temp_dir().join("bproxy-caps-test");
+        std::fs::write(&file, b"x").unwrap();
+        assert!(!has_net_caps(&file), "у обычного файла нет CAP_NET_ADMIN");
+        assert!(!has_net_caps(&PathBuf::from("/нет/такого/файла")));
+        let _ = std::fs::remove_file(file);
+    }
+
+    #[test]
+    fn state_file() {
+        let file = std::env::temp_dir().join("bproxy-state-test");
+        std::fs::write(&file, "running\n").unwrap();
+        assert_eq!(read_state(&file).as_deref(), Some("running"));
+        let _ = std::fs::remove_file(file);
+    }
+}

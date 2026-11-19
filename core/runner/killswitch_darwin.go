@@ -20,6 +20,25 @@ func markOwnSockets() {}
 func tokenPath() string { return filepath.Join(os.TempDir(), "bproxy-pf-token") }
 
 func killSwitchOn(k killSwitchConfig) error {
+	cmd := exec.Command("/sbin/pfctl", "-a", ksAnchor, "-f", "-")
+	cmd.Stdin = strings.NewReader(pfRules(k))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("pfctl: %v: %s", err, strings.TrimSpace(string(out)))
+	}
+	out, err := exec.Command("/sbin/pfctl", "-E").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("pfctl -E: %v", err)
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.HasPrefix(line, "Token : ") {
+			_ = os.WriteFile(tokenPath(), []byte(strings.TrimPrefix(line, "Token : ")), 0o600)
+		}
+	}
+	return nil
+}
+
+// pfRules — правила pf для kill switch (отдельно — чтобы проверять тестами).
+func pfRules(k killSwitchConfig) string {
 	tun := k.tun
 	if tun == "" {
 		tun = "utun199"
@@ -34,21 +53,7 @@ func killSwitchOn(k killSwitchConfig) error {
 		b.WriteString("pass out quick inet6 from any to { fe80::/10, fc00::/7, ff00::/8 }\n")
 	}
 	b.WriteString("block drop out quick all\n")
-	cmd := exec.Command("/sbin/pfctl", "-a", ksAnchor, "-f", "-")
-	cmd.Stdin = strings.NewReader(b.String())
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("pfctl: %v: %s", err, strings.TrimSpace(string(out)))
-	}
-	out, err := exec.Command("/sbin/pfctl", "-E").CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("pfctl -E: %v", err)
-	}
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.HasPrefix(line, "Token : ") {
-			_ = os.WriteFile(tokenPath(), []byte(strings.TrimPrefix(line, "Token : ")), 0o600)
-		}
-	}
-	return nil
+	return b.String()
 }
 
 func killSwitchOff() error {

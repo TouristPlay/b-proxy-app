@@ -52,7 +52,13 @@ scripts/                build_core.sh (linux | windows | macos | android | ios),
 cd ui && npm install && npm run dev        # интерфейс в браузере (порт 1420)
 npm run typecheck                          # проверка типов
 npm run build:preview                      # один HTML-файл с демо: ui/dist-preview/index.html
+npm test                                   # тесты логики (vitest): подписки, маршруты, ссылки, конфиг Xray, каталог
+../scripts/build_core.sh test              # тесты bproxy-core (Go) и проверка конфигов из ui/.test-configs самим Xray
+cd src-tauri && cargo test -p tauri-plugin-bproxy   # тесты плагина (Rust)
 ```
+
+Тесты лежат рядом с кодом: `ui/src/backend/__tests__/`, `core/runner/*_test.go`, `#[cfg(test)]` в плагине.
+Новое поведение бэкенда — с тестом. В CI тесты идут в job «Интерфейс (React)» и «Linux».
 
 Приложение целиком (нужны Go, Rust, Node):
 

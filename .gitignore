@@ -29,3 +29,6 @@ app/packages/b_proxy_apple/darwin/LibXray.xcframework/
 .github/agents/
 .github/hooks/
 .github/skills/
+
+# Конфиги из тестов интерфейса для проверки ядром
+ui/.test-configs/

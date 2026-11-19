@@ -7,6 +7,7 @@
 #   ./scripts/build_core.sh macos     -> libXray.dylib, bproxy-core (arm64 + x86_64)
 #   ./scripts/build_core.sh android   -> libXray.aar (gomobile, нужен ANDROID_NDK_HOME)
 #   ./scripts/build_core.sh ios       -> LibXray.xcframework (C-интерфейс CGoInvoke)
+#   ./scripts/build_core.sh test      -> тесты bproxy-core и проверка конфигов из ui/.test-configs ядром Xray
 #
 # Перед сборкой в libXray подкладываются наши файлы из core/:
 #   core/memory/memory.go — настраиваемый лимит памяти вместо жёстких 30 МБ на iOS;
@@ -14,7 +15,7 @@
 #   core/nodep/measure.go — пинг «реальной задержкой» запросом HEAD или GET.
 set -euo pipefail
 
-TARGET="${1:?Укажите платформу: linux | windows | macos | android | ios}"
+TARGET="${1:?Укажите платформу: linux | windows | macos | android | ios | test}"
 LIBXRAY_VERSION="${LIBXRAY_VERSION:-v26.11.9}"
 WINTUN_VERSION="${WINTUN_VERSION:-0.14.1}"
 PYTHON="${PYTHON:-python3}"
@@ -23,7 +24,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$ROOT/.build"
 SRC="$WORK/libXray-$LIBXRAY_VERSION"
 DEST="$ROOT/ui/src-tauri/resources/$TARGET"
-mkdir -p "$WORK" "$DEST"
+mkdir -p "$WORK"
+[ "$TARGET" = test ] || mkdir -p "$DEST"
 
 if [ ! -d "$SRC/.git" ]; then
   git clone --depth 1 --branch "$LIBXRAY_VERSION" https://github.com/XTLS/libXray "$SRC"
@@ -42,6 +44,10 @@ export CGO_ENABLED=1
 LDFLAGS="-s -w -buildid="
 
 case "$TARGET" in
+  test)
+    BPROXY_TEST_CONFIGS="${BPROXY_TEST_CONFIGS:-$ROOT/ui/.test-configs}" CGO_ENABLED=0 go test -count=1 ./bproxy_core
+    exit 0
+    ;;
   linux)
     go build -trimpath -ldflags "$LDFLAGS" -buildmode=c-shared -o "$DEST/libXray.so" ./cgo_bridge
     # Без cgo: права (capabilities) меняются во всех потоках только так.

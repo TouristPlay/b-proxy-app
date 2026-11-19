@@ -26,6 +26,11 @@ func markOwnSockets() {
 }
 
 func killSwitchOn(k killSwitchConfig) error {
+	return nft(nftRules(k))
+}
+
+// nftRules — правила nftables для kill switch (отдельно — чтобы проверять тестами).
+func nftRules(k killSwitchConfig) string {
 	tun := k.tun
 	if tun == "" {
 		tun = "bproxy0"
@@ -44,7 +49,7 @@ func killSwitchOn(k killSwitchConfig) error {
 		b.WriteString("    ip6 daddr { fe80::/10, fc00::/7, ff00::/8 } accept\n")
 	}
 	b.WriteString("    reject with icmpx type admin-prohibited\n  }\n}\n")
-	return nft(b.String())
+	return b.String()
 }
 
 func killSwitchOff() error {

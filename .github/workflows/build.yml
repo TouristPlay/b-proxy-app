@@ -30,7 +30,7 @@ jobs:
   ui:
     name: Интерфейс (React)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: write
     steps:
@@ -41,6 +41,22 @@ jobs:
       - name: Установить зависимости
         working-directory: ui
         run: npm ci --no-audit --no-fund
+      - name: Тесты логики (подписки, маршруты, конфиг Xray)
+        working-directory: ui
+        run: npm test
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache: false
+      - name: Исходники libXray и модули Go из кэша
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/go/pkg/mod
+          key: libxray-src-${{ env.LIBXRAY_VERSION }}
+      - name: Тесты ядра и проверка конфигов самим Xray
+        run: ./scripts/build_core.sh test
       - name: Проверить типы и собрать демо
         working-directory: ui
         run: npm run build:preview
@@ -93,6 +109,9 @@ jobs:
       - name: Собрать ядро
         if: steps.core-cache.outputs.cache-hit != 'true'
         run: ./scripts/build_core.sh linux
+      - name: Тесты плагина (Rust)
+        working-directory: ui/src-tauri
+        run: cargo test -p tauri-plugin-bproxy
       - name: Собрать приложение
         working-directory: ui
         env:

@@ -131,3 +131,16 @@ fn describe(e: &reqwest::Error) -> String {
         e.to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn megabits_per_second() {
+        assert_eq!(mbps(12_500_000, Duration::from_secs(1)), 100.0);
+        assert_eq!(mbps(0, Duration::from_secs(1)), 0.0);
+        // Ноль секунд не делит на ноль.
+        assert!(mbps(1000, Duration::ZERO).is_finite());
+    }
+}
