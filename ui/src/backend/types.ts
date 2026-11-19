@@ -294,6 +294,8 @@ export interface Settings {
   killSwitch: boolean;
   /** VPN по приложениям. */
   perApp: PerAppSettings;
+  /** Отправлять отчёты о сбоях (если сборка знает адрес сервера отчётов). */
+  crashReports: boolean;
   /** iOS: «Живая активность» — статус VPN на экране блокировки и в Dynamic Island. */
   liveActivity: boolean;
   /** Порядок серверов в списке. */

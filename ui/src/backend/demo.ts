@@ -106,6 +106,7 @@ export const defaultSettings: Settings = {
   autoConnect: false,
   killSwitch: false,
   perApp: { mode: "off", apps: [] },
+  crashReports: true,
   liveActivity: true,
   serverSort: "provider",
   notifications: { enabled: true, disconnect: true, expiry: true, traffic: true, announce: true },

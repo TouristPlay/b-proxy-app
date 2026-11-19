@@ -20,6 +20,7 @@
     "@radix-ui/react-radio-group": "^1.2.2",
     "@radix-ui/react-slider": "^1.2.2",
     "@radix-ui/react-switch": "^1.1.2",
+    "@sentry/browser": "^10.78.0",
     "@tauri-apps/api": "^2.12.5",
     "@tauri-apps/plugin-barcode-scanner": "^2.5.3",
     "@tauri-apps/plugin-deep-link": "^2.6.3",

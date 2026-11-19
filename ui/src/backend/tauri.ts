@@ -28,6 +28,7 @@ import { parseLink } from "./links";
 import { decodeProfile, needsGeo } from "./routing";
 import { Toaster } from "./toaster";
 import { getVersion } from "@tauri-apps/api/app";
+import { CRASH_DSN, setCrashReports } from "@/lib/crash";
 import { CATALOG_URL, parseCatalog } from "./catalog";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -41,7 +42,7 @@ const USER_AGENT = "v2rayNG/1.9.30";
 /** libXray меряет не больше 5 серверов за вызов. */
 const PING_BATCH = 5;
 /** Настройки самого приложения: их смена не требует переподключения VPN. */
-const APP_ONLY = new Set(["liveActivity", "autoConnect", "serverSort", "sendHwid", "updates", "ping", "notifications", "desktop"]);
+const APP_ONLY = new Set(["liveActivity", "autoConnect", "serverSort", "sendHwid", "updates", "ping", "notifications", "desktop", "crashReports"]);
 
 const STATE_KEY = "b-proxy.state";
 /** Какие уведомления о подписках уже показаны. */
@@ -205,6 +206,7 @@ export class TauriBackend implements Backend {
   private async init() {
     APP_VERSION = await getVersion().catch(() => APP_VERSION);
     this.emit({ version: { ...this.s.version, app: APP_VERSION } });
+    this.syncCrashReports();
     this.logPaths = await invoke<{ dir: string; appLog: string; coreLog: string } | null>("plugin:bproxy|log_info").catch(() => null);
     const sub = this.subs.map((x) => `«${x.title}» (${x.nodes.filter((n) => !n.divider).length})`).join(", ");
     this.writeLog("info", `Интерфейс ${APP_VERSION}, ${this.platform}; подписки: ${sub || "нет"}`);
@@ -371,6 +373,15 @@ export class TauriBackend implements Backend {
     this.emit({ settings: { ...this.s.settings, desktop } });
     this.persist();
     void invoke("set_close_to_tray", { enabled: desktop.closeToTray }).catch(() => undefined);
+  }
+
+  // ---------- Отчёты о сбоях ----------
+
+  private syncCrashReports() {
+    const on = !!CRASH_DSN && this.s.settings.crashReports !== false;
+    void setCrashReports(on, APP_VERSION, this.platform);
+    // Паники Rust: оболочка отправляет их, только если пользователь согласен.
+    void invoke("set_crash_reports", { enabled: on }).catch(() => {});
   }
 
   // ---------- Первый запуск ----------
@@ -1377,6 +1388,7 @@ export class TauriBackend implements Backend {
     if (Object.keys(patch).some((k) => !APP_ONLY.has(k))) this.settingsChanged();
     else this.persist();
     if (patch.liveActivity !== undefined) this.syncLiveActivity();
+    if (patch.crashReports !== undefined) this.syncCrashReports();
     // Kill switch выключили после аварии — открываем интернет (ядро снимет оставшиеся правила).
     if (patch.killSwitch === false && this.s.state === "disconnected" && !isMobile(this.platform)) {
       void invoke("plugin:bproxy|stop").catch((e) => this.logError(message(e)));

@@ -21,7 +21,7 @@ static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(true);
 
 /// Интерфейс сообщает, сворачивать ли окно в трей при закрытии.
 #[tauri::command]
-fn set_close_to_tray(enabled: bool) {
+pub fn set_close_to_tray(enabled: bool) {
     CLOSE_TO_TRAY.store(enabled, Ordering::Relaxed);
 }
 
@@ -89,7 +89,6 @@ pub fn setup(builder: Builder<Wry>) -> Builder<Wry> {
             MacosLauncher::LaunchAgent,
             Some(vec![MINIMIZED]),
         ))
-        .invoke_handler(tauri::generate_handler![set_close_to_tray])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" && CLOSE_TO_TRAY.load(Ordering::Relaxed) {

@@ -702,4 +702,6 @@ export const en: Record<string, string> = {
   "Скопировать промокод {0}": "Copy promo code {0}",
   "Список пока пуст. Загляните позже или спросите подписку у знакомого провайдера.": "The list is empty for now. Check back later.",
   "Купить": "Buy",
+  "Отправлять отчёты о сбоях": "Send crash reports",
+  "Только где и почему упало приложение — без ссылок подписок, адресов и личных данных": "Only where and why the app crashed — no subscription links, addresses or personal data",
 };

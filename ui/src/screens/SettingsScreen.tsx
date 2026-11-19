@@ -1,4 +1,4 @@
-import { AppWindow, Check, LayoutGrid, Sparkles, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
+import { AppWindow, Bug, Check, LayoutGrid, Sparkles, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import { detectPlatform } from "@/backend/xray";
@@ -13,6 +13,7 @@ import { LogsSheet } from "./LogsSheet";
 import { dnsPresets as dns, routes, RoutesSheet } from "./RoutesSheet";
 import { AppsSheet, perAppHint } from "./AppsSheet";
 import { RecommendedSheet } from "./RecommendedSheet";
+import { CRASH_DSN } from "@/lib/crash";
 import { themeById } from "@/lib/theme";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -217,6 +218,15 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
         )}
 
         <Group title={t("Приложение")}>
+          {CRASH_DSN && (
+            <Row
+              htmlFor="set-crash"
+              icon={<IconTile icon={Bug} tone="gray" />}
+              title={t("Отправлять отчёты о сбоях")}
+              hint={t("Только где и почему упало приложение — без ссылок подписок, адресов и личных данных")}
+              aside={<Switch id="set-crash" checked={s.settings.crashReports !== false} onCheckedChange={(v) => void backend.updateSettings({ crashReports: v })} />}
+            />
+          )}
           <Row
             onClick={() => setNotifications(true)}
             icon={<IconTile icon={Bell} tone="amber" />}

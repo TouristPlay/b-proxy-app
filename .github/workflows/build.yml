@@ -22,6 +22,11 @@ concurrency:
 env:
   # Релиз: тег vX.Y.Z или коммит в main с сообщением «Релиз vX.Y.Z» (тег создаст job «Релиз»).
   HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+  # Сервер отчётов о сбоях (Sentry/GlitchTip) — секрет SENTRY_DSN; список «Рекомендуемых VPN» — переменная CATALOG_URL.
+  # Пусто — отчётов нет / раздела нет.
+  VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+  BPROXY_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+  VITE_CATALOG_URL: ${{ vars.CATALOG_URL }}
   LIBXRAY_VERSION: v26.11.9
   NDK_VERSION: r28c
   CARGO_TERM_COLOR: always
