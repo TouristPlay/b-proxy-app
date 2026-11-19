@@ -714,4 +714,8 @@ export const en: Record<string, string> = {
   "Подключаемся…": "Connecting…",
   "Подключено · {0}": "Connected · {0}",
   "Подключить": "Connect",
+  "Вышла версия {0} — скачайте её на странице релиза": "Version {0} is out — download it from the release page",
+  "Скачать": "Download",
+  "Сообщать о новой версии": "Notify about new versions",
+  "После запуска и раз в 12 часов": "After launch and every 12 hours",
 };

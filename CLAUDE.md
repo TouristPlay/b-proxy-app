@@ -172,6 +172,8 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   так выпускается релиз из облачной сессии, где пуш тегов запрещён: тег создаёт job «Релиз».
   Без ключа релиз выходит без автообновления. Проверка — через минуту после запуска и раз в 12 часов
   (настройка `desktop.autoUpdate`), установка — только по кнопке; перед установкой VPN выключается.
+  Телефоны сами не обновляются: `checkMobileRelease` смотрит последний релиз GitHub (API, без HWID) и, если версия
+  новее (`backend/version.ts`), показывает «Вышла версия» с кнопкой «Скачать» — открывает страницу релиза.
 - Kill switch (настройка `killSwitch`): Linux — таблица nftables `inet bproxy_killswitch` (выпускает только `lo`,
   туннель, локальную сеть и сокеты ядра с меткой SO_MARK `0x62707278`), macOS — якорь pf `com.apple/250.BProxyKillSwitch`
   («user root» — ядро), оба ставит `bproxy-core` по env `BPROXY_KILL_SWITCH*` (`core/runner/killswitch_*.go`).

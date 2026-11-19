@@ -218,6 +218,8 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
         )}
 
         <Group title={t("Приложение")}>
+          {/* На телефоне — только «вышла новая версия»; на компьютере это в группе «Компьютер». */}
+          {s.autostart === null && <AppUpdateRows />}
           {CRASH_DSN && (
             <Row
               htmlFor="set-crash"
@@ -368,10 +370,14 @@ function lanHost() {
 function AppUpdateRows() {
   const { appUpdate: u, version, settings } = useSnapshot();
   if (!u) return null;
+  const mobile = ["android", "ios"].includes(detectPlatform());
   const busy = u.state === "checking" || u.state === "downloading";
   const hint =
     u.state === "available"
-      ? (u.error ?? t("Вышла версия {0}. VPN отключится на время установки", [u.version ?? ""]))
+      ? (u.error ??
+        (mobile
+          ? t("Вышла версия {0} — скачайте её на странице релиза", [u.version ?? ""])
+          : t("Вышла версия {0}. VPN отключится на время установки", [u.version ?? ""])))
       : u.state === "downloading"
         ? u.progress != null
           ? t("Загружаем версию {0}: {1}%", [u.version ?? "", Math.round(u.progress * 100)])
@@ -393,7 +399,7 @@ function AppUpdateRows() {
           aside={
             u.state === "downloading" ? null : u.state === "available" ? (
               <Button variant="amber" size="sm" onClick={() => void backend.installAppUpdate()}>
-                {t("Обновить")}
+                {mobile ? t("Скачать") : t("Обновить")}
               </Button>
             ) : (
               <Button variant="glass" size="sm" disabled={busy} onClick={() => void backend.checkAppUpdate(true)}>
@@ -422,8 +428,8 @@ function AppUpdateRows() {
       <Row
         htmlFor="set-autoupdate"
         icon={<IconTile icon={RotateCcw} tone="teal" />}
-        title={t("Проверять обновления сами")}
-        hint={t("После запуска и раз в 12 часов. Устанавливаем только по вашей кнопке")}
+        title={mobile ? t("Сообщать о новой версии") : t("Проверять обновления сами")}
+        hint={mobile ? t("После запуска и раз в 12 часов") : t("После запуска и раз в 12 часов. Устанавливаем только по вашей кнопке")}
         aside={
           <Switch
             id="set-autoupdate"

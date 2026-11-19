@@ -29,6 +29,8 @@ import { parseLink } from "./links";
 import { decodeProfile, needsGeo } from "./routing";
 import { Toaster } from "./toaster";
 import { getVersion } from "@tauri-apps/api/app";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { isNewer } from "./version";
 import { CRASH_DSN, setCrashReports } from "@/lib/crash";
 import { CATALOG_URL, parseCatalog } from "./catalog";
 import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -62,6 +64,8 @@ interface AlertMarks {
 }
 const APPEARANCE_KEY = "b-proxy.appearance";
 const ONBOARDED_KEY = "b-proxy.onboarded";
+const RELEASES_API = "https://api.github.com/repos/TouristPlay/b-proxy-app/releases/latest";
+const RELEASES_PAGE = "https://github.com/TouristPlay/b-proxy-app/releases/latest";
 const CATALOG_KEY = "b-proxy.catalog";
 
 function readCatalogCache() {
@@ -209,6 +213,12 @@ export class TauriBackend implements Backend {
     if (!isMobile(this.platform)) {
       void listen<string>("tray-action", (e) => this.onTrayAction(e.payload));
       this.scheduleTray();
+    } else {
+      // Телефон сам не обновляется — только сообщаем о новой версии (через минуту и раз в 12 часов).
+      this.emit({ appUpdate: { state: "idle" } });
+      const auto = () => this.s.settings.desktop.autoUpdate !== false && void this.checkAppUpdate();
+      window.setTimeout(auto, 60_000);
+      window.setInterval(auto, 12 * 3600_000);
     }
     this.emit({ version: { ...this.s.version, app: APP_VERSION } });
     this.syncCrashReports();
@@ -540,7 +550,8 @@ export class TauriBackend implements Backend {
   private update: Update | null = null;
 
   async checkAppUpdate(manual = false) {
-    if (isMobile(this.platform) || this.s.appUpdate?.state === "checking" || this.s.appUpdate?.state === "downloading") return;
+    if (this.s.appUpdate?.state === "checking" || this.s.appUpdate?.state === "downloading") return;
+    if (isMobile(this.platform)) return this.checkMobileRelease(manual);
     this.emit({ appUpdate: { state: "checking" } });
     try {
       const update = await check({ timeout: 30_000 });
@@ -570,7 +581,34 @@ export class TauriBackend implements Backend {
     }
   }
 
+  /** Телефон: последний релиз на GitHub; новее нашей версии — показываем, где скачать. */
+  private async checkMobileRelease(manual: boolean) {
+    this.emit({ appUpdate: { state: "checking" } });
+    try {
+      const res = await invoke<FetchResult>("plugin:bproxy|fetch_subscription", { url: RELEASES_API, userAgent: "B-Proxy", hwid: false });
+      if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
+      const rel = JSON.parse(res.body) as { tag_name?: string; html_url?: string; body?: string };
+      const version = (rel.tag_name ?? "").replace(/^v/, "");
+      if (!version || !isNewer(version, APP_VERSION)) {
+        this.emit({ appUpdate: { state: "none" } });
+        if (manual) this.toast(t("У вас последняя версия B-Proxy"));
+        return;
+      }
+      const url = rel.html_url?.startsWith("https://") ? rel.html_url : RELEASES_PAGE;
+      this.emit({ appUpdate: { state: "available", version, url } });
+      this.toaster.show(t("Вышла версия B-Proxy {0}", [version]), { id: "app-update", label: t("Скачать"), run: () => void this.installAppUpdate() });
+    } catch (e) {
+      this.writeLog("warn", `Проверка новой версии: ${message(e)}`);
+      this.emit({ appUpdate: { state: "error", error: t("Не удалось проверить обновления — проверьте интернет") } });
+      if (manual) this.toast(t("Не удалось проверить обновления — проверьте интернет"));
+    }
+  }
+
   async installAppUpdate() {
+    if (isMobile(this.platform)) {
+      await openUrl(this.s.appUpdate?.url ?? RELEASES_PAGE).catch((e) => this.toast(message(e)));
+      return;
+    }
     const update = this.update;
     if (!update || this.s.appUpdate?.state === "downloading") return;
     const version = update.version;

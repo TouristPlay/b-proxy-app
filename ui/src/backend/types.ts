@@ -261,6 +261,8 @@ export interface AppUpdate {
   /** Загрузка, 0…1; null — размер неизвестен. */
   progress?: number | null;
   error?: string;
+  /** Телефон: страница, где скачать новую версию (сам он не обновляется). */
+  url?: string;
 }
 
 export interface DeviceInfo {
