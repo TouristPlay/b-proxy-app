@@ -41,7 +41,7 @@ import { activeProfile, buildConfig, buildPingConfig, detectPlatform, isMobile }
 import { t } from "@/lib/i18n";
 
 // Настоящая версия приходит из сборки (getVersion в init) — версия из тега релиза.
-let APP_VERSION = "0.2.2";
+let APP_VERSION = "0.2.3";
 /** Remnawave отдаёт список серверов только приложениям; с этим заголовком приходят ссылки. */
 const USER_AGENT = "v2rayNG/1.9.30";
 /** libXray меряет не больше 5 серверов за вызов. */
