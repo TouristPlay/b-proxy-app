@@ -107,6 +107,7 @@ export const defaultSettings: Settings = {
   autoConnect: false,
   killSwitch: false,
   connectionLog: false,
+  schedule: { enabled: false, days: [1, 2, 3, 4, 5], from: "09:00", to: "18:00" },
   perApp: { mode: "off", apps: [] },
   crashReports: true,
   liveActivity: true,

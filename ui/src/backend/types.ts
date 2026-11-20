@@ -166,6 +166,17 @@ export interface NetworkSettings {
   preferIpv6: boolean;
 }
 
+/** Расписание VPN. */
+export interface ScheduleSettings {
+  enabled: boolean;
+  /** 1 — понедельник … 7 — воскресенье. */
+  days: number[];
+  /** «09:00» — включить. */
+  from: string;
+  /** «18:00» — выключить; меньше from — окно через полночь. */
+  to: string;
+}
+
 /** VPN по приложениям (Android и компьютер; в iOS недоступно без MDM). */
 export interface PerAppSettings {
   /** off — все через VPN; only — только выбранные; except — все, кроме выбранных. */
@@ -303,6 +314,8 @@ export interface Settings {
    * Хранится только на этом устройстве, выключен по умолчанию.
    */
   connectionLog: boolean;
+  /** Расписание: VPN сам включается и выключается в выбранные дни и часы. */
+  schedule: ScheduleSettings;
   /** VPN по приложениям. */
   perApp: PerAppSettings;
   /** Отправлять отчёты о сбоях (если сборка знает адрес сервера отчётов). */

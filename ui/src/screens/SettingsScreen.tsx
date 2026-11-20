@@ -1,4 +1,4 @@
-import { AppWindow, Bug, Check, LayoutGrid, Sparkles, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
+import { AppWindow, Bug, CalendarClock, Check, LayoutGrid, Sparkles, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
 import { detectPlatform } from "@/backend/xray";
@@ -13,6 +13,7 @@ import { LogsSheet } from "./LogsSheet";
 import { dnsPresets as dns, routes, RoutesSheet } from "./RoutesSheet";
 import { AppsSheet, perAppHint } from "./AppsSheet";
 import { RecommendedSheet } from "./RecommendedSheet";
+import { ScheduleSheet, scheduleHint } from "./ScheduleSheet";
 import { CRASH_DSN } from "@/lib/crash";
 import { themeById } from "@/lib/theme";
 import { t } from "@/lib/i18n";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd: () => void }) {
   const s = useSnapshot();
   const [appsOpen, setAppsOpen] = useState(false);
+  const [schedule, setSchedule] = useState(false);
   const [recommended, setRecommended] = useState(false);
   const [core, setCore] = useState(false);
   const [ping, setPing] = useState(false);
@@ -97,6 +99,13 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
             title={t("Подключаться при запуске")}
             hint={t("B-Proxy включит VPN сразу после открытия")}
             aside={<Switch id="set-autoconnect" checked={s.settings.autoConnect} onCheckedChange={(v) => void backend.updateSettings({ autoConnect: v })} />}
+          />
+          <Row
+            onClick={() => setSchedule(true)}
+            icon={<IconTile icon={CalendarClock} tone="blue" />}
+            title={t("Расписание")}
+            hint={scheduleHint(s.settings.schedule)}
+            aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
           />
           {detectPlatform() === "android" ? (
             <Row
@@ -270,6 +279,7 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
       <AppearanceSheet open={look} onOpenChange={setLook} />
       <RoutesSheet open={routing} onOpenChange={setRouting} />
       <AppsSheet open={appsOpen} onOpenChange={setAppsOpen} />
+      <ScheduleSheet open={schedule} onOpenChange={setSchedule} />
       <RecommendedSheet open={recommended} onOpenChange={setRecommended} />
       <Sheet open={about} onOpenChange={setAbout} title={t("О приложении")} icon={<IconTile icon={Info} tone="gray" />}>
         <Group>

@@ -32,6 +32,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { isNewer } from "./version";
 import { exclusionFor, parseAccessLog, siteOf } from "./connections";
+import { inWindow } from "./schedule";
 import { CRASH_DSN, setCrashReports } from "@/lib/crash";
 import { CATALOG_URL, parseCatalog } from "./catalog";
 import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -46,7 +47,7 @@ const USER_AGENT = "v2rayNG/1.9.30";
 /** libXray меряет не больше 5 серверов за вызов. */
 const PING_BATCH = 5;
 /** Настройки самого приложения: их смена не требует переподключения VPN. */
-const APP_ONLY = new Set(["liveActivity", "autoConnect", "serverSort", "sendHwid", "updates", "ping", "notifications", "desktop", "crashReports"]);
+const APP_ONLY = new Set(["schedule", "liveActivity", "autoConnect", "serverSort", "sendHwid", "updates", "ping", "notifications", "desktop", "crashReports"]);
 
 const STATE_KEY = "b-proxy.state";
 /** Какие уведомления о подписках уже показаны. */
@@ -158,6 +159,7 @@ export class TauriBackend implements Backend {
         desktop: { ...defaultSettings.desktop, ...(saved?.settings?.desktop ?? {}) },
         network: { ...defaultSettings.network, ...(saved?.settings?.network ?? {}) },
         routing: { ...defaultSettings.routing, ...(saved?.settings?.routing ?? {}) },
+        schedule: { ...defaultSettings.schedule, ...(saved?.settings?.schedule ?? {}) },
         localProxy: { ...defaultSettings.localProxy, ...(saved?.settings?.localProxy ?? {}) },
         appearance,
       },
@@ -331,6 +333,10 @@ export class TauriBackend implements Backend {
     // Раз в 15 минут проверяем, не пора ли обновить какую-то подписку.
     window.setInterval(() => void this.refreshDue(), 15 * 60_000);
 
+    // Расписание: раз в 20 секунд смотрим, не пересекли ли границу окна.
+    window.setInterval(() => void this.checkSchedule(), 20_000);
+    void this.checkSchedule();
+
     // «Подключаться при запуске»: после обновления и пинга, чтобы автовыбор взял лучший сервер.
     if (this.s.settings.autoConnect && this.s.state === "disconnected" && this.subs.length) {
       while (this.s.pinging) await new Promise((r) => setTimeout(r, 300));
@@ -338,6 +344,30 @@ export class TauriBackend implements Backend {
         this.writeLog("info", "Автоподключение при запуске");
         void this.toggle();
       }
+    }
+  }
+
+  /** Было ли «сейчас по расписанию» при прошлой проверке (null — ещё не проверяли). */
+  private scheduleInside: boolean | null = null;
+
+  /**
+   * Расписание действует только на границах окна, чтобы не спорить с ручным
+   * включением и выключением. При запуске внутри окна — подключаемся.
+   */
+  private async checkSchedule() {
+    const plan = this.s.settings.schedule;
+    const inside = inWindow(plan);
+    const before = this.scheduleInside;
+    this.scheduleInside = inside;
+    if (!plan.enabled || inside === before || this.busy) return;
+    if (inside && this.s.state === "disconnected" && this.s.current) {
+      this.writeLog("info", "Подключение по расписанию");
+      await this.toggle();
+      if ((this.s.state as string) === "connected") this.toaster.show(t("VPN включён по расписанию"));
+    } else if (!inside && before !== null && this.s.state === "connected") {
+      this.writeLog("info", "Отключение по расписанию");
+      await this.toggle();
+      this.toaster.show(t("VPN выключен по расписанию"));
     }
   }
 
@@ -1544,6 +1574,11 @@ export class TauriBackend implements Backend {
     else this.persist();
     if (patch.liveActivity !== undefined) this.syncLiveActivity();
     if (patch.crashReports !== undefined) this.syncCrashReports();
+    // Поменяли расписание — проверим заново, как при запуске.
+    if (patch.schedule) {
+      this.scheduleInside = null;
+      void this.checkSchedule();
+    }
     // Журнал соединений выключили — стираем записанное.
     if (patch.connectionLog === false) void this.clearConnections();
     // Kill switch выключили после аварии — открываем интернет (ядро снимет оставшиеся правила).
