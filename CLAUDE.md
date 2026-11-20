@@ -41,6 +41,7 @@ core/
   memory/memory.go      замена пакета memory в libXray: лимит памяти и сборка мусора из env BPROXY_*
   runner/main.go        bproxy-core — ядро отдельным процессом для Linux и macOS (caps_linux.go — права в ambient)
   nodep/measure.go      замена nodep/measure.go: «реальная задержка» запросом HEAD или GET (#bproxy-method= в адресе)
+  xray_patch.py         правка копии Xray-core (.build/Xray-core): имя сайта из sniffing в журнале соединений
 scripts/                build_core.sh (linux | windows | macos | android | ios), tauri_ios_extension.py
 .github/workflows/      build.yml — демо интерфейса, Linux, Windows, Android (APK) на каждый пуш; iOS без подписи — только
                         в релиз; macOS — только вручную (Run workflow → «Собрать и macOS»). Ядро кэшируется по core/** и build_core.sh
@@ -215,7 +216,8 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   Xray пишет `log.access` + `dnsLog` в `access.log` (компьютер — папка журналов, телефон — папка geo / App Group),
   помощник — только в свой файл (`/var/run/bproxy-access.log`, `%ProgramData%\B-Proxy\access.log`) и отдаёт его
   командой `access`. Читает команда плагина `read_access` (clear — стереть), разбор — `backend/connections.ts`:
-  TUN видит только IP, имя сайта берём из ответов DNS. «Напрямую» добавляет сайт целиком (`siteOf`) в исключения
+  TUN видит только IP, поэтому в Xray-core правка (`core/xray_patch.py`): после sniffing (SNI, Host) в запись
+  журнала идёт имя сайта; для остального — имя из ответов DNS, иначе IP. «Напрямую» добавляет сайт целиком (`siteOf`) в исключения
   и переподключает. Выключили запись — файл стирается; больше 4 МБ — начинается заново. Ядро от root
   (pkexec/osascript) заранее создаёт файлы журналов и отдаёт их владельцу папки (`core/runner/logfiles*.go`).
 - Расписание (настройка `schedule`: дни 1–7, from/to, окно через полночь — к дню начала; `backend/schedule.ts`,

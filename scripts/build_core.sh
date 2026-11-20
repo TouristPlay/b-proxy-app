@@ -13,6 +13,8 @@
 #   core/memory/memory.go — настраиваемый лимит памяти вместо жёстких 30 МБ на iOS;
 #   core/runner/main.go   — процесс bproxy-core для Linux и macOS;
 #   core/nodep/measure.go — пинг «реальной задержкой» запросом HEAD или GET.
+# И одна правка в самом Xray-core (копия в .build/Xray-core, core/xray_patch.py):
+#   в журнале соединений — имя сайта из sniffing (TLS SNI, HTTP Host), а не только IP из TUN.
 set -euo pipefail
 
 TARGET="${1:?Укажите платформу: linux | windows | macos | android | ios | test}"
@@ -38,6 +40,20 @@ cp "$ROOT/core/nodep/measure.go" "$SRC/nodep/measure.go"
 mkdir -p "$SRC/bproxy_core"
 rm -f "$SRC"/bproxy_core/*.go
 cp "$ROOT"/core/runner/*.go "$SRC/bproxy_core/"
+
+# --- Наша правка в Xray-core: та же версия, что требует libXray, копией рядом ---
+XRAY_MOD=github.com/xtls/xray-core
+XRAY_VERSION="$(cd "$SRC" && awk -v m="$XRAY_MOD" '$1 == m && $2 ~ /^v/ { print $2; exit }' go.mod)"
+XRAY_DIR="$WORK/Xray-core"
+if [ ! -f "$XRAY_DIR/.bproxy-$XRAY_VERSION" ]; then
+  XRAY_CACHE="$(cd "$SRC" && go mod download -json "$XRAY_MOD@$XRAY_VERSION" | "$PYTHON" -c 'import json,sys; print(json.load(sys.stdin)["Dir"])')"
+  rm -rf "$XRAY_DIR"
+  cp -R "$XRAY_CACHE" "$XRAY_DIR"
+  chmod -R u+w "$XRAY_DIR"
+  "$PYTHON" "$ROOT/core/xray_patch.py" "$XRAY_DIR"
+  touch "$XRAY_DIR/.bproxy-$XRAY_VERSION"
+fi
+(cd "$SRC" && go mod edit "-replace=$XRAY_MOD=../Xray-core")
 
 cd "$SRC"
 export CGO_ENABLED=1
@@ -82,7 +98,7 @@ case "$TARGET" in
     chmod 755 "$DEST/bproxy-core"
     ;;
   android)
-    "$PYTHON" build/main.py android
+    "$PYTHON" build/main.py android local
     cp libXray.aar "$DEST/libXray.aar"
     # Классы для компиляции плагина (сама библиотека подключается в приложении).
     rm -rf "$WORK/aar" && mkdir -p "$WORK/aar"
@@ -91,7 +107,7 @@ case "$TARGET" in
     ;;
   ios)
     # Статические библиотеки с C-интерфейсом для iOS и симулятора.
-    "$PYTHON" build/main.py apple go
+    "$PYTHON" build/main.py apple go local
     rm -rf "$DEST/LibXray.xcframework"
     cp -R LibXray.xcframework "$DEST/"
     ;;
