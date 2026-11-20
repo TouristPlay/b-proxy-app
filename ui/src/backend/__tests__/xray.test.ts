@@ -40,6 +40,14 @@ describe("конфиг Xray", () => {
     }
   });
 
+  it("журнал соединений — только если включён и есть файл", () => {
+    const log = (patch: Partial<Settings>, file: string | null) =>
+      (JSON.parse(buildConfig(node, { ...defaultSettings, ...patch }, "linux", null, null, null, null, file)) as { log: Record<string, unknown> }).log;
+    expect(log({}, "/tmp/access.log")).toMatchObject({ access: "none" });
+    expect(log({ connectionLog: true }, null)).toMatchObject({ access: "none" });
+    expect(log({ connectionLog: true }, "/tmp/access.log")).toMatchObject({ access: "/tmp/access.log", dnsLog: true });
+  });
+
   it("лимит памяти ядра только на телефонах", () => {
     expect(build("ios").env?.BPROXY_MEMORY_LIMIT_MB).toBeDefined();
     expect(build("linux").env?.BPROXY_MEMORY_LIMIT_MB).toBeUndefined();

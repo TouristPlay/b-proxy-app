@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Trash2,
   TriangleAlert,
+  Waypoints,
   X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
@@ -25,6 +26,7 @@ import { formatBytes, formatDuration, formatSpeed, plural, splitFlag } from "@/l
 import { useNow } from "@/lib/useMedia";
 import { cn } from "@/lib/utils";
 import { LogsSheet } from "./LogsSheet";
+import { ConnectionsSheet } from "./ConnectionsSheet";
 import { LOCALE, t } from "@/lib/i18n";
 
 type Period = "today" | "week" | "month";
@@ -56,6 +58,7 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
   const [kind, setKind] = useState<Kind>("all");
   const [open, setOpen] = useState<string | null>(null);
   const [logs, setLogs] = useState(false);
+  const [connections, setConnections] = useState(false);
   const live = s.activity.find((e): e is Session => e.kind === "session" && e.endedAt == null) ?? null;
   const now = useNow(live != null);
   const days = periods.find((p) => p.id === period)!.days;
@@ -132,7 +135,7 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
     <div className={embedded ? "w-full" : "mx-auto w-full max-w-md px-5 pt-[max(18px,env(safe-area-inset-top))] pb-32"}>
       {!embedded && <h1 className="mb-5 font-display text-[28px] font-semibold tracking-[-0.02em]">{t("Активность")}</h1>}
 
-      {live && s.state === "connected" && <LiveCard session={live} s={s} now={now} />}
+      {live && s.state === "connected" && <LiveCard session={live} s={s} now={now} onConnections={() => setConnections(true)} />}
 
       {empty ? (
         <div className="glass flex flex-col items-center rounded-[28px] px-6 py-10 text-center">
@@ -344,6 +347,10 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
                 
                 {t("Тех. журналы")}
               </Button>
+              <Button variant="glass" className="col-span-2 px-3" onClick={() => setConnections(true)}>
+                <Waypoints />
+                {t("Соединения")}
+              </Button>
             </div>
             <p aria-live="polite" className="min-h-5 text-center text-[13px] text-good">
               {note}
@@ -362,12 +369,13 @@ export function ActivityScreen({ embedded }: { embedded?: boolean }) {
       )}
 
       <LogsSheet open={logs} onOpenChange={setLogs} />
+      <ConnectionsSheet open={connections} onOpenChange={setConnections} />
     </div>
   );
 }
 
 /** Текущий сеанс: таймер, скорость и график в реальном времени. */
-function LiveCard({ session, s, now }: { session: Session; s: Snapshot; now: number }) {
+function LiveCard({ session, s, now, onConnections }: { session: Session; s: Snapshot; now: number; onConnections: () => void }) {
   const rise = useEntrance("anim-rise");
   return (
     <section className={cn("glass mb-4 rounded-[24px] border-good/30 p-4", rise)} aria-label={t("Текущее подключение")}>
@@ -393,6 +401,10 @@ function LiveCard({ session, s, now }: { session: Session; s: Snapshot; now: num
         </span>
       </div>
       <SmoothChart values={s.speedHistory} className="mt-3 h-14 w-full" />
+      <Button variant="glass" size="sm" className="mt-3 w-full" onClick={onConnections}>
+        <Waypoints />
+        {t("Какие сайты открываются")}
+      </Button>
     </section>
   );
 }

@@ -81,6 +81,7 @@ func main() {
 	if ks.enabled {
 		markOwnSockets()
 	}
+	prepareLogFiles(config)
 	if err := xray.RunXray(string(config)); err != nil {
 		setState("error: " + err.Error())
 		os.Exit(1)

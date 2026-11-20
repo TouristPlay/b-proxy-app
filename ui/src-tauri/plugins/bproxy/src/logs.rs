@@ -85,8 +85,12 @@ fn rotate(path: &Path) {
 pub fn tail(which: &str, max_bytes: u64) -> Result<String, String> {
     let dir = dir().ok_or("Журналы ещё не готовы")?;
     let name = if which == "core" { "xray.log" } else { "bproxy.log" };
-    let path = dir.join(name);
-    let mut f = match std::fs::File::open(&path) {
+    Ok(sanitize(&tail_file(&dir.join(name), max_bytes)?))
+}
+
+/// Последние `max_bytes` файла, с целой строки; файла нет — пустая строка.
+pub fn tail_file(path: &Path, max_bytes: u64) -> Result<String, String> {
+    let mut f = match std::fs::File::open(path) {
         Ok(f) => f,
         Err(_) => return Ok(String::new()),
     };
@@ -98,7 +102,7 @@ pub fn tail(which: &str, max_bytes: u64) -> Result<String, String> {
     let text = String::from_utf8_lossy(&buf);
     // Начинаем с целой строки.
     let text = if start > 0 { text.split_once('\n').map(|x| x.1).unwrap_or(&text) } else { &text };
-    Ok(sanitize(text))
+    Ok(text.to_string())
 }
 
 /// Ссылки с ключами (подписка, vless://, trojan:// …) заменяются на ‹ссылка›.
@@ -175,6 +179,16 @@ mod tests {
             "ошибка (‹ссылка› и ‹ссылка› конец"
         );
         assert_eq!(sanitize("обычный текст 10:20"), "обычный текст 10:20");
+    }
+
+    #[test]
+    fn tail_from_whole_line() {
+        let path = std::env::temp_dir().join(format!("bproxy-tail-{}.log", std::process::id()));
+        std::fs::write(&path, "первая\nвторая\nтретья\n").unwrap();
+        assert_eq!(tail_file(&path, 20).unwrap(), "третья\n");
+        assert_eq!(tail_file(&path, 1000).unwrap(), "первая\nвторая\nтретья\n");
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(tail_file(&path, 10).unwrap(), "");
     }
 
     #[test]

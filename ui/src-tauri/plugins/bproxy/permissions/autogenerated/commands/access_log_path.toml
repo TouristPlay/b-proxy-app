@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-access-log-path"
+description = "Enables the access_log_path command without any pre-configured scope."
+commands.allow = ["access_log_path"]
+
+[[permission]]
+identifier = "deny-access-log-path"
+description = "Denies the access_log_path command without any pre-configured scope."
+commands.deny = ["access_log_path"]

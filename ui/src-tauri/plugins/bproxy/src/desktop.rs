@@ -129,6 +129,12 @@ impl<R: Runtime> Vpn<R> {
         Ok(())
     }
 
+    /// VPN сейчас работает через помощника (журнал соединений — у него).
+    #[allow(dead_code)]
+    pub fn uses_helper(&self) -> bool {
+        *self.running.lock().unwrap() && *self.helper.lock().unwrap()
+    }
+
     pub async fn geo_dir(&self) -> Result<PathBuf, String> {
         Ok(self.data_dir()?.join("geo"))
     }

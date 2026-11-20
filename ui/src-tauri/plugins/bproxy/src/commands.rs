@@ -66,6 +66,12 @@ pub(crate) async fn start<R: Runtime>(
     notify_disconnect: Option<bool>,
     kill_switch: Option<bool>,
 ) -> Result<(), String> {
+    // Журнал соединений не растёт бесконечно: больше 4 МБ — начинаем заново.
+    if let Some(path) = access_path(&app).await {
+        if std::fs::metadata(&path).is_ok_and(|m| m.len() > 4 * 1024 * 1024) {
+            let _ = std::fs::remove_file(path);
+        }
+    }
     app.vpn()
         .start(StartArgs {
             config,
@@ -106,6 +112,52 @@ pub(crate) fn log_info() -> Option<LogInfo> {
 #[command]
 pub(crate) fn read_log(which: String, max_bytes: Option<u64>) -> Result<String, String> {
     logs::tail(&which, max_bytes.unwrap_or(64 * 1024))
+}
+
+/// Файл журнала соединений (Xray access + DNS): на компьютере — рядом с журналами,
+/// на телефоне — в папке, доступной службе VPN (iOS — App Group).
+async fn access_path<R: Runtime>(app: &AppHandle<R>) -> Option<std::path::PathBuf> {
+    #[cfg(mobile)]
+    return app.vpn().geo_dir().await.ok().map(|d| {
+        let _ = std::fs::create_dir_all(&d);
+        d.join("access.log")
+    });
+    #[cfg(desktop)]
+    {
+        let _ = app;
+        logs::dir().map(|d| d.join("access.log"))
+    }
+}
+
+/// Куда ядру писать журнал соединений (интерфейс кладёт путь в конфиг, если он включён).
+#[command]
+pub(crate) async fn access_log_path<R: Runtime>(app: AppHandle<R>) -> Option<String> {
+    access_path(&app).await.map(|p| p.display().to_string())
+}
+
+/// Конец журнала соединений текущего подключения; clear — стереть его.
+#[command]
+pub(crate) async fn read_access<R: Runtime>(app: AppHandle<R>, max_bytes: Option<u64>, clear: Option<bool>) -> Result<String, String> {
+    let max = max_bytes.unwrap_or(256 * 1024);
+    let clear = clear.unwrap_or(false);
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    if app.vpn().uses_helper() {
+        let request = serde_json::json!({ "cmd": "access", "clear": clear });
+        let reply = tauri::async_runtime::spawn_blocking(move || crate::helper::call(&request, std::time::Duration::from_secs(5)))
+            .await
+            .map_err(|e| e.to_string())??;
+        // Помощник сам отдаёт не больше 256 КБ.
+        let _ = max;
+        return Ok(reply["log"].as_str().unwrap_or("").to_string());
+    }
+    let Some(path) = access_path(&app).await else { return Ok(String::new()) };
+    if clear {
+        let _ = std::fs::remove_file(&path);
+        return Ok(String::new());
+    }
+    tauri::async_runtime::spawn_blocking(move || logs::tail_file(&path, max))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[command]

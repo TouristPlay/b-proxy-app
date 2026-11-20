@@ -1,3 +1,5 @@
+import type { Connection } from "./connections";
+
 /** Состояние VPN-туннеля. */
 export type TunnelState = "disconnected" | "connecting" | "connected" | "disconnecting";
 
@@ -296,6 +298,11 @@ export interface Settings {
    * Android — туннель остаётся поднятым без ядра (плюс системная «Блокировать без VPN»).
    */
   killSwitch: boolean;
+  /**
+   * Журнал соединений: какие сайты открывались и куда пошли (VPN, напрямую, блок).
+   * Хранится только на этом устройстве, выключен по умолчанию.
+   */
+  connectionLog: boolean;
   /** VPN по приложениям. */
   perApp: PerAppSettings;
   /** Отправлять отчёты о сбоях (если сборка знает адрес сервера отчётов). */
@@ -428,6 +435,11 @@ export interface Backend {
   clearError(): void;
   /** Технические журналы на диске: app — приложение, core — ядро Xray. Пустая строка — журнала нет. */
   readLog(which: "app" | "core"): Promise<string>;
+  /** Журнал соединений текущего устройства (если включён), последние сверху. */
+  readConnections(): Promise<Connection[]>;
+  clearConnections(): Promise<void>;
+  /** Сайт — напрямую (в исключения, переподключение) или обратно через VPN. */
+  setDirect(host: string, direct: boolean): Promise<void>;
   /** Открыть папку журналов (компьютер); false — на этой платформе нельзя. */
   openLogsFolder(): Promise<boolean>;
   /** Пример уведомления — проверить, что система их показывает. */

@@ -31,6 +31,7 @@ import { Toaster } from "./toaster";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { isNewer } from "./version";
+import { exclusionFor, parseAccessLog, siteOf } from "./connections";
 import { CRASH_DSN, setCrashReports } from "@/lib/crash";
 import { CATALOG_URL, parseCatalog } from "./catalog";
 import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -196,6 +197,37 @@ export class TauriBackend implements Backend {
     } catch {
       return "";
     }
+  }
+
+  async readConnections() {
+    if (!this.s.settings.connectionLog) return [];
+    try {
+      return parseAccessLog(await invoke<string>("plugin:bproxy|read_access", { maxBytes: 512 * 1024 }));
+    } catch (e) {
+      this.logError(`Журнал соединений: ${message(e)}`);
+      return [];
+    }
+  }
+
+  async clearConnections() {
+    await invoke("plugin:bproxy|read_access", { clear: true }).catch((e) => this.logError(message(e)));
+  }
+
+  async setDirect(host: string, direct: boolean) {
+    const list = this.s.settings.network.exclusions;
+    const found = exclusionFor(host, list);
+    const site = siteOf(host);
+    const exclusions = direct ? (found ? list : [...list, site]) : list.filter((x) => x !== found);
+    if (exclusions === list) return;
+    this.emit({ settings: { ...this.s.settings, network: { ...this.s.settings.network, exclusions } } });
+    this.persist();
+    this.toaster.show(direct ? t("{0} — напрямую", [site]) : t("{0} — снова через VPN", [found ?? site]), {
+      id: "undo",
+      label: t("Отменить"),
+      run: () => void this.setDirect(host, !direct),
+    });
+    // Новые правила работают только в новом конфиге — переподключаемся сами.
+    if (this.s.state === "connected") await this.reconnect();
   }
 
   async openLogsFolder() {
@@ -928,7 +960,10 @@ export class TauriBackend implements Backend {
       const set = { ...this.s.settings, dnsServer: stored.prefs?.dns?.trim() || this.s.settings.dnsServer };
       // Служебный вход для проверки скорости — свой порт на каждое подключение.
       this.probePort = 20000 + Math.floor(Math.random() * 40000);
-      let config = buildConfig(node, set, this.platform, stored.fragment, coreLog, this.geoDir, this.probePort);
+      const accessFile = set.connectionLog
+        ? await invoke<string | null>("plugin:bproxy|access_log_path").catch(() => null)
+        : null;
+      let config = buildConfig(node, set, this.platform, stored.fragment, coreLog, this.geoDir, this.probePort, accessFile);
       // Телефон: название сервера — для уведомления службы VPN и плитки в шторке.
       if (isMobile(this.platform)) {
         const cfg = JSON.parse(config) as { env?: Record<string, string> };
@@ -1509,6 +1544,8 @@ export class TauriBackend implements Backend {
     else this.persist();
     if (patch.liveActivity !== undefined) this.syncLiveActivity();
     if (patch.crashReports !== undefined) this.syncCrashReports();
+    // Журнал соединений выключили — стираем записанное.
+    if (patch.connectionLog === false) void this.clearConnections();
     // Kill switch выключили после аварии — открываем интернет (ядро снимет оставшиеся правила).
     if (patch.killSwitch === false && this.s.state === "disconnected" && !isMobile(this.platform)) {
       void invoke("plugin:bproxy|stop").catch((e) => this.logError(message(e)));

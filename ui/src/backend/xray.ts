@@ -152,6 +152,8 @@ export function buildConfig(
   geoDir?: string | null,
   /** Порт служебного SOCKS-входа для проверки скорости (только 127.0.0.1). */
   probePort?: number | null,
+  /** Файл журнала соединений (если он включён в настройках). */
+  accessFile?: string | null,
 ): string {
   const core = s.core;
   const profile = activeProfile(s);
@@ -221,8 +223,13 @@ export function buildConfig(
   const profileDnsConfig = profile ? profileDns(profile) : null;
 
   const config = {
-    // Журнал доступа (какие сайты открывались) не ведём никогда — только ошибки и события ядра.
-    log: { loglevel: core.logLevel, access: "none", ...(logFile && core.logLevel !== "none" ? { error: logFile } : {}) },
+    // Журнал доступа (какие сайты открывались) — только если пользователь включил «Журнал соединений»;
+    // ответы DNS туда же: по ним видно имя сайта, TUN знает только IP.
+    log: {
+      loglevel: core.logLevel,
+      ...(s.connectionLog && accessFile ? { access: accessFile, dnsLog: true } : { access: "none" }),
+      ...(logFile && core.logLevel !== "none" ? { error: logFile } : {}),
+    },
     env,
     policy: {
       levels: { "0": { connIdle: core.idleTimeoutSec, handshake: 8, uplinkOnly: 2, downlinkOnly: 5 } },

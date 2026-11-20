@@ -5,6 +5,7 @@ import { parseLink } from "./links";
 import { decodeProfile } from "./routing";
 import { Toaster } from "./toaster";
 import { parseCatalog } from "./catalog";
+import { exclusionFor, parseAccessLog, siteOf } from "./connections";
 import {
   nodeKey,
   type ActivityEntry,
@@ -105,6 +106,7 @@ export const defaultSettings: Settings = {
   updates: { interval: "provider", onStart: true, pingAfter: false },
   autoConnect: false,
   killSwitch: false,
+  connectionLog: false,
   perApp: { mode: "off", apps: [] },
   crashReports: true,
   liveActivity: true,
@@ -504,6 +506,53 @@ export class DemoBackend implements Backend {
 
   clearError() {
     this.emit({ error: null });
+  }
+
+  async readConnections() {
+    if (!this.s.settings.connectionLog) return [];
+    // Как журнал ядра на устройстве: ответы DNS и соединения за последние минуты.
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const stamp = (ago: number) => {
+      const d = new Date(Date.now() - ago * 1000);
+      return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.000000`;
+    };
+    const sites: [string, string, string, number][] = [
+      ["www.youtube.com", "142.250.74.14", "proxy", 4],
+      ["rr2---sn-4g5e6nzz.googlevideo.com", "173.194.183.70", "proxy", 6],
+      ["web.telegram.org", "149.154.167.99", "proxy", 15],
+      ["www.example.org", "93.184.215.14", "proxy", 40],
+      ["mail.example.ru", "203.0.113.25", "direct", 55],
+      ["bank.example.ru", "203.0.113.40", "direct", 70],
+      ["ads.example.net", "198.51.100.9", "block", 90],
+      ["discord.com", "162.159.135.232", "proxy", 130],
+    ];
+    const ex = this.s.settings.network.exclusions;
+    const lines = sites.flatMap(([host, ip, out, ago], i) => {
+      const route = exclusionFor(host, ex) ? "direct" : out;
+      return [
+        `${stamp(ago + 1)} localhost got answer: ${host}. -> [${ip}] 14ms`,
+        ...Array.from({ length: 1 + (i % 3) }, (_, k) => `${stamp(ago - k)} from 172.19.0.1:${50000 + i * 10 + k} accepted tcp:${ip}:443 [tun-in >> ${route}]`),
+      ];
+    });
+    return parseAccessLog(lines.join("\n"));
+  }
+
+  async clearConnections() {
+    this.toaster.show(t("Журнал соединений очищен"));
+  }
+
+  async setDirect(host: string, direct: boolean) {
+    const list = this.s.settings.network.exclusions;
+    const found = exclusionFor(host, list);
+    const site = siteOf(host);
+    const exclusions = direct ? (found ? list : [...list, site]) : list.filter((x) => x !== found);
+    if (exclusions === list) return;
+    this.emit({ settings: { ...this.s.settings, network: { ...this.s.settings.network, exclusions } } });
+    this.toaster.show(direct ? t("{0} — напрямую", [site]) : t("{0} — снова через VPN", [found ?? site]), {
+      id: "undo",
+      label: t("Отменить"),
+      run: () => void this.setDirect(host, !direct),
+    });
   }
 
   async readLog(which: "app" | "core") {

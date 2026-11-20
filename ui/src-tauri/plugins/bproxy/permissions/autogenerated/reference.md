@@ -22,6 +22,8 @@
 - `allow-speed-test`
 - `allow-open-vpn-settings`
 - `allow-list-apps`
+- `allow-access-log-path`
+- `allow-read-access`
 
 ## Permission Table
 
@@ -31,6 +33,32 @@
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`bproxy:allow-access-log-path`
+
+</td>
+<td>
+
+Enables the access_log_path command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-access-log-path`
+
+</td>
+<td>
+
+Denies the access_log_path command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
@@ -340,6 +368,32 @@ Enables the prepare command without any pre-configured scope.
 <td>
 
 Denies the prepare command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-read-access`
+
+</td>
+<td>
+
+Enables the read_access command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-read-access`
+
+</td>
+<td>
+
+Denies the read_access command without any pre-configured scope.
 
 </td>
 </tr>

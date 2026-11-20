@@ -211,6 +211,13 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   DNS профиля: домашний (`https+local://`) для DirectSites, удалённый — для остального. Базы geoip.dat/geosite.dat
   качает плагин (`download_geo`, `geo.rs`) в папку приложения (iOS — App Group), путь уходит в env `xray.location.asset`.
   Профиль заменяет «РФ напрямую», рекламу и DNS из настроек; исключения и локальная сеть пользователя остаются выше.
+- Журнал соединений (настройка `connectionLog`, по умолчанию выключен; «Активность» → «Соединения», `ConnectionsSheet`):
+  Xray пишет `log.access` + `dnsLog` в `access.log` (компьютер — папка журналов, телефон — папка geo / App Group),
+  помощник — только в свой файл (`/var/run/bproxy-access.log`, `%ProgramData%\B-Proxy\access.log`) и отдаёт его
+  командой `access`. Читает команда плагина `read_access` (clear — стереть), разбор — `backend/connections.ts`:
+  TUN видит только IP, имя сайта берём из ответов DNS. «Напрямую» добавляет сайт целиком (`siteOf`) в исключения
+  и переподключает. Выключили запись — файл стирается; больше 4 МБ — начинается заново. Ядро от root
+  (pkexec/osascript) заранее создаёт файлы журналов и отдаёт их владельцу папки (`core/runner/logfiles*.go`).
 - Ссылки `bproxy://` (`tauri-plugin-deep-link`, разбор в `backend/links.ts`): `add/<url>` (или `add?url=`, `import/`, `sub/`),
   `routing/onadd/<base64>`, `connect`, `disconnect`, `toggle`. Подписку и профиль добавляем только после подтверждения
   (`LinkConfirm`). На компьютере ссылку из второго запуска передаёт `tauri-plugin-single-instance` (фича deep-link),

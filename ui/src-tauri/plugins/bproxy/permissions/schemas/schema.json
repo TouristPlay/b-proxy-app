@@ -295,6 +295,18 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the access_log_path command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-access-log-path",
+          "markdownDescription": "Enables the access_log_path command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the access_log_path command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-access-log-path",
+          "markdownDescription": "Denies the access_log_path command without any pre-configured scope."
+        },
+        {
           "description": "Enables the device_info command without any pre-configured scope.",
           "type": "string",
           "const": "allow-device-info",
@@ -439,6 +451,18 @@
           "markdownDescription": "Denies the prepare command without any pre-configured scope."
         },
         {
+          "description": "Enables the read_access command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-read-access",
+          "markdownDescription": "Enables the read_access command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_access command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-read-access",
+          "markdownDescription": "Denies the read_access command without any pre-configured scope."
+        },
+        {
           "description": "Enables the read_log command without any pre-configured scope.",
           "type": "string",
           "const": "allow-read-log",
@@ -511,10 +535,10 @@
           "markdownDescription": "Denies the tcp_ping command without any pre-configured scope."
         },
         {
-          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`\n- `allow-list-apps`",
+          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`\n- `allow-list-apps`\n- `allow-access-log-path`\n- `allow-read-access`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`\n- `allow-list-apps`"
+          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`\n- `allow-list-apps`\n- `allow-access-log-path`\n- `allow-read-access`"
         }
       ]
     }
