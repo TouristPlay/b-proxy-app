@@ -1561,7 +1561,7 @@ export class TauriBackend implements Backend {
 
 /** Интерфейсу не нужны outbound'ы с ключами — отдаём только поля Subscription. */
 function publicSub(s: StoredSubscription): Subscription {
-  const { outbounds: _o, fragment: _f, hideUrl: _h, updateIntervalHours: _u, ...rest } = s;
+  const { outbounds: _o, fragment: _f, updateIntervalHours: _u, ...rest } = s;
   return applyPrefs({ ...rest, providerTitle: rest.title });
 }
 

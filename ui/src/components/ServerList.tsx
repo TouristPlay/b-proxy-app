@@ -23,12 +23,21 @@ import {
   Trash2,
   X,
   Zap,
+  QrCode,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { backend, nodeKey, useSnapshot, type ServerNode, type ServerSort, type Subscription } from "@/backend";
+import {
+  backend,
+  nodeKey,
+  useSnapshot,
+  type ServerNode,
+  type ServerSort,
+  type Subscription,
+} from "@/backend";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { ProviderSheet } from "@/screens/ProviderSheet";
+import { ShareSubscriptionSheet } from "./ShareSubscriptionSheet";
 import { Flag, SignalPing, Tags } from "@/components/bits";
 import { Switch } from "@/components/ui/switch";
 import { daysLeft, formatBytes, plural, splitFlag } from "@/lib/format";
@@ -40,14 +49,23 @@ import { LOCALE, t } from "@/lib/i18n";
  * Список серверов: поиск, «Все / Избранные», автовыбор и группы по подпискам.
  * На телефоне — отдельный экран, на компьютере — левая панель.
  */
-export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?: () => void }) {
+export function ServerList({
+  compact,
+  onPicked,
+}: {
+  compact?: boolean;
+  onPicked?: () => void;
+}) {
   const s = useSnapshot();
   const [query, setQuery] = useState("");
   const [onlyFav, setOnlyFav] = useState(false);
   const [collapsed, setCollapsed] = useState<string[]>(readCollapsed);
   // Провайдеры, у которых сейчас видны скрытые серверы.
   const [showHidden, setShowHidden] = useState<string[]>([]);
-  const [renaming, setRenaming] = useState<{ sub: Subscription; node: ServerNode } | null>(null);
+  const [renaming, setRenaming] = useState<{
+    sub: Subscription;
+    node: ServerNode;
+  } | null>(null);
   const [settingsOf, setSettingsOf] = useState<string | null>(null);
   useEffect(() => {
     try {
@@ -58,7 +76,10 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
   }, [collapsed]);
   const sort = s.settings.serverSort;
   const auto = s.selected == null;
-  const total = s.subscriptions.reduce((n, x) => n + x.nodes.filter((v) => !v.divider).length, 0);
+  const total = s.subscriptions.reduce(
+    (n, x) => n + x.nodes.filter((v) => !v.divider).length,
+    0,
+  );
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -68,14 +89,23 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
         n.divider
           ? !q && !onlyFav && sort === "provider"
           : (!n.hidden || showHidden.includes(sub.url)) &&
-            (!q || n.name.toLowerCase().includes(q) || n.tags.some((t) => t.toLowerCase().includes(q))) &&
+            (!q ||
+              n.name.toLowerCase().includes(q) ||
+              n.tags.some((t) => t.toLowerCase().includes(q))) &&
             (!onlyFav || s.favorites.includes(nodeKey(sub.url, n.id))),
       );
-      return { sub, nodes: sortNodes(nodes, sort), hiddenCount: sub.nodes.filter((n) => n.hidden).length };
+      return {
+        sub,
+        nodes: sortNodes(nodes, sort),
+        hiddenCount: sub.nodes.filter((n) => n.hidden).length,
+      };
     });
   }, [s.subscriptions, s.favorites, query, onlyFav, sort, showHidden]);
-  const collapsible = s.subscriptions.filter((x) => !x.prefs.keepOpen).map((x) => x.url);
-  const allClosed = collapsible.length > 0 && collapsible.every((u) => collapsed.includes(u));
+  const collapsible = s.subscriptions
+    .filter((x) => !x.prefs.keepOpen)
+    .map((x) => x.url);
+  const allClosed =
+    collapsible.length > 0 && collapsible.every((u) => collapsed.includes(u));
 
   return (
     <div className="flex flex-col gap-3">
@@ -106,7 +136,11 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
         )}
       </label>
 
-      <div className="glass grid grid-cols-2 gap-1 rounded-2xl p-1" role="tablist" aria-label={t("Какие серверы показать")}>
+      <div
+        className="glass grid grid-cols-2 gap-1 rounded-2xl p-1"
+        role="tablist"
+        aria-label={t("Какие серверы показать")}
+      >
         {[
           { fav: false, label: t("Все {0}", [total]) },
           { fav: true, label: t("Избранные {0}", [s.favorites.length]) },
@@ -118,7 +152,9 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
             onClick={() => setOnlyFav(t.fav)}
             className={cn(
               "h-10 rounded-xl text-sm font-medium transition-colors",
-              onlyFav === t.fav ? "bg-ink text-base" : "text-ink-2 hover:text-ink",
+              onlyFav === t.fav
+                ? "bg-ink text-base"
+                : "text-ink-2 hover:text-ink",
             )}
           >
             {t.label}
@@ -135,7 +171,11 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
             aria-label={allClosed ? t("Развернуть все") : t("Свернуть все")}
             className="flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink"
           >
-            {allClosed ? <ChevronsUpDown className="size-4" aria-hidden /> : <ChevronsDownUp className="size-4" aria-hidden />}
+            {allClosed ? (
+              <ChevronsUpDown className="size-4" aria-hidden />
+            ) : (
+              <ChevronsDownUp className="size-4" aria-hidden />
+            )}
             {/* На самых узких экранах остаётся только значок: подпись есть в aria-label. */}
             <span className="hidden min-[360px]:inline" aria-hidden>
               {allClosed ? t("Развернуть все") : t("Свернуть все")}
@@ -145,18 +185,27 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
       </div>
 
       <label className="glass flex cursor-pointer items-center gap-3.5 rounded-[20px] px-4 py-3">
-        <span className="flex size-10 items-center justify-center rounded-[13px] border border-amber/25 bg-amber/12 text-amber" aria-hidden>
+        <span
+          className="flex size-10 items-center justify-center rounded-[13px] border border-amber/25 bg-amber/12 text-amber"
+          aria-hidden
+        >
           <Zap className="size-[19px]" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-medium">{t("Автовыбор")}</span>
-          <span className="block text-[13px] text-ink-2">{t("Сервер с лучшим пингом")}</span>
+          <span className="block text-[13px] text-ink-2">
+            {t("Сервер с лучшим пингом")}
+          </span>
         </span>
         <Switch
           checked={auto}
           onCheckedChange={(v) => {
             if (v) void backend.select(null);
-            else if (s.current) void backend.select({ subUrl: s.current.sub.url, nodeId: s.current.node.id });
+            else if (s.current)
+              void backend.select({
+                subUrl: s.current.sub.url,
+                nodeId: s.current.node.id,
+              });
           }}
           aria-label={t("Автовыбор сервера")}
         />
@@ -166,99 +215,174 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
         const closed = !sub.prefs.keepOpen && collapsed.includes(sub.url);
         const hiddenShown = showHidden.includes(sub.url);
         return (
-          <section key={sub.url} className="glass mt-1 overflow-hidden rounded-[26px]">
+          <section
+            key={sub.url}
+            className="glass mt-1 overflow-hidden rounded-[26px]"
+          >
             <ProviderHeader
               sub={sub}
               closed={closed}
               compact={compact}
               hideNote={!!query.trim()}
-              onToggle={() => setCollapsed((c) => (closed ? c.filter((x) => x !== sub.url) : [...c, sub.url]))}
+              onToggle={() =>
+                setCollapsed((c) =>
+                  closed ? c.filter((x) => x !== sub.url) : [...c, sub.url],
+                )
+              }
               hiddenCount={hiddenCount}
               hiddenShown={hiddenShown}
-              onToggleHidden={() => setShowHidden((h) => (hiddenShown ? h.filter((x) => x !== sub.url) : [...h, sub.url]))}
+              onToggleHidden={() =>
+                setShowHidden((h) =>
+                  hiddenShown
+                    ? h.filter((x) => x !== sub.url)
+                    : [...h, sub.url],
+                )
+              }
               onSettings={() => setSettingsOf(sub.url)}
             />
             {!closed && (
-              <ul className={cn("flex flex-col gap-0.5 border-t border-edge", compact ? "p-1.5" : "p-2")} aria-label={t("Серверы {0}", [sub.title])}>
+              <ul
+                className={cn(
+                  "flex flex-col gap-0.5 border-t border-edge",
+                  compact ? "p-1.5" : "p-2",
+                )}
+                aria-label={t("Серверы {0}", [sub.title])}
+              >
                 {nodes.length === 0 && (
                   <li className="px-3 py-4 text-[14px] text-ink-2">
                     {query.trim() ? (
                       <>
                         {t("Нет серверов по запросу «{0}».", [query.trim()])}{" "}
-                        <button type="button" onClick={() => setQuery("")} className="font-medium text-amber underline-offset-4 hover:underline">
-                          
+                        <button
+                          type="button"
+                          onClick={() => setQuery("")}
+                          className="font-medium text-amber underline-offset-4 hover:underline"
+                        >
                           {t("Показать все")}
                         </button>
                       </>
                     ) : onlyFav ? (
                       t("Нажмите на звёздочку у сервера, и он появится здесь")
                     ) : (
-                      t("В подписке нет серверов. Обновите её или напишите в поддержку")
+                      t(
+                        "В подписке нет серверов. Обновите её или напишите в поддержку",
+                      )
                     )}
                   </li>
                 )}
                 {nodes.map((node, i) => {
                   if (node.divider) {
                     return (
-                      <li key={node.id} className="px-3 pt-3 pb-1 text-[13px] font-medium text-ink-2" role="presentation">
+                      <li
+                        key={node.id}
+                        className="px-3 pt-3 pb-1 text-[13px] font-medium text-ink-2"
+                        role="presentation"
+                      >
                         {dividerTitle(node.name)}
                       </li>
                     );
                   }
                   const key = nodeKey(sub.url, node.id);
-                  const active = s.current?.node.id === node.id && s.current.sub.url === sub.url;
+                  const active =
+                    s.current?.node.id === node.id &&
+                    s.current.sub.url === sub.url;
                   const fav = s.favorites.includes(key);
-                  const menuProps = { sub, node, fav, canPing: s.state === "disconnected" && !s.pinging, onRename: () => setRenaming({ sub, node }) };
+                  const menuProps = {
+                    sub,
+                    node,
+                    fav,
+                    canPing: s.state === "disconnected" && !s.pinging,
+                    onRename: () => setRenaming({ sub, node }),
+                  };
                   return (
                     <NodeMenu key={node.id} {...menuProps}>
-                    <li className={cn("group relative", node.hidden && "opacity-55")}>
-                      <button
-                        onClick={() => {
-                          void backend.select({ subUrl: sub.url, nodeId: node.id });
-                          onPicked?.();
-                        }}
-                        aria-current={active ? "true" : undefined}
+                      <li
                         className={cn(
-                          "relative flex w-full items-center gap-3 overflow-hidden rounded-[18px] text-left transition-[background-color,box-shadow,transform] duration-[var(--dur)] hover:bg-glass-2 active:scale-[0.98]",
-                          // Справа место под звёздочку «В избранное», кнопку «⋯» и пинг.
-                          compact ? "py-2.5 pr-[140px] pl-2.5 lg:pr-[152px]" : "py-3 pr-[140px] pl-3 lg:pr-[152px]",
-                          active && "bg-amber/[0.08] ring-1 ring-amber/45 ring-inset hover:bg-amber/[0.11]",
+                          "group relative",
+                          node.hidden && "opacity-55",
                         )}
                       >
-                        {/* Пока меряется пинг провайдера — по карточкам по очереди проходит полоса света. */}
-                        {s.pingingSub === sub.url && (
-                          <span aria-hidden className="ping-sweep" style={{ animationDelay: `${(i % 12) * 90}ms` }} />
-                        )}
-                        <Flag name={node.name} size={compact ? "sm" : "md"} />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-1.5">
-                            <span className="truncate text-[14.5px] leading-snug font-medium" title={node.originalName ? t("В подписке: {0}", [node.originalName]) : splitFlag(node.name).name}>
-                              {splitFlag(node.name).name}
-                            </span>
-                            {node.hidden && <EyeOff className="size-3.5 shrink-0 text-ink-3" aria-label={t("Скрыт")} />}
-                          </span>
-                          <Tags tags={node.tags} className="mt-1 h-[18px] flex-nowrap overflow-hidden [mask-image:linear-gradient(to_right,black_85%,transparent)]" />
-                        </span>
-                      </button>
-                      <div className="absolute top-1/2 right-0.5 flex -translate-y-1/2 items-center">
                         <button
-                          onClick={() => backend.toggleFavorite(key)}
-                          aria-label={fav ? t("Убрать из избранного") : t("В избранное")}
-                          aria-pressed={fav}
+                          onClick={() => {
+                            void backend.select({
+                              subUrl: sub.url,
+                              nodeId: node.id,
+                            });
+                            onPicked?.();
+                          }}
+                          aria-current={active ? "true" : undefined}
                           className={cn(
-                            "flex size-9 items-center justify-center rounded-full transition-opacity lg:size-10",
-                            fav ? "text-amber" : "text-ink-3 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100",
+                            "relative flex w-full items-center gap-3 overflow-hidden rounded-[18px] text-left transition-[background-color,box-shadow,transform] duration-[var(--dur)] hover:bg-glass-2 active:scale-[0.98]",
+                            // Справа место под звёздочку «В избранное», кнопку «⋯» и пинг.
+                            compact
+                              ? "py-2.5 pr-[140px] pl-2.5 lg:pr-[152px]"
+                              : "py-3 pr-[140px] pl-3 lg:pr-[152px]",
+                            active &&
+                              "bg-amber/[0.08] ring-1 ring-amber/45 ring-inset hover:bg-amber/[0.11]",
                           )}
                         >
-                          <FavStar key={String(fav)} fav={fav} />
+                          {/* Пока меряется пинг провайдера — по карточкам по очереди проходит полоса света. */}
+                          {s.pingingSub === sub.url && (
+                            <span
+                              aria-hidden
+                              className="ping-sweep"
+                              style={{ animationDelay: `${(i % 12) * 90}ms` }}
+                            />
+                          )}
+                          <Flag name={node.name} size={compact ? "sm" : "md"} />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className="truncate text-[14.5px] leading-snug font-medium"
+                                title={
+                                  node.originalName
+                                    ? t("В подписке: {0}", [node.originalName])
+                                    : splitFlag(node.name).name
+                                }
+                              >
+                                {splitFlag(node.name).name}
+                              </span>
+                              {node.hidden && (
+                                <EyeOff
+                                  className="size-3.5 shrink-0 text-ink-3"
+                                  aria-label={t("Скрыт")}
+                                />
+                              )}
+                            </span>
+                            <Tags
+                              tags={node.tags}
+                              className="mt-1 h-[18px] flex-nowrap overflow-hidden [mask-image:linear-gradient(to_right,black_85%,transparent)]"
+                            />
+                          </span>
                         </button>
-                        <NodeMenuButton {...menuProps} />
-                        {/* Пинг — у самого правого края; нажатие проходит сквозь него на строку. */}
-                        <span className="pointer-events-none flex min-w-[64px] justify-end pr-2">
-                          <SignalPing ms={node.pingMs} measuring={s.pingingSub === sub.url} order={i} className="shrink-0" />
-                        </span>
-                      </div>
-                    </li>
+                        <div className="absolute top-1/2 right-0.5 flex -translate-y-1/2 items-center">
+                          <button
+                            onClick={() => backend.toggleFavorite(key)}
+                            aria-label={
+                              fav ? t("Убрать из избранного") : t("В избранное")
+                            }
+                            aria-pressed={fav}
+                            className={cn(
+                              "flex size-9 items-center justify-center rounded-full transition-opacity lg:size-10",
+                              fav
+                                ? "text-amber"
+                                : "text-ink-3 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100",
+                            )}
+                          >
+                            <FavStar key={String(fav)} fav={fav} />
+                          </button>
+                          <NodeMenuButton {...menuProps} />
+                          {/* Пинг — у самого правого края; нажатие проходит сквозь него на строку. */}
+                          <span className="pointer-events-none flex min-w-[64px] justify-end pr-2">
+                            <SignalPing
+                              ms={node.pingMs}
+                              measuring={s.pingingSub === sub.url}
+                              order={i}
+                              className="shrink-0"
+                            />
+                          </span>
+                        </div>
+                      </li>
                     </NodeMenu>
                   );
                 })}
@@ -269,7 +393,10 @@ export function ServerList({ compact, onPicked }: { compact?: boolean; onPicked?
       })}
 
       <RenameSheet target={renaming} onClose={() => setRenaming(null)} />
-      <ProviderSheet url={settingsOf} onOpenChange={(o) => !o && setSettingsOf(null)} />
+      <ProviderSheet
+        url={settingsOf}
+        onOpenChange={(o) => !o && setSettingsOf(null)}
+      />
     </div>
   );
 }
@@ -289,8 +416,12 @@ function readCollapsed(): string[] {
 function sortNodes(nodes: ServerNode[], sort: ServerSort): ServerNode[] {
   if (sort === "provider") return nodes;
   const list = nodes.filter((n) => !n.divider);
-  if (sort === "name") return [...list].sort((a, b) => splitFlag(a.name).name.localeCompare(splitFlag(b.name).name, "ru"));
-  const rank = (n: ServerNode) => (n.pingMs == null ? 1e9 : n.pingMs < 0 ? 2e9 : n.pingMs);
+  if (sort === "name")
+    return [...list].sort((a, b) =>
+      splitFlag(a.name).name.localeCompare(splitFlag(b.name).name, "ru"),
+    );
+  const rank = (n: ServerNode) =>
+    n.pingMs == null ? 1e9 : n.pingMs < 0 ? 2e9 : n.pingMs;
   return [...list].sort((a, b) => rank(a) - rank(b));
 }
 
@@ -319,17 +450,35 @@ export function AllProvidersActions() {
         title={t("Обновить все подписки")}
         className={toolBtn}
       >
-        <RefreshCw className={cn("size-[17px]", s.refreshingSub === "*" && "animate-spin")} aria-hidden />
+        <RefreshCw
+          className={cn(
+            "size-[17px]",
+            s.refreshingSub === "*" && "animate-spin",
+          )}
+          aria-hidden
+        />
       </button>
       <button
         type="button"
         onClick={() => void backend.pingAll()}
         disabled={s.state !== "disconnected" || s.pinging}
-        aria-label={s.pinging ? t("Меряем пинг") : t("Проверить пинг всех провайдеров")}
-        title={s.state === "disconnected" ? t("Проверить пинг всех провайдеров") : t("Пинг проверяется при выключенном VPN")}
-        className={cn(toolBtn, s.pinging && "bg-amber/15 text-amber disabled:opacity-100")}
+        aria-label={
+          s.pinging ? t("Меряем пинг") : t("Проверить пинг всех провайдеров")
+        }
+        title={
+          s.state === "disconnected"
+            ? t("Проверить пинг всех провайдеров")
+            : t("Пинг проверяется при выключенном VPN")
+        }
+        className={cn(
+          toolBtn,
+          s.pinging && "bg-amber/15 text-amber disabled:opacity-100",
+        )}
       >
-        <Gauge className={cn("size-[18px]", s.pinging && "animate-pulse")} aria-hidden />
+        <Gauge
+          className={cn("size-[18px]", s.pinging && "animate-pulse")}
+          aria-hidden
+        />
       </button>
     </>
   );
@@ -343,15 +492,27 @@ function SortMenu({ value }: { value: ServerSort }) {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger className="flex min-h-11 min-w-0 items-center gap-2 rounded-full px-3 text-[14px] font-medium text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink">
         <ArrowUpDown className="size-4 shrink-0" aria-hidden />
-        <span className="truncate">{sorts.find((x) => x.value === value)?.title}</span>
+        <span className="truncate">
+          {sorts.find((x) => x.value === value)?.title}
+        </span>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="start" sideOffset={6} className={menuBox}>
-          <DropdownMenu.Label className="px-3 pt-1.5 pb-1 text-[13px] text-ink-3">{t("Порядок серверов")}</DropdownMenu.Label>
+          <DropdownMenu.Label className="px-3 pt-1.5 pb-1 text-[13px] text-ink-3">
+            {t("Порядок серверов")}
+          </DropdownMenu.Label>
           {sorts.map((x) => (
-            <DropdownMenu.Item key={x.value} className={menuItem} onSelect={() => void backend.updateSettings({ serverSort: x.value })}>
+            <DropdownMenu.Item
+              key={x.value}
+              className={menuItem}
+              onSelect={() =>
+                void backend.updateSettings({ serverSort: x.value })
+              }
+            >
               <span className="flex-1">{x.title}</span>
-              {x.value === value && <Check className="size-4 text-amber" aria-hidden />}
+              {x.value === value && (
+                <Check className="size-4 text-amber" aria-hidden />
+              )}
             </DropdownMenu.Item>
           ))}
         </DropdownMenu.Content>
@@ -375,12 +536,25 @@ type NodeMenuProps = {
 /** Пункты меню сервера — общие для кнопки «⋯» и правой кнопки / долгого нажатия. */
 type MenuKit = Pick<typeof DropdownMenu, "Item" | "Label" | "Separator">;
 
-function NodeMenuItems({ M, sub, node, fav, canPing, onRename }: NodeMenuProps & { M: MenuKit }) {
+function NodeMenuItems({
+  M,
+  sub,
+  node,
+  fav,
+  canPing,
+  onRename,
+}: NodeMenuProps & { M: MenuKit }) {
   return (
     <>
       {/* Полное название: в строке списка оно может быть обрезано. */}
-      <M.Label className="max-w-72 px-3 pt-1.5 pb-1 text-[13px] leading-snug break-words text-ink-2">{splitFlag(node.name).name}</M.Label>
-      <M.Item className={menuItem} disabled={!canPing} onSelect={() => void backend.pingNode(sub.url, node.id)}>
+      <M.Label className="max-w-72 px-3 pt-1.5 pb-1 text-[13px] leading-snug break-words text-ink-2">
+        {splitFlag(node.name).name}
+      </M.Label>
+      <M.Item
+        className={menuItem}
+        disabled={!canPing}
+        onSelect={() => void backend.pingNode(sub.url, node.id)}
+      >
         <Gauge className="size-[18px]" aria-hidden />
         {canPing ? t("Проверить пинг") : t("Пинг — при выключенном VPN")}
       </M.Item>
@@ -389,18 +563,35 @@ function NodeMenuItems({ M, sub, node, fav, canPing, onRename }: NodeMenuProps &
         {t("Переименовать")}
       </M.Item>
       {node.originalName && (
-        <M.Item className={menuItem} onSelect={() => backend.renameNode(sub.url, node.id, null)}>
+        <M.Item
+          className={menuItem}
+          onSelect={() => backend.renameNode(sub.url, node.id, null)}
+        >
           <RotateCcw className="size-[18px]" aria-hidden />
           {t("Вернуть название из подписки")}
         </M.Item>
       )}
-      <M.Item className={menuItem} onSelect={() => backend.toggleFavorite(nodeKey(sub.url, node.id))}>
-        <Star className="size-[18px]" aria-hidden fill={fav ? "currentColor" : "none"} />
+      <M.Item
+        className={menuItem}
+        onSelect={() => backend.toggleFavorite(nodeKey(sub.url, node.id))}
+      >
+        <Star
+          className="size-[18px]"
+          aria-hidden
+          fill={fav ? "currentColor" : "none"}
+        />
         {fav ? t("Убрать из избранного") : t("В избранное")}
       </M.Item>
       <M.Separator className="my-1 h-px bg-edge" />
-      <M.Item className={menuItem} onSelect={() => backend.setNodeHidden(sub.url, node.id, !node.hidden)}>
-        {node.hidden ? <Eye className="size-[18px]" aria-hidden /> : <EyeOff className="size-[18px]" aria-hidden />}
+      <M.Item
+        className={menuItem}
+        onSelect={() => backend.setNodeHidden(sub.url, node.id, !node.hidden)}
+      >
+        {node.hidden ? (
+          <Eye className="size-[18px]" aria-hidden />
+        ) : (
+          <EyeOff className="size-[18px]" aria-hidden />
+        )}
         {node.hidden ? t("Показывать в списке") : t("Скрыть сервер")}
       </M.Item>
     </>
@@ -408,7 +599,10 @@ function NodeMenuItems({ M, sub, node, fav, canPing, onRename }: NodeMenuProps &
 }
 
 /** Правая кнопка мыши и долгое нажатие на строке — то же меню, что у кнопки «⋯». */
-function NodeMenu({ children, ...props }: NodeMenuProps & { children: React.ReactNode }) {
+function NodeMenu({
+  children,
+  ...props
+}: NodeMenuProps & { children: React.ReactNode }) {
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
@@ -426,7 +620,9 @@ function NodeMenuButton(props: NodeMenuProps) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
-        aria-label={t("Действия с сервером {0}", [splitFlag(props.node.name).name])}
+        aria-label={t("Действия с сервером {0}", [
+          splitFlag(props.node.name).name,
+        ])}
         className="flex size-9 items-center justify-center rounded-full text-ink-3 transition-[opacity,background-color] hover:bg-glass-2 lg:size-10 hover:text-ink lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 lg:data-[state=open]:opacity-100"
       >
         <MoreHorizontal className="size-[18px]" />
@@ -441,14 +637,21 @@ function NodeMenuButton(props: NodeMenuProps) {
 }
 
 /** Своё название сервера. Пустое поле — название из подписки. */
-function RenameSheet({ target, onClose }: { target: { sub: Subscription; node: ServerNode } | null; onClose: () => void }) {
+function RenameSheet({
+  target,
+  onClose,
+}: {
+  target: { sub: Subscription; node: ServerNode } | null;
+  onClose: () => void;
+}) {
   const [name, setName] = useState("");
   useEffect(() => {
     if (target) setName(target.node.originalName ? target.node.name : "");
   }, [target]);
   const original = target ? (target.node.originalName ?? target.node.name) : "";
   const save = () => {
-    if (target) backend.renameNode(target.sub.url, target.node.id, name.trim() || null);
+    if (target)
+      backend.renameNode(target.sub.url, target.node.id, name.trim() || null);
     onClose();
   };
   return (
@@ -457,7 +660,11 @@ function RenameSheet({ target, onClose }: { target: { sub: Subscription; node: S
       onOpenChange={(o) => !o && onClose()}
       title={t("Переименовать сервер")}
       description={t("В подписке: {0}", [original])}
-      icon={<span className="flex size-11 items-center justify-center rounded-[14px] border border-edge-2 bg-glass-2 text-ink-2"><Pencil className="size-5" /></span>}
+      icon={
+        <span className="flex size-11 items-center justify-center rounded-[14px] border border-edge-2 bg-glass-2 text-ink-2">
+          <Pencil className="size-5" />
+        </span>
+      }
     >
       <form
         className="flex flex-col gap-4"
@@ -477,9 +684,10 @@ function RenameSheet({ target, onClose }: { target: { sub: Subscription; node: S
             className="w-full bg-transparent text-[16px] text-ink placeholder:text-ink-3 focus:outline-none"
           />
         </label>
-        <p className="px-1 text-[13px] text-ink-3">{t("Название меняется только у вас. Пустое поле — как в подписке.")}</p>
+        <p className="px-1 text-[13px] text-ink-3">
+          {t("Название меняется только у вас. Пустое поле — как в подписке.")}
+        </p>
         <Button type="submit" variant="amber" className="min-h-12 w-full">
-          
           {t("Сохранить")}
         </Button>
       </form>
@@ -489,13 +697,23 @@ function RenameSheet({ target, onClose }: { target: { sub: Subscription; node: S
 
 /** «⬇️ Обходы глушилок | LTE ⬇️» → «Обходы глушилок | LTE»: убираем стрелки и тире по краям. */
 function dividerTitle(name: string) {
-  return name.replace(/^[\s\p{Extended_Pictographic}\uFE0F\u2B07\u2B06\-–—=_*•.]+|[\s\p{Extended_Pictographic}\uFE0F\u2B07\u2B06\-–—=_*•.]+$/gu, "").trim();
+  return name
+    .replace(
+      /^[\s\p{Extended_Pictographic}\uFE0F\u2B07\u2B06\-–—=_*•.]+|[\s\p{Extended_Pictographic}\uFE0F\u2B07\u2B06\-–—=_*•.]+$/gu,
+      "",
+    )
+    .trim();
 }
 
 /** Звёздочка «прыгает», только когда её нажали, а не при открытии списка. */
 function FavStar({ fav }: { fav: boolean }) {
   const pop = useEntrance("anim-pop");
-  return <Star className={cn("size-4", fav && pop)} fill={fav ? "currentColor" : "none"} />;
+  return (
+    <Star
+      className={cn("size-4", fav && pop)}
+      fill={fav ? "currentColor" : "none"}
+    />
+  );
 }
 
 const updatedFmt = new Intl.DateTimeFormat(LOCALE, {
@@ -562,13 +780,26 @@ function ProviderHeader({
           type="button"
           onClick={onToggle}
           aria-expanded={!closed}
-          aria-label={t("{0}: {1} серверы", [sub.title, closed ? t("показать") : t("скрыть")])}
+          aria-label={t("{0}: {1} серверы", [
+            sub.title,
+            closed ? t("показать") : t("скрыть"),
+          ])}
           className="flex min-w-0 flex-1 items-center gap-1.5 rounded-xl py-1.5 text-left"
         >
-          <span className={cn("truncate font-display font-semibold", compact ? "text-[16px]" : "text-[18px]")}>{sub.title}</span>
+          <span
+            className={cn(
+              "truncate font-display font-semibold",
+              compact ? "text-[16px]" : "text-[18px]",
+            )}
+          >
+            {sub.title}
+          </span>
           {!sub.prefs.keepOpen && (
             <ChevronDown
-              className={cn("size-4 shrink-0 text-ink-3 transition-transform duration-[var(--dur)]", !closed && "rotate-180")}
+              className={cn(
+                "size-4 shrink-0 text-ink-3 transition-transform duration-[var(--dur)]",
+                !closed && "rotate-180",
+              )}
               aria-hidden
             />
           )}
@@ -577,8 +808,16 @@ function ProviderHeader({
           type="button"
           onClick={() => void backend.ping(sub.url)}
           disabled={!canPing}
-          aria-label={pinging ? t("Меряем пинг {0}", [sub.title]) : t("Проверить пинг {0}", [sub.title])}
-          title={s.state === "disconnected" ? t("Проверить пинг") : t("Пинг проверяется при выключенном VPN")}
+          aria-label={
+            pinging
+              ? t("Меряем пинг {0}", [sub.title])
+              : t("Проверить пинг {0}", [sub.title])
+          }
+          title={
+            s.state === "disconnected"
+              ? t("Проверить пинг")
+              : t("Пинг проверяется при выключенном VPN")
+          }
           className={cn(seg, pinging && "bg-amber/15 text-amber")}
         >
           <Gauge className={cn("size-[18px]", pinging && "animate-pulse")} />
@@ -591,7 +830,9 @@ function ProviderHeader({
           title={t("Обновить подписку")}
           className={seg}
         >
-          <RefreshCw className={cn("size-[17px]", refreshing && "animate-spin")} />
+          <RefreshCw
+            className={cn("size-[17px]", refreshing && "animate-spin")}
+          />
         </button>
         <ProviderMenu
           sub={sub}
@@ -603,11 +844,21 @@ function ProviderHeader({
         />
       </div>
 
-      <p className="text-[13px] text-ink-2 tabular-nums" title={updatedFmt.format(sub.updatedAt)}>
+      <p
+        className="text-[13px] text-ink-2 tabular-nums"
+        title={updatedFmt.format(sub.updatedAt)}
+      >
         {sub.plan ? `${sub.plan} · ` : ""}
         {updated === t("сейчас")
-          ? t("{0} {1} · обновлена сейчас", [count, plural(count, t("сервер"), t("сервера"), t("серверов"))])
-          : t("{0} {1} · обновлена {2} назад", [count, plural(count, t("сервер"), t("сервера"), t("серверов")), updated])}
+          ? t("{0} {1} · обновлена сейчас", [
+              count,
+              plural(count, t("сервер"), t("сервера"), t("серверов")),
+            ])
+          : t("{0} {1} · обновлена {2} назад", [
+              count,
+              plural(count, t("сервер"), t("сервера"), t("серверов")),
+              updated,
+            ])}
       </p>
 
       {/* Срок и трафик — две строки с полосами, как на главной, только компактнее. */}
@@ -615,24 +866,62 @@ function ProviderHeader({
         <div>
           <div className="flex items-baseline justify-between gap-2 text-[13px]">
             <span className="text-ink-2">{t("Срок")}</span>
-            <span className={cn("tabular-nums", days != null && days <= 3 ? "text-bad" : "text-ink")}>
-              {days == null ? t("бессрочно") : days > 0 ? t("осталось {0} {1}", [days, plural(days, t("день"), t("дня"), t("дней"))]) : t("закончилась")}
-              {sub.expireAt ? <span className="text-ink-3"> {t("· до {0}", [expireFmt.format(sub.expireAt)])}</span> : null}
+            <span
+              className={cn(
+                "tabular-nums",
+                days != null && days <= 3 ? "text-bad" : "text-ink",
+              )}
+            >
+              {days == null
+                ? t("бессрочно")
+                : days > 0
+                  ? t("осталось {0} {1}", [
+                      days,
+                      plural(days, t("день"), t("дня"), t("дней")),
+                    ])
+                  : t("закончилась")}
+              {sub.expireAt ? (
+                <span className="text-ink-3">
+                  {" "}
+                  {t("· до {0}", [expireFmt.format(sub.expireAt)])}
+                </span>
+              ) : null}
             </span>
           </div>
-          <Bar value={days == null ? 1 : Math.max(0, days) / termDays(days)} className={days != null && days <= 3 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber"} label={t("Осталось дней подписки")} />
+          <Bar
+            value={days == null ? 1 : Math.max(0, days) / termDays(days)}
+            className={
+              days != null && days <= 3
+                ? "bg-bad"
+                : "bg-gradient-to-r from-amber-deep to-amber"
+            }
+            label={t("Осталось дней подписки")}
+          />
         </div>
         <div>
           <div className="flex items-baseline justify-between gap-2 text-[13px]">
             <span className="text-ink-2">{t("Трафик")}</span>
             <span className="tabular-nums">
               {formatBytes(sub.usedBytes)}
-              {unlimited ? <span className="text-ink-3"> {t("· не ограничен")}</span> : <span className="text-ink-3"> {t("из {0}", [formatBytes(sub.totalBytes)])}</span>}
+              {unlimited ? (
+                <span className="text-ink-3"> {t("· не ограничен")}</span>
+              ) : (
+                <span className="text-ink-3">
+                  {" "}
+                  {t("из {0}", [formatBytes(sub.totalBytes)])}
+                </span>
+              )}
             </span>
           </div>
           <Bar
             value={unlimited ? 1 : used}
-            className={unlimited ? "bg-good/25" : used > 0.9 ? "bg-bad" : "bg-gradient-to-r from-amber-deep to-amber"}
+            className={
+              unlimited
+                ? "bg-good/25"
+                : used > 0.9
+                  ? "bg-bad"
+                  : "bg-gradient-to-r from-amber-deep to-amber"
+            }
             label={t("Использованный трафик")}
           />
         </div>
@@ -640,7 +929,10 @@ function ProviderHeader({
 
       {sub.announce && !hideNote && (
         <div className="mt-3 flex gap-2 rounded-[16px] bg-amber/[0.06] px-3 py-2.5 ring-1 ring-amber/15 ring-inset">
-          <Megaphone className="mt-[3px] size-3.5 shrink-0 text-amber" aria-hidden />
+          <Megaphone
+            className="mt-[3px] size-3.5 shrink-0 text-amber"
+            aria-hidden
+          />
           {/* Пустая строка между абзацами — маленький отступ, а не целая строка. */}
           <div className="min-w-0 space-y-1 text-[13px] leading-[1.4] text-ink-2">
             {sub.announce
@@ -665,7 +957,7 @@ function ProviderHeader({
             className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-amber px-4 text-[14px] font-semibold text-on-accent transition-colors hover:bg-amber-2"
           >
             <ExternalLink className="size-4" aria-hidden />
-            
+
             {t("Продлить")}
           </a>
         )}
@@ -677,16 +969,14 @@ function ProviderHeader({
             className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border border-edge-2 px-4 text-[14px] font-medium text-ink-2 transition-colors hover:text-ink"
           >
             <MessageCircle className="size-4" aria-hidden />
-            
+
             {t("Поддержка")}
-            
           </a>
         )}
       </div>
     </div>
   );
 }
-
 
 /** Меню «⋯» провайдера: удалить подписку (с «Вернуть» в уведомлении). */
 function ProviderMenu({
@@ -705,44 +995,83 @@ function ProviderMenu({
   onSettings: () => void;
 }) {
   const item = menuItem;
+  const [sharing, setSharing] = useState(false);
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger className={className} aria-label={t("Ещё: {0}", [sub.title])} title={t("Ещё")}>
-        <MoreHorizontal className="size-[18px]" />
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          align="end"
-          sideOffset={6}
-          className="z-50 min-w-52 rounded-[18px] border border-edge-2 bg-panel p-1.5 shadow-[0_18px_40px_-16px_rgb(0_0_0/0.7)] data-[state=open]:animate-[dialog-in_var(--dur-fast)_var(--ease-out)]"
+    <>
+      <ShareSubscriptionSheet
+        sub={sub}
+        open={sharing}
+        onOpenChange={setSharing}
+      />
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          className={className}
+          aria-label={t("Ещё: {0}", [sub.title])}
+          title={t("Ещё")}
         >
-          <DropdownMenu.Item className={item} onSelect={onSettings}>
-            <Settings2 className="size-[18px]" aria-hidden />
-            
-            {t("Настройки провайдера")}
-          </DropdownMenu.Item>
-          {hiddenCount > 0 && (
-            <DropdownMenu.Item className={item} onSelect={onToggleHidden}>
-              {hiddenShown ? <EyeOff className="size-[18px]" aria-hidden /> : <Eye className="size-[18px]" aria-hidden />}
-              {hiddenShown ? t("Не показывать скрытые") : t("Показать скрытые ({0})", [hiddenCount])}
+          <MoreHorizontal className="size-[18px]" />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="end"
+            sideOffset={6}
+            className="z-50 min-w-52 rounded-[18px] border border-edge-2 bg-panel p-1.5 shadow-[0_18px_40px_-16px_rgb(0_0_0/0.7)] data-[state=open]:animate-[dialog-in_var(--dur-fast)_var(--ease-out)]"
+          >
+            <DropdownMenu.Item className={item} onSelect={onSettings}>
+              <Settings2 className="size-[18px]" aria-hidden />
+
+              {t("Настройки провайдера")}
             </DropdownMenu.Item>
-          )}
-          <DropdownMenu.Separator className="my-1 h-px bg-edge" />
-          <DropdownMenu.Item className={cn(item, "text-bad")} onSelect={() => void backend.removeSubscription(sub.url)}>
-            <Trash2 className="size-[18px]" aria-hidden />
-            
-            {t("Удалить подписку")}
-          </DropdownMenu.Item>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+            <DropdownMenu.Item
+              className={item}
+              onSelect={() => setSharing(true)}
+            >
+              <QrCode className="size-[18px]" aria-hidden />
+              {t("На другое устройство")}
+            </DropdownMenu.Item>
+            {hiddenCount > 0 && (
+              <DropdownMenu.Item className={item} onSelect={onToggleHidden}>
+                {hiddenShown ? (
+                  <EyeOff className="size-[18px]" aria-hidden />
+                ) : (
+                  <Eye className="size-[18px]" aria-hidden />
+                )}
+                {hiddenShown
+                  ? t("Не показывать скрытые")
+                  : t("Показать скрытые ({0})", [hiddenCount])}
+              </DropdownMenu.Item>
+            )}
+            <DropdownMenu.Separator className="my-1 h-px bg-edge" />
+            <DropdownMenu.Item
+              className={cn(item, "text-bad")}
+              onSelect={() => void backend.removeSubscription(sub.url)}
+            >
+              <Trash2 className="size-[18px]" aria-hidden />
+
+              {t("Удалить подписку")}
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+    </>
   );
 }
 
-const expireFmt = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short" });
+const expireFmt = new Intl.DateTimeFormat(LOCALE, {
+  day: "numeric",
+  month: "short",
+});
 
 /** Тонкая полоса прогресса внутри карточки провайдера. */
-function Bar({ value, className, label }: { value: number; className: string; label: string }) {
+function Bar({
+  value,
+  className,
+  label,
+}: {
+  value: number;
+  className: string;
+  label: string;
+}) {
   return (
     <div
       className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-glass-3"
@@ -752,7 +1081,13 @@ function Bar({ value, className, label }: { value: number; className: string; la
       aria-valuemin={0}
       aria-valuemax={100}
     >
-      <div className={cn("h-full rounded-full transition-[width] duration-[var(--dur)]", className)} style={{ width: `${Math.max(2, value * 100)}%` }} />
+      <div
+        className={cn(
+          "h-full rounded-full transition-[width] duration-[var(--dur)]",
+          className,
+        )}
+        style={{ width: `${Math.max(2, value * 100)}%` }}
+      />
     </div>
   );
 }

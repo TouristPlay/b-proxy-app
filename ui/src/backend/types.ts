@@ -69,6 +69,8 @@ export interface Subscription {
   supportUrl: string | null;
   webPageUrl: string | null;
   updatedAt: number;
+  /** Провайдер просит не показывать адрес подписки (hide-url) — QR для другого устройства не предлагаем. */
+  hideUrl?: boolean;
 }
 
 /** Расширенные настройки ядра Xray. */

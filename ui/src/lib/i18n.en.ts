@@ -718,4 +718,11 @@ export const en: Record<string, string> = {
   "Скачать": "Download",
   "Сообщать о новой версии": "Notify about new versions",
   "После запуска и раз в 12 часов": "After launch and every 12 hours",
+  "QR-код подписки «{0}»": "QR code of subscription “{0}”",
+  "На другое устройство": "To another device",
+  "Откройте камеру телефона или «Добавить подписку» → «Сканировать QR» в B-Proxy и наведите на код.": "Open the phone camera or “Add subscription” → “Scan QR” in B-Proxy and point it at the code.",
+  "Провайдер скрыл адрес этой подписки. Возьмите ссылку для другого устройства у него — в личном кабинете или боте.": "The provider hid this subscription's address. Get a link for another device from them — in your account or bot.",
+  "Скопировать ссылку": "Copy link",
+  "Ссылка скопирована": "Link copied",
+  "Это ключ к вашей подписке: кто отсканирует код, тот получит доступ и займёт место устройства. Не показывайте его посторонним.": "This is the key to your subscription: whoever scans it gets access and takes a device slot. Don't show it to strangers.",
 };
