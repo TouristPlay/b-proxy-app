@@ -12,7 +12,7 @@ import WidgetKit
 /// Янтарь — цвет по умолчанию, если приложение ещё не прислало цвет темы.
 private let amber = Color(red: 0.96, green: 0.69, blue: 0.25)
 
-private func accentColor(_ hex: String?) -> Color {
+private func themeColor(_ hex: String?) -> Color {
     guard var s = hex?.trimmingCharacters(in: .whitespaces), s.hasPrefix("#") else { return amber }
     s.removeFirst()
     guard s.count == 6, let v = UInt32(s, radix: 16) else { return amber }
@@ -57,10 +57,10 @@ struct BProxyLiveActivity: Widget {
         ActivityConfiguration(for: BProxyActivityAttributes.self) { context in
             LockScreenView(state: context.state)
                 .activityBackgroundTint(Color.black.opacity(0.6))
-                .activitySystemActionForegroundColor(accentColor(context.state.accent))
+                .activitySystemActionForegroundColor(themeColor(context.state.accent))
         } dynamicIsland: { context in
             let state = context.state
-            let accent = accentColor(state.accent)
+            let accent = themeColor(state.accent)
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     Label {
@@ -106,7 +106,7 @@ private struct LockScreenView: View {
     let state: BProxyActivityAttributes.ContentState
 
     var body: some View {
-        let accent = accentColor(state.accent)
+        let accent = themeColor(state.accent)
         VStack(spacing: 12) {
             HStack(spacing: 14) {
                 ZStack {
@@ -254,7 +254,7 @@ private struct StatusWidgetView: View {
 
     private var s: BProxyWidgetStore.Snapshot { entry.snapshot }
     private var on: Bool { s.status == "connected" }
-    private var accent: Color { accentColor(s.accent) }
+    private var accent: Color { themeColor(s.accent) }
     private var statusText: String {
         switch s.status {
         case "connected": return s.label("connected", "Защищено")
