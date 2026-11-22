@@ -1,12 +1,21 @@
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import * as React from "react";
+import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 export const RadioGroup = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <RadioGroupPrimitive.Root ref={ref} className={cn("grid", className)} {...props} />
+>(({ className, onValueChange, ...props }, ref) => (
+  <RadioGroupPrimitive.Root
+    ref={ref}
+    className={cn("grid", className)}
+    onValueChange={(v) => {
+      haptic("select");
+      onValueChange?.(v);
+    }}
+    {...props}
+  />
 ));
 RadioGroup.displayName = "RadioGroup";
 

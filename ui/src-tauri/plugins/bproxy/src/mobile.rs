@@ -79,6 +79,15 @@ impl<R: Runtime> Vpn<R> {
             .map_err(|e| e.to_string())
     }
 
+    /// Виброотклик и данные виджетов: ответ не нужен, ошибки не страшны.
+    pub async fn notify_native(&self, method: &str, args: serde_json::Value) -> Result<(), String> {
+        self.0
+            .run_mobile_plugin_async::<serde_json::Value>(method, args)
+            .await
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
     pub async fn open_vpn_settings(&self) -> Result<(), String> {
         self.0
             .run_mobile_plugin_async::<serde_json::Value>("openVpnSettings", ())

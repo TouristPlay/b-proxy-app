@@ -46,6 +46,18 @@ pub(crate) async fn live_activity<R: Runtime>(app: AppHandle<R>, args: serde_jso
     app.vpn().live_activity(args).await
 }
 
+/// Виброотклик на телефоне: tap | select | toggle | success | warning | error | heavy.
+#[command]
+pub(crate) async fn haptic<R: Runtime>(app: AppHandle<R>, kind: String) -> Result<(), String> {
+    app.vpn().notify_native("haptic", serde_json::json!({ "kind": kind })).await
+}
+
+/// Данные для виджетов на рабочем столе (сервер, флаг, цвет темы, подписи).
+#[command]
+pub(crate) async fn widget_state<R: Runtime>(app: AppHandle<R>, args: serde_json::Value) -> Result<(), String> {
+    app.vpn().notify_native("widgetState", args).await
+}
+
 /// HWID и сведения об устройстве — те же, что уходят провайдеру с подпиской.
 #[command]
 pub(crate) async fn device_info<R: Runtime>(app: AppHandle<R>) -> Result<DeviceInfo, String> {

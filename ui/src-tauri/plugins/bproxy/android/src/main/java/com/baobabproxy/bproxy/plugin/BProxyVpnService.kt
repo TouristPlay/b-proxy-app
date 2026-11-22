@@ -66,7 +66,16 @@ class BProxyVpnService : VpnService() {
             state = value
             listener?.invoke(value)
             tileListener?.invoke()
-            appContext?.let { BProxyTileService.refresh(it) }
+            appContext?.let {
+                if (value == "connected") {
+                    it.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                        .putLong("connectedAt", System.currentTimeMillis())
+                        .putString("lastServer", serverName)
+                        .apply()
+                }
+                BProxyTileService.refresh(it)
+                BProxyWidget.refresh(it)
+            }
         }
 
         private const val PREFS = "bproxy"

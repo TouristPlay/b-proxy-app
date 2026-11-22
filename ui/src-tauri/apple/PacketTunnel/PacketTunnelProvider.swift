@@ -2,6 +2,7 @@ import Foundation
 import NetworkExtension
 import LibXray
 import UserNotifications
+import WidgetKit
 
 /// Расширение Network Extension: здесь работает ядро Xray.
 ///
@@ -89,12 +90,15 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 completionHandler(self.fail(message))
                 return
             }
+            // Виджет: подключено (VPN могли включить из виджета или Пункта управления без приложения).
+            Shared.setWidgetStatus("connected", server: env["BPROXY_SERVER_NAME"])
             completionHandler(nil)
         }
     }
 
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
         _ = XrayInvoke.call(#"{"apiVersion":3,"method":"stopXray"}"#)
+        Shared.setWidgetStatus("disconnected", server: nil)
         if notifyDisconnect, let text = Self.disconnectReason(reason) {
             Self.alertDisconnected(text, then: completionHandler)
         } else {
@@ -169,6 +173,18 @@ enum Shared {
     static var appGroup: String { "group." + appBundleId }
     static var defaults: UserDefaults? { UserDefaults(suiteName: appGroup) }
     static let lastErrorKey = "lastError"
+
+    /// Состояние для виджета (те же ключи, что в apple/Shared/BProxyShared.swift).
+    static func setWidgetStatus(_ status: String, server: String?) {
+        guard let d = defaults else { return }
+        if status == "connected", d.string(forKey: "widget.status") != "connected" {
+            d.set(Date().timeIntervalSince1970, forKey: "widget.since")
+        }
+        d.set(status, forKey: "widget.status")
+        if let server = server, !server.isEmpty { d.set(server, forKey: "widget.server") }
+        d.set(true, forKey: "widget.ready")
+        WidgetCenter.shared.reloadAllTimelines()
+    }
 }
 
 enum XrayInvoke {

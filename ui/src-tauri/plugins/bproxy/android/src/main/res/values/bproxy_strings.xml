@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bproxy_widget_description">Состояние VPN и кнопка включения</string>
+</resources>

@@ -5,6 +5,9 @@ import SwiftRs
 import Tauri
 import UIKit
 import WebKit
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 
 class InvokeCoreArgs: Decodable {
     let request: String
@@ -20,6 +23,22 @@ class LiveActivityArgs: Decodable {
     let label: String?
     /// Начало сеанса, мс с 1970 года — от него идёт таймер.
     let since: Double?
+    let flag: String?
+    let proto: String?
+    let accent: String?
+    let stopLabel: String?
+}
+
+class HapticArgs: Decodable {
+    let kind: String
+}
+
+class WidgetStateArgs: Decodable {
+    let server: String?
+    let flag: String?
+    let accent: String?
+    /// Подписи виджета на языке интерфейса: connected, connecting, disconnected, hint.
+    let labels: [String: String]?
 }
 
 class StartArgs: Decodable {
@@ -73,6 +92,37 @@ class BProxyPlugin: Plugin {
 
     /// Папка баз geoip/geosite в общем контейнере App Group: её читает расширение PacketTunnel.
     /// VPN по приложениям в iOS доступен только устройствам под управлением MDM.
+    /// Виброотклик (UIKit Taptic Engine). Системная настройка «Звуки и тактильные сигналы» учитывается сама.
+    @objc public func haptic(_ invoke: Invoke) throws {
+        let kind = try invoke.parseArgs(HapticArgs.self).kind
+        DispatchQueue.main.async {
+            switch kind {
+            case "success": UINotificationFeedbackGenerator().notificationOccurred(.success)
+            case "warning": UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            case "error": UINotificationFeedbackGenerator().notificationOccurred(.error)
+            case "select": UISelectionFeedbackGenerator().selectionChanged()
+            case "toggle-on": UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            case "toggle-off": UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            case "heavy": UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            default: UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+        }
+        invoke.resolve()
+    }
+
+    /// Сервер, флаг, цвет темы и подписи для виджета (общие настройки группы приложений).
+    @objc public func widgetState(_ invoke: Invoke) throws {
+        let args = try invoke.parseArgs(WidgetStateArgs.self)
+        if let d = Shared.defaults {
+            if let server = args.server { d.set(server, forKey: "widget.server") }
+            d.set(args.flag ?? "", forKey: "widget.flag")
+            if let accent = args.accent { d.set(accent, forKey: "widget.accent") }
+            if let labels = args.labels { d.set(labels, forKey: "widget.labels") }
+        }
+        Shared.reloadWidgets()
+        invoke.resolve()
+    }
+
     @objc public func listApps(_ invoke: Invoke) {
         invoke.reject("В iOS недоступно")
     }
@@ -216,7 +266,9 @@ class BProxyPlugin: Plugin {
     }
 
     private func onStatus(_ status: NEVPNStatus) {
-        var payload: JSObject = ["state": Self.stateName(status)]
+        let name = Self.stateName(status)
+        Shared.setWidgetStatus(name == "disconnecting" ? "disconnected" : name)
+        var payload: JSObject = ["state": name]
         let lastError = Shared.defaults?.string(forKey: Shared.lastErrorKey)
         if status == .disconnected, let lastError = lastError {
             payload["error"] = lastError
@@ -269,6 +321,23 @@ enum Shared {
     static var appGroup: String { "group." + appBundleId }
     static var defaults: UserDefaults? { UserDefaults(suiteName: appGroup) }
     static let lastErrorKey = "lastError"
+
+    /// Состояние для виджета (те же ключи, что в apple/Shared/BProxyShared.swift).
+    static func setWidgetStatus(_ status: String) {
+        guard let d = defaults else { return }
+        let before = d.string(forKey: "widget.status")
+        guard before != status else { return }
+        d.set(status, forKey: "widget.status")
+        if status == "connected" { d.set(Date().timeIntervalSince1970, forKey: "widget.since") }
+        d.set(true, forKey: "widget.ready")
+        reloadWidgets()
+    }
+
+    static func reloadWidgets() {
+        #if canImport(WidgetKit)
+        WidgetCenter.shared.reloadAllTimelines()
+        #endif
+    }
 }
 
 /// Байты, прошедшие через интерфейс туннеля.

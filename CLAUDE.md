@@ -134,8 +134,19 @@ cd ui && npx tauri icon src-tauri/app-icon.png && npx tauri dev
   меняется в «Ядро Xray» (env `BPROXY_MEMORY_LIMIT_MB`, `BPROXY_AGGRESSIVE_GC`).
 - «Живая активность» iOS (16.1+): расширение-виджет `apple/LiveActivity` (добавляет `scripts/tauri_ios_extension.py`),
   управляет приложение командой плагина `live_activity` (start/update/end) при смене состояния туннеля.
-  Структура `BProxyActivityAttributes` объявлена и в плагине, и в расширении — поля должны совпадать.
+  Структура `BProxyActivityAttributes` объявлена в плагине и в `apple/Shared/BProxyShared.swift` — поля должны совпадать
+  (флаг, протокол, цвет темы `accent`, подпись «Отключить»). Dynamic Island: щит, таймер, сервер, кнопка «Отключить» (iOS 17).
   Если приложение выгружено, активность обновится при следующем открытии.
+- Виджеты. iOS — `BProxyStatusWidget` в том же расширении (маленький, средний, на экране блокировки): читает
+  общие настройки группы `widget.*` (статус, сервер, флаг, время, цвет темы, подписи). Пишут их плагин
+  (`widgetState`, смена статуса) и PacketTunnel (запуск/остановка). Кнопка в виджете, «Отключить» в активности и
+  Пункт управления — `BProxyToggleTunnelIntent` (LiveActivityIntent, iOS 17): выполняется в процессе приложения,
+  включает/выключает профиль VPN без открытия окна; поэтому `apple/Shared` входит и в приложение, и в расширение.
+  Android — `BProxyWidget` (AppWidgetProvider, `res/layout/bproxy_widget.xml`): как плитка в шторке, с цветом темы,
+  флагом и подписями из `widgetState` (SharedPreferences `bproxy`), таймер — Chronometer от `connectedAt`.
+- Виброотклик (настройка `haptics`, `lib/haptics.ts` → команда плагина `haptic`): iOS — UIImpact/Notification/
+  SelectionFeedbackGenerator, Android — `performHapticFeedback` (CONFIRM/REJECT/TOGGLE_*, без разрешения VIBRATE).
+  Срабатывает в Switch, RadioGroup, меню вкладок, выборе сервера, на подключение (success), отключение и ошибку.
 - Идентификатор приложения `com.baobabproxy.bproxy`, расширения — `.PacketTunnel`, группа — `group.com.baobabproxy.bproxy`.
 - Помощник с правами системы (`core/runner/helper*.go`, клиент `plugins/bproxy/src/helper.rs`): одна строка JSON
   туда-обратно — `start` (конфиг без путей журнала), `stop`, `state`, `version` (sha256 файла).

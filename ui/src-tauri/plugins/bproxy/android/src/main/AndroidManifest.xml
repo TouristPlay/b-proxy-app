@@ -38,5 +38,17 @@
                 android:name="android.service.quicksettings.TOGGLEABLE_TILE"
                 android:value="true" />
         </service>
+        <!-- Виджет на рабочем столе: состояние VPN и кнопка включения. -->
+        <receiver
+            android:name="com.baobabproxy.bproxy.plugin.BProxyWidget"
+            android:exported="true"
+            android:label="B-Proxy">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/bproxy_widget_info" />
+        </receiver>
     </application>
 </manifest>

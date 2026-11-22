@@ -24,6 +24,8 @@
 - `allow-list-apps`
 - `allow-access-log-path`
 - `allow-read-access`
+- `allow-haptic`
+- `allow-widget-state`
 
 ## Permission Table
 
@@ -160,6 +162,32 @@ Enables the geo_info command without any pre-configured scope.
 <td>
 
 Denies the geo_info command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-haptic`
+
+</td>
+<td>
+
+Enables the haptic command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-haptic`
+
+</td>
+<td>
+
+Denies the haptic command without any pre-configured scope.
 
 </td>
 </tr>
@@ -550,6 +578,32 @@ Enables the tcp_ping command without any pre-configured scope.
 <td>
 
 Denies the tcp_ping command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:allow-widget-state`
+
+</td>
+<td>
+
+Enables the widget_state command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`bproxy:deny-widget-state`
+
+</td>
+<td>
+
+Denies the widget_state command without any pre-configured scope.
 
 </td>
 </tr>

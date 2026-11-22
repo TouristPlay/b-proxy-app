@@ -1,7 +1,7 @@
-import { AppWindow, Bug, CalendarClock, Check, LayoutGrid, Sparkles, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
+import { AppWindow, Bug, CalendarClock, Vibrate, Check, LayoutGrid, Sparkles, Copy, Download, ExternalLink, LoaderCircle, ShieldOff, RadioTower, Plug, Bell, ChevronRight,  FileText, Gauge, Power, Info, Palette, Plus, RotateCcw, Route, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { backend, useSnapshot } from "@/backend";
-import { detectPlatform } from "@/backend/xray";
+import { detectPlatform, isMobile } from "@/backend/xray";
 import { Group, IconTile, Row } from "@/components/bits";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
@@ -135,6 +135,15 @@ export function SettingsScreen({ embedded, onAdd }: { embedded?: boolean; onAdd:
               title={t("VPN по приложениям")}
               hint={perAppHint(s.settings.perApp ?? { mode: "off", apps: [] })}
               aside={<ChevronRight className="size-5 text-ink-3" aria-hidden />}
+            />
+          )}
+          {isMobile(detectPlatform()) && (
+            <Row
+              htmlFor="set-haptics"
+              icon={<IconTile icon={Vibrate} tone="violet" />}
+              title={t("Виброотклик")}
+              hint={t("Лёгкая вибрация при подключении, переключателях и выборе сервера")}
+              aside={<Switch id="set-haptics" checked={s.settings.haptics} onCheckedChange={(v) => void backend.updateSettings({ haptics: v })} />}
             />
           )}
           {detectPlatform() === "ios" && (

@@ -111,6 +111,7 @@ export const defaultSettings: Settings = {
   perApp: { mode: "off", apps: [] },
   crashReports: true,
   liveActivity: true,
+  haptics: true,
   serverSort: "provider",
   notifications: { enabled: true, disconnect: true, expiry: true, traffic: true, announce: true },
   desktop: { closeToTray: true, autoUpdate: true },

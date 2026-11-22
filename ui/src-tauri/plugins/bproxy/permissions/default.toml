@@ -23,4 +23,6 @@ permissions = [
   "allow-list-apps",
   "allow-access-log-path",
   "allow-read-access",
+  "allow-haptic",
+  "allow-widget-state",
 ]

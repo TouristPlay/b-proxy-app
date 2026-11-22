@@ -1,3 +1,4 @@
+import { haptic } from "@/lib/haptics";
 import { demoTab } from "@/lib/demoHash";
 import { markScreenEnter } from "@/lib/motion";
 import { Activity, House, Server, Settings2 } from "lucide-react";
@@ -79,7 +80,10 @@ export default function App() {
               return (
                 <button
                   key={id}
-                  onClick={() => setTab(id)}
+                  onClick={() => {
+                    if (id !== tab) haptic("select");
+                    setTab(id);
+                  }}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "relative flex h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-[24px] text-[11.5px] font-medium transition-colors",

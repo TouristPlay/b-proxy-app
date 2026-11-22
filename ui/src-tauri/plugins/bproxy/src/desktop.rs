@@ -129,6 +129,11 @@ impl<R: Runtime> Vpn<R> {
         Ok(())
     }
 
+    /// Виброотклик и виджеты есть только на телефонах.
+    pub async fn notify_native(&self, _method: &str, _args: serde_json::Value) -> Result<(), String> {
+        Ok(())
+    }
+
     /// VPN сейчас работает через помощника (журнал соединений — у него).
     #[allow(dead_code)]
     pub fn uses_helper(&self) -> bool {

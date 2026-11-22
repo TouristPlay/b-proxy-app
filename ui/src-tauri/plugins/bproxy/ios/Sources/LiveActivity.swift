@@ -14,6 +14,10 @@ public struct BProxyActivityAttributes: ActivityAttributes {
         public var server: String
         public var label: String
         public var since: Date
+        public var flag: String?
+        public var proto: String?
+        public var accent: String?
+        public var stopLabel: String?
     }
 }
 
@@ -24,7 +28,11 @@ enum LiveActivityController {
             status: args.status ?? "connected",
             server: args.server ?? "",
             label: args.label ?? "B-Proxy",
-            since: Date(timeIntervalSince1970: (args.since ?? Date().timeIntervalSince1970 * 1000) / 1000)
+            since: Date(timeIntervalSince1970: (args.since ?? Date().timeIntervalSince1970 * 1000) / 1000),
+            flag: args.flag,
+            proto: args.proto,
+            accent: args.accent,
+            stopLabel: args.stopLabel
         )
         let current = Activity<BProxyActivityAttributes>.activities
         switch args.action {

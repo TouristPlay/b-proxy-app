@@ -320,6 +320,8 @@ export interface Settings {
   perApp: PerAppSettings;
   /** Отправлять отчёты о сбоях (если сборка знает адрес сервера отчётов). */
   crashReports: boolean;
+  /** Виброотклик на телефонах. */
+  haptics: boolean;
   /** iOS: «Живая активность» — статус VPN на экране блокировки и в Dynamic Island. */
   liveActivity: boolean;
   /** Порядок серверов в списке. */

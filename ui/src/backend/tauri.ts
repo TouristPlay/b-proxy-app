@@ -22,7 +22,8 @@ import {
   type Subscription,
   type TunnelState,
 } from "./types";
-import { plural } from "@/lib/format";
+import { plural, splitFlag } from "@/lib/format";
+import { accentOf } from "@/lib/theme";
 import { loadActivity, newId, saveActivity } from "./activity";
 import { applyPrefs, mergePrefs, pickCurrent } from "./prefs";
 import { parseLink } from "./links";
@@ -33,6 +34,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { isNewer } from "./version";
 import { exclusionFor, parseAccessLog, siteOf } from "./connections";
 import { inWindow } from "./schedule";
+import { haptic, setHapticsEnabled } from "@/lib/haptics";
 import { CRASH_DSN, setCrashReports } from "@/lib/crash";
 import { CATALOG_URL, parseCatalog } from "./catalog";
 import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -47,7 +49,10 @@ const USER_AGENT = "v2rayNG/1.9.30";
 /** libXray меряет не больше 5 серверов за вызов. */
 const PING_BATCH = 5;
 /** Настройки самого приложения: их смена не требует переподключения VPN. */
-const APP_ONLY = new Set(["schedule", "liveActivity", "autoConnect", "serverSort", "sendHwid", "updates", "ping", "notifications", "desktop", "crashReports"]);
+/** Флаг-эмодзи из начала названия сервера: «🇳🇱 Амстердам» → «🇳🇱». */
+const flagOf = (name: string) => (splitFlag(name).code ? Array.from(name.trim()).slice(0, 2).join("") : "");
+
+const APP_ONLY = new Set(["haptics", "schedule", "liveActivity", "autoConnect", "serverSort", "sendHwid", "updates", "ping", "notifications", "desktop", "crashReports"]);
 
 const STATE_KEY = "b-proxy.state";
 /** Какие уведомления о подписках уже показаны. */
@@ -256,6 +261,7 @@ export class TauriBackend implements Backend {
     }
     this.emit({ version: { ...this.s.version, app: APP_VERSION } });
     this.syncCrashReports();
+    setHapticsEnabled(this.s.settings.haptics);
     this.logPaths = await invoke<{ dir: string; appLog: string; coreLog: string } | null>("plugin:bproxy|log_info").catch(() => null);
     const sub = this.subs.map((x) => `«${x.title}» (${x.nodes.filter((n) => !n.divider).length})`).join(", ");
     this.writeLog("info", `Интерфейс ${APP_VERSION}, ${this.platform}; подписки: ${sub || "нет"}`);
@@ -386,9 +392,17 @@ export class TauriBackend implements Backend {
 
   private emit(patch: Partial<Snapshot> = {}) {
     const before = this.s.state;
+    const errorBefore = this.s.error;
     this.s = { ...this.s, ...patch };
-    if (patch.state && patch.state !== before) this.syncLiveActivity();
+    if (patch.state && patch.state !== before) {
+      this.syncLiveActivity();
+      // Отклик на смену состояния: подключились — «успех», отключились — мягкий щелчок.
+      if (patch.state === "connected") haptic("success");
+      else if (patch.state === "disconnected" && before === "connected") haptic("toggle-off");
+    }
+    if (patch.error && patch.error !== errorBefore) haptic("error");
     this.recompute();
+    this.syncWidget();
     for (const l of this.listeners) l(this.s);
     if ("state" in patch || "subscriptions" in patch || "selected" in patch || "favorites" in patch || "current" in patch) this.scheduleTray();
   }
@@ -915,6 +929,7 @@ export class TauriBackend implements Backend {
   // ---------- VPN ----------
 
   async toggle() {
+    haptic(this.s.state === "disconnected" ? "heavy" : "tap");
     const state = this.s.state;
     // Подключение идёт (например, система ждёт пароль) — повторное нажатие его отменяет.
     if (state === "connecting") {
@@ -1133,6 +1148,7 @@ export class TauriBackend implements Backend {
   }
 
   async select(target: { subUrl: string; nodeId: string } | null) {
+    haptic("select");
     const before = this.s.current;
     this.emit({ selected: target });
     this.persist();
@@ -1336,12 +1352,38 @@ export class TauriBackend implements Backend {
       ? {
           action: "update",
           status: state,
-          server: current ? current.node.name : "",
+          server: current ? splitFlag(current.node.name).name : "",
           label: state === "connected" ? t("Защищено") : t("Подключаемся"),
           since: connectedAt ?? Date.now(),
+          flag: current ? flagOf(current.node.name) : "",
+          proto: current ? current.node.tags.slice(0, 2).join(" · ") : "",
+          accent: accentOf(this.s.settings.appearance),
+          stopLabel: t("Отключить"),
         }
       : { action: "end" };
     void invoke("plugin:bproxy|live_activity", { args }).catch((e) => this.writeLog("warn", `Живая активность: ${message(e)}`));
+  }
+
+  /** Виджет на рабочем столе (Android, iOS): сервер, флаг, цвет темы, подписи. */
+  private widgetKey = "";
+  private syncWidget() {
+    if (!isMobile(this.platform)) return;
+    const node = this.s.current?.node;
+    const args = {
+      server: node ? splitFlag(node.name).name : "",
+      flag: node ? flagOf(node.name) : "",
+      accent: accentOf(this.s.settings.appearance),
+      labels: {
+        connected: t("Защищено"),
+        connecting: t("Подключаемся"),
+        disconnected: t("Не защищено"),
+        hint: t("Нажмите, чтобы подключить"),
+      },
+    };
+    const key = JSON.stringify(args);
+    if (key === this.widgetKey) return;
+    this.widgetKey = key;
+    void invoke("plugin:bproxy|widget_state", { args }).catch((e) => this.writeLog("warn", `Виджет: ${message(e)}`));
   }
 
   // ---------- Профили маршрутизации ----------
@@ -1574,6 +1616,7 @@ export class TauriBackend implements Backend {
     else this.persist();
     if (patch.liveActivity !== undefined) this.syncLiveActivity();
     if (patch.crashReports !== undefined) this.syncCrashReports();
+    if (patch.haptics !== undefined) setHapticsEnabled(patch.haptics);
     // Поменяли расписание — проверим заново, как при запуске.
     if (patch.schedule) {
       this.scheduleInside = null;

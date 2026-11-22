@@ -4,7 +4,10 @@
 - расширение PacketTunnel (ui/src-tauri/apple/PacketTunnel), в нём работает ядро;
 - ядро LibXray.xcframework в приложение (разбор ссылок, пинг) и в расширение;
 - права Network Extension и общую группу приложений;
-- расширение LiveActivity (ui/src-tauri/apple/LiveActivity) — «Живая активность» на iOS 16.1+.
+- расширение LiveActivity (ui/src-tauri/apple/LiveActivity) — «Живая активность» на iOS 16.1+,
+  виджет на рабочем столе и кнопка в Пункте управления;
+- общий код apple/Shared — в приложение и в расширение виджетов (намерение «Включить/выключить VPN»
+  выполняется в процессе приложения, поэтому Apple требует его в обоих таргетах).
 
 Запуск после `tauri ios init`, затем `xcodegen generate` в gen/apple.
 С флагом --unsigned отключает подпись (сборка в CI без аккаунта Apple).
@@ -25,6 +28,7 @@ IOS_VERSION = "15.0"
 XCFRAMEWORK = "../../resources/ios/LibXray.xcframework"
 EXTENSION_DIR = "../../apple/PacketTunnel"
 ACTIVITY_DIR = "../../apple/LiveActivity"
+SHARED_DIR = "../../apple/Shared"
 # Не дают компоновщику выбросить C-интерфейс ядра: плагин находит его через dlsym.
 LINKER_FLAGS = ["$(inherited)", "-lresolv", "-Wl,-u,_CGoInvoke", "-Wl,-u,_CGoFree"]
 VPN_ENTITLEMENTS = {
@@ -59,6 +63,12 @@ def main() -> int:
     add_dependency(app, {"sdk": "NetworkExtension.framework"})
     add_dependency(app, {"target": "PacketTunnel", "embed": True, "codeSign": True})
     add_dependency(app, {"target": "LiveActivity", "embed": True, "codeSign": True})
+    add_dependency(app, {"sdk": "WidgetKit.framework"})
+    sources = app.setdefault("sources", [])
+    if isinstance(sources, str):
+        sources = app["sources"] = [sources]
+    if not any((x.get("path") if isinstance(x, dict) else x) == SHARED_DIR for x in sources):
+        sources.append({"path": SHARED_DIR})
     # «Живая активность»: без этого ключа iOS не даст приложению её показать.
     # Камера — для подписки по QR-коду.
     app_keys = {
@@ -76,6 +86,7 @@ def main() -> int:
         (GEN / plist_path).write_bytes(plistlib.dumps(data))
     base = app.setdefault("settings", {}).setdefault("base", {})
     base["OTHER_LDFLAGS"] = LINKER_FLAGS
+    base.setdefault("SWIFT_VERSION", "5.0")
     entitlements = app.setdefault("entitlements", {"path": f"{app_name}/{app_name}.entitlements"})
     entitlements.setdefault("properties", {}).update(VPN_ENTITLEMENTS)
 
@@ -110,6 +121,7 @@ def main() -> int:
         "dependencies": [
             {"framework": XCFRAMEWORK, "embed": False},
             {"sdk": "NetworkExtension.framework"},
+            {"sdk": "WidgetKit.framework"},
         ],
     }
 
@@ -118,8 +130,13 @@ def main() -> int:
         "type": "app-extension",
         "platform": "iOS",
         "deploymentTarget": "16.1",
-        "sources": [{"path": ACTIVITY_DIR}],
+        "sources": [{"path": ACTIVITY_DIR, "excludes": ["*.entitlements"]}, {"path": SHARED_DIR}],
         "info": {"path": f"{ACTIVITY_DIR}/Info.plist"},
+        # Общие настройки группы приложений: состояние VPN для виджета.
+        "entitlements": {
+            "path": f"{ACTIVITY_DIR}/LiveActivity.entitlements",
+            "properties": {"com.apple.security.application-groups": [GROUP]},
+        },
         "settings": {
             "base": {
                 "PRODUCT_NAME": "LiveActivity",
@@ -138,6 +155,8 @@ def main() -> int:
             {"sdk": "WidgetKit.framework"},
             {"sdk": "SwiftUI.framework"},
             {"sdk": "ActivityKit.framework"},
+            {"sdk": "AppIntents.framework"},
+            {"sdk": "NetworkExtension.framework"},
         ],
     }
 

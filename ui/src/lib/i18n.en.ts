@@ -767,4 +767,7 @@ export const en: Record<string, string> = {
   "сегодня": "today",
   "Часы": "Hours",
   "Минуты": "Minutes",
+  "Виброотклик": "Haptic feedback",
+  "Лёгкая вибрация при подключении, переключателях и выборе сервера": "A light tap when connecting, toggling switches and picking a server",
+  "Нажмите, чтобы подключить": "Tap to connect",
 };

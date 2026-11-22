@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
+import android.view.HapticFeedbackConstants
 import androidx.activity.result.ActivityResult
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
@@ -25,6 +26,26 @@ import java.util.concurrent.Executors
 @InvokeArg
 class InvokeCoreArgs {
     lateinit var request: String
+}
+
+@InvokeArg
+class HapticArgs {
+    var kind: String = "tap"
+}
+
+@InvokeArg
+class WidgetLabels {
+    var connected: String? = null
+    var connecting: String? = null
+    var disconnected: String? = null
+    var hint: String? = null
+}
+
+@InvokeArg
+class WidgetStateArgs {
+    var accent: String? = null
+    var flag: String? = null
+    var labels: WidgetLabels? = null
 }
 
 @InvokeArg
@@ -182,6 +203,43 @@ class BProxyPlugin(private val activity: Activity) : Plugin(activity) {
     @ActivityCallback
     private fun onVpnPermission(invoke: Invoke, result: ActivityResult) {
         invoke.resolve(JSObject().apply { put("granted", result.resultCode == Activity.RESULT_OK) })
+    }
+
+    /**
+     * Виброотклик. Через performHapticFeedback: учитывает системную настройку
+     * «Виброотклик» и не требует разрешения VIBRATE.
+     */
+    @Command
+    fun haptic(invoke: Invoke) {
+        val kind = invoke.parseArgs(HapticArgs::class.java).kind
+        val sdk = Build.VERSION.SDK_INT
+        val constant = when (kind) {
+            "select" -> if (sdk >= 34) HapticFeedbackConstants.SEGMENT_TICK else HapticFeedbackConstants.CLOCK_TICK
+            "toggle-on" -> if (sdk >= 34) HapticFeedbackConstants.TOGGLE_ON else HapticFeedbackConstants.CONTEXT_CLICK
+            "toggle-off" -> if (sdk >= 34) HapticFeedbackConstants.TOGGLE_OFF else HapticFeedbackConstants.CLOCK_TICK
+            "success" -> if (sdk >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CONTEXT_CLICK
+            "warning", "error" -> if (sdk >= 30) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
+            "heavy" -> HapticFeedbackConstants.LONG_PRESS
+            else -> HapticFeedbackConstants.VIRTUAL_KEY
+        }
+        main.post { activity.window?.decorView?.performHapticFeedback(constant) }
+        invoke.resolve()
+    }
+
+    /** Цвет темы и флаг сервера для виджета на рабочем столе. */
+    @Command
+    fun widgetState(invoke: Invoke) {
+        val args = invoke.parseArgs(WidgetStateArgs::class.java)
+        activity.getSharedPreferences("bproxy", android.content.Context.MODE_PRIVATE).edit()
+            .putString("widgetAccent", args.accent)
+            .putString("widgetFlag", args.flag)
+            .putString("widgetLabelConnected", args.labels?.connected)
+            .putString("widgetLabelConnecting", args.labels?.connecting)
+            .putString("widgetLabelDisconnected", args.labels?.disconnected)
+            .putString("widgetLabelHint", args.labels?.hint)
+            .apply()
+        BProxyWidget.refresh(activity)
+        invoke.resolve()
     }
 
     /** Запуск туннеля. Ответ приходит, когда ядро запустилось или упало. */

@@ -355,6 +355,18 @@
           "markdownDescription": "Denies the geo_info command without any pre-configured scope."
         },
         {
+          "description": "Enables the haptic command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-haptic",
+          "markdownDescription": "Enables the haptic command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the haptic command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-haptic",
+          "markdownDescription": "Denies the haptic command without any pre-configured scope."
+        },
+        {
           "description": "Enables the invoke_core command without any pre-configured scope.",
           "type": "string",
           "const": "allow-invoke-core",
@@ -535,10 +547,22 @@
           "markdownDescription": "Denies the tcp_ping command without any pre-configured scope."
         },
         {
-          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`\n- `allow-list-apps`\n- `allow-access-log-path`\n- `allow-read-access`",
+          "description": "Enables the widget_state command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-widget-state",
+          "markdownDescription": "Enables the widget_state command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the widget_state command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-widget-state",
+          "markdownDescription": "Denies the widget_state command without any pre-configured scope."
+        },
+        {
+          "description": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`\n- `allow-list-apps`\n- `allow-access-log-path`\n- `allow-read-access`\n- `allow-haptic`\n- `allow-widget-state`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`\n- `allow-list-apps`\n- `allow-access-log-path`\n- `allow-read-access`"
+          "markdownDescription": "Всё, что нужно интерфейсу B-Proxy: ядро Xray, подписки и VPN\n#### This default permission set includes:\n\n- `allow-invoke-core`\n- `allow-fetch-subscription`\n- `allow-prepare`\n- `allow-start`\n- `allow-stop`\n- `allow-stats`\n- `allow-log`\n- `allow-log-info`\n- `allow-read-log`\n- `allow-open-logs-dir`\n- `allow-tcp-ping`\n- `allow-device-info`\n- `allow-geo-info`\n- `allow-download-geo`\n- `allow-live-activity`\n- `allow-speed-test`\n- `allow-open-vpn-settings`\n- `allow-list-apps`\n- `allow-access-log-path`\n- `allow-read-access`\n- `allow-haptic`\n- `allow-widget-state`"
         }
       ]
     }
