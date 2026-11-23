@@ -9,6 +9,7 @@ const log = [
   "2026/11/20 10:00:03.000000 from 172.19.0.1:50003 accepted udp:172.19.0.2:53 [tun-in >> dns-out]",
   "2026/11/20 10:00:04.000000 from 172.19.0.1:50004 accepted tcp:203.0.113.7:8443 [tun-in >> block]",
   "2026/11/20 10:00:05.000000 from 172.19.0.1:50005 rejected tcp:198.51.100.1:443 something",
+  "2026/11/20 10:00:06.000000 from 172.19.0.1:5353 accepted udp:224.0.0.251:5353 [tun-in >> proxy]",
   "мусор без даты",
 ].join("\n");
 
@@ -29,6 +30,7 @@ describe("журнал соединений", () => {
     expect(list.find((c) => c.host === "203.0.113.7")?.route).toBe("block");
     expect(list.some((c) => c.host === "172.19.0.2")).toBe(false);
     expect(list.some((c) => c.host === "198.51.100.1")).toBe(false);
+    expect(list.some((c) => c.host === "224.0.0.251")).toBe(false);
   });
 
   it("последние сверху", () => {

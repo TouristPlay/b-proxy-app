@@ -42,6 +42,9 @@ function outboundOf(detour: string | undefined) {
   return parts[parts.length - 1].trim();
 }
 
+const isMulticast = (ip: string) =>
+  /^(22[4-9]|23\d)\./.test(ip) || ip === "255.255.255.255" || ip.toLowerCase().startsWith("ff");
+
 const bare = (host: string) => host.replace(/^\[|\]$/g, "").toLowerCase();
 const isIp = (host: string) => /^[\d.]+$/.test(host) || host.includes(":");
 
@@ -71,6 +74,8 @@ export function parseAccessLog(text: string, limit = 300): Connection[] {
     const port = Number(a[5]);
     const target = bare(a[4]);
     if (outbound === "dns-out" || (port === 53 && target === "172.19.0.2")) continue;
+    // Служебная рассылка в локальной сети (mDNS 224.0.0.251, SSDP, broadcast) — не сайты.
+    if (isMulticast(target)) continue;
     const known = isIp(target) ? names.get(target) : undefined;
     const host = known ?? target;
     const entry = byHost.get(host);
